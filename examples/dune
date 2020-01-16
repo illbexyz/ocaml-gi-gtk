@@ -1,0 +1,3 @@
+(executables
+ (names button radiobutton)
+ (libraries lablgtk3 objects))

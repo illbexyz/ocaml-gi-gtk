@@ -1,0 +1,6 @@
+.vscode
+.merlin
+.stack-work/
+ocaml-gi-gtk.cabal
+*~
+bindings/
