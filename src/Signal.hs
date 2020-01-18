@@ -542,4 +542,4 @@ genGSignal :: Signal -> Name -> CodeGen ()
 genGSignal Signal { sigName = sn, sigCallable = _ } on = do
   let sn' = signalOCamlName sn
       on' = ucFirst $ lowerName on
-  gline $ "method " <> sn' <> " = self#connect " <> on' <> ".S." <> sn'
+  gline $ "  method " <> sn' <> " = self#connect " <> on' <> ".S." <> sn'

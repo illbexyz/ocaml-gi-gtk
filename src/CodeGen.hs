@@ -274,7 +274,6 @@ fixConstructorReturnType returnsGObject cn c = c { returnType = returnType' }
 genMethod :: Name -> Method -> ExcCodeGen ()
 genMethod cn Method { methodName = mn, methodSymbol = sym, methodCallable = c, methodType = t }
   = when (t /= Constructor) $ do
-        -- TODO: Handle out params
     returnsGObject <- maybe (return False) isGObject (returnType c)
 
     -- commentLine $ "method " <> name' <> "::" <> name mn
@@ -292,7 +291,7 @@ genMethod cn Method { methodName = mn, methodSymbol = sym, methodCallable = c, m
     case typeReps of
       [] ->
         gline
-          $  "method "
+          $  "  method "
           <> name mn
           <> " = "
           <> name cn
@@ -303,7 +302,7 @@ genMethod cn Method { methodName = mn, methodSymbol = sym, methodCallable = c, m
         let typeReps' = tail typeReps
             typesStr  = map typeShowPolyToAlpha typeReps'
         gline
-          $  "method "
+          $  "  method "
           <> name mn
           <> " : "
           <> T.intercalate " -> " typesStr
@@ -346,12 +345,16 @@ genSignalClass n o = do
   parents <- instanceTree n
   let parents' = filter (\p -> name p /= "Object") parents
   case name $ head parents' of
-    "Container" -> gline "inherit GContainer.container_signals_impl obj"
-    "Bin"       -> gline "inherit GContainer.container_signals_impl obj"
-    "Widget"    -> gline "inherit GObj.widget_signals_impl obj"
+    "Container" -> gline "  inherit GContainer.container_signals_impl obj"
+    "Widget"    -> gline "  inherit GObj.widget_signals_impl obj"
     parent      -> do
       let ocamlParentName = camelCaseToSnakeCase parent
-      gline $ "inherit " <> parent <> "G." <> ocamlParentName <> "_signals obj"
+      gline
+        $  "  inherit "
+        <> parent
+        <> "G."
+        <> ocamlParentName
+        <> "_signals obj"
 
   forM_ (objSignals o) $ \s -> genGSignal s n
   gline "end"
@@ -364,17 +367,16 @@ genObject :: Name -> Object -> CodeGen ()
 genObject n o = -- do
   -- if name n `notElem` ["Button", "ToggleButton", "RadioButton", "Toolbar", "ColorButton", "FontButton", "Range"] then
   if name n
-     `notElem` [ "Button"
+     `notElem` [ "Bin"
+               , "Button"
                , "CheckButton"
                , "ToggleButton"
                , "RadioButton"
                , "Misc"
                , "Label"
-               , "Entry"
+              --  , "Entry"
               --  , "Image"
-              --  , "Widget"
               --  , "Range"
-              --  , "Widget"
                ]
   then
     do
@@ -417,11 +419,10 @@ genObject n o = -- do
               namespacedOcamlName  = camelCaseToSnakeCase $ nspace <> objectName
               parent               = head parents
               ocamlParentName      = camelCaseToSnakeCase $ name parent
-              hasParentMakeParams  = name parent `notElem` ["Bin", "Widget"]
               namespacedParentName = case name parent of
-                "Bin"    -> "GContainer.bin"
-                "Widget" -> "['a] GObj.widget_impl"
-                _        -> name parent <> "G." <> ocamlParentName <> "_skel"
+                "Container" -> "['a] GContainer.container_impl"
+                "Widget"    -> "['a] GObj.widget_impl"
+                _           -> name parent <> "G." <> ocamlParentName <> "_skel"
 
           genGObjectCasts n (objTypeInit o) (parents <> objInterfaces o)
 
@@ -448,17 +449,11 @@ genObject n o = -- do
           genSignalClass n o
 
           gline $ "class " <> ocamlName <> "_skel obj = object (self)"
-          -- gindent $ do
-            -- gline $ "val obj : " <> "[>`" <> T.toLower (lcFirst objectName) <> "] obj = obj"
-            -- gline "method private virtual connect : 'b. ('a,'b) GtkSignal.t -> callback:'b -> GtkSignal.id"
-          gline $ "inherit " <> namespacedParentName <> " obj"
-          gline $ "method as_" <> ocamlName <> " = (obj :> t obj)"
-          -- mapM_ (\p -> gline $ "inherit G" <> name p <> "." <> lcFirst (name p) <> " obj") parents
-          -- gblank
+          gline $ "  inherit " <> namespacedParentName <> " obj"
+          gline $ "  method as_" <> ocamlName <> " = (obj :> t obj)"
 
           line "open Gobject"
           line "open Data"
-          line "module Object = GtkObject"
           blank
           line "open Gtk"
           blank
@@ -503,13 +498,13 @@ genObject n o = -- do
           group
             $  line
             $  "let create pl : "
-            <> "t obj = Object.make \""
+            <> "t obj = GtkObject.make \""
             <> nspace
             <> objectName
             <> "\" pl"
 
           -- Methods
-          gline "(* Methods *)"
+          gline "  (* Methods *)"
           let methods  = objMethods o
           let methods' = filter (not . isSetterOrGetter o) methods
 
@@ -531,11 +526,11 @@ genObject n o = -- do
           gline "end"
           gblank
           gline $ "class " <> ocamlName <> " obj = object (self)"
-          gline $ "inherit " <> ocamlName <> "_skel obj"
+          gline $ "  inherit " <> ocamlName <> "_skel obj"
           unless (null $ objSignals o)
             $  group
             $  gline
-            $  "method connect = new "
+            $  "  method connect = new "
             <> ocamlName
             <> "_signals obj"
           gline "end"
@@ -544,9 +539,7 @@ genObject n o = -- do
           gline "  GObj.pack_return (create p) ~packing ~show"
 
           gline $ "let " <> ocamlName <> " = "
-          if hasParentMakeParams
-            then gline $ "  " <> name parent <> ".make_params [] ~cont:("
-            else gline $ "  " <> objectName <> ".make_params [] ~cont:("
+          gline $ "  " <> objectName <> ".make_params [] ~cont:("
           gline
             $  "    "
             <> "pack_return (fun p -> new "

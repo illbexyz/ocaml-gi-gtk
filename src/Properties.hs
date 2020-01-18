@@ -35,7 +35,7 @@ import           Util
 genPropertySetter :: Text -> Name -> Property -> CodeGen ()
 genPropertySetter setter classe _prop =
   gline
-    $  "method set_"
+    $  "  method set_"
     <> setter
     <> " = set "
     <> name classe
@@ -46,7 +46,7 @@ genPropertySetter setter classe _prop =
 genPropertyGetter :: Text -> Name -> Property -> CodeGen ()
 genPropertyGetter getter classe _prop =
   gline
-    $  "method "
+    $  "  method "
     <> getter
     <> " = get "
     <> name classe
@@ -215,7 +215,7 @@ genMakeParams className props = do
       parents <- instanceTree className
       unless (null parents) $ do
         let parent = head parents
-        if name parent `elem` ["Widget", "Bin"]
+        if name parent `elem` ["Widget", "Container"]
           then line "let make_params ~cont pl = cont pl"
           else line $ "let make_params = " <> name parent <> ".make_params"
  where
@@ -230,7 +230,7 @@ genProperties n ownedProps _allProps = do
   line "let may_cons = Property.may_cons"
   line "let may_cons_opt = Property.may_cons_opt"
   blank
-  gline "(* Properties *)"
+  gline "  (* Properties *)"
   line "module P = struct"
   indent $ do
     let name = upperName n
