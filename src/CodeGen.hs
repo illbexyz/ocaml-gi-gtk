@@ -273,62 +273,58 @@ fixConstructorReturnType returnsGObject cn c = c { returnType = returnType' }
 
 genMethod :: Name -> Method -> ExcCodeGen ()
 genMethod cn Method { methodName = mn, methodSymbol = sym, methodCallable = c, methodType = t }
-  = when (t /= Constructor && all (\a -> direction a /= DirectionOut) (args c))
-    $ do
-      -- TODO: Handle out params
-        returnsGObject <- maybe (return False) isGObject (returnType c)
+  = when (t /= Constructor) $ do
+        -- TODO: Handle out params
+    returnsGObject <- maybe (return False) isGObject (returnType c)
 
-        -- commentLine $ "method " <> name' <> "::" <> name mn
-        -- commentLine $ "method type : " <> tshow t
+    -- commentLine $ "method " <> name' <> "::" <> name mn
+    -- commentLine $ "method type : " <> tshow t
 
-        let c' = if Constructor == t
-              then fixConstructorReturnType returnsGObject cn c
-              else c
-            c'' = if OrdinaryMethod == t then fixMethodArgs c' else c'
+    let c' = if Constructor == t
+          then fixConstructorReturnType returnsGObject cn c
+          else c
+        c'' = if OrdinaryMethod == t then fixMethodArgs c' else c'
 
-        genCCallableWrapper mn sym c''
+    genCCallableWrapper mn sym c''
 
-        typeReps <- callableOCamlTypes c
+    typeReps <- callableOCamlTypes c
 
-        case typeReps of
-          [] ->
-            gline
-              $  "method "
-              <> name mn
-              <> " = "
-              <> name cn
-              <> "."
-              <> name mn
-              <> " obj"
-          _ -> do
-            let typeReps' = tail typeReps
-                typesStr  = map typeShowPolyToAlpha typeReps'
-            gline
-              $  "method "
-              <> name mn
-              <> " : "
-              <> T.intercalate " -> " typesStr
-              <> " = "
-              <> name cn
-              <> "."
-              <> name mn
-              <> " obj"
+    case typeReps of
+      [] ->
+        gline
+          $  "method "
+          <> name mn
+          <> " = "
+          <> name cn
+          <> "."
+          <> name mn
+          <> " obj"
+      _ -> do
+        let typeReps' = tail typeReps
+            typesStr  = map typeShowPolyToAlpha typeReps'
+        gline
+          $  "method "
+          <> name mn
+          <> " : "
+          <> T.intercalate " -> " typesStr
+          <> " = "
+          <> name cn
+          <> "."
+          <> name mn
+          <> " obj"
 
       -- export (NamedSubsection MethodSection $ lowerName mn) (lowerName mn')
 
-
--- Type casting with type checking
--- TODO: Move stuff in here
 genGObjectCasts :: Name -> Text -> [Name] -> CodeGen ()
 genGObjectCasts (Name nspace n) _cn_ _parents = do
-  let nnnn = T.toUpper (nspace <> "_" <> camelCaseToSnakeCase n)
+  let upperObjName = T.toUpper (nspace <> "_" <> camelCaseToSnakeCase n)
   cline
     $  "#define "
     <> nspace
     <> n
     <> "_val("
     <> "val) check_cast("
-    <> nnnn
+    <> upperObjName
     <> ", val)"
 
 
@@ -348,20 +344,14 @@ genSignalClass n o = do
   gline $ "class " <> ocamlName <> "_signals obj = object (self)"
 
   parents <- instanceTree n
-  let parents' = filter
-        (\p -> name p `notElem` ["Object", "Widget", "Container", "Bin"])
-        parents
-  case parents' of
-    [] -> gline "inherit GContainer.container_signals_impl obj"
-    _  -> do
-      let parent          = head parents
-          ocamlParentName = camelCaseToSnakeCase $ name parent
-      gline
-        $  "inherit G"
-        <> name parent
-        <> "."
-        <> ocamlParentName
-        <> "_signals obj"
+  let parents' = filter (\p -> name p /= "Object") parents
+  case name $ head parents' of
+    "Container" -> gline "inherit GContainer.container_signals_impl obj"
+    "Bin"       -> gline "inherit GContainer.container_signals_impl obj"
+    "Widget"    -> gline "inherit GObj.widget_signals_impl obj"
+    parent      -> do
+      let ocamlParentName = camelCaseToSnakeCase parent
+      gline $ "inherit " <> parent <> "G." <> ocamlParentName <> "_signals obj"
 
   forM_ (objSignals o) $ \s -> genGSignal s n
   gline "end"
@@ -373,8 +363,21 @@ genSignalClass n o = do
 genObject :: Name -> Object -> CodeGen ()
 genObject n o = -- do
   -- if name n `notElem` ["Button", "ToggleButton", "RadioButton", "Toolbar", "ColorButton", "FontButton", "Range"] then
-  if name n `notElem` ["Button", "CheckButton", "ToggleButton", "RadioButton"]
-    then do
+  if name n
+     `notElem` [ "Button"
+               , "CheckButton"
+               , "ToggleButton"
+               , "RadioButton"
+               , "Misc"
+               , "Label"
+               , "Entry"
+              --  , "Image"
+              --  , "Widget"
+              --  , "Range"
+              --  , "Widget"
+               ]
+  then
+    do
       commentLine "Ignored: I'm generating only button and range"
       parents <- instanceTree n
       let objectName = name n
@@ -387,7 +390,8 @@ genObject n o = -- do
               (_   , True) -> "" <> name parent <> ".t"
               _            -> "`" <> camelCaseToSnakeCase (name parent)
       line $ "type t = [" <> parentType <> " | `" <> ocamlName <> "]"
-    else do
+  else
+    do
       let name' = upperName n
       let t     = TInterface n
       isGO <- isGObject t
@@ -406,20 +410,28 @@ genObject n o = -- do
 
         -- Type safe casting to parent objects, and implemented interfaces.
           parents <- instanceTree n
-          genGObjectCasts n (objTypeInit o) (parents <> objInterfaces o)
 
           let nspace               = namespace n
               objectName           = name n
               ocamlName            = camelCaseToSnakeCase objectName
+              namespacedOcamlName  = camelCaseToSnakeCase $ nspace <> objectName
               parent               = head parents
               ocamlParentName      = camelCaseToSnakeCase $ name parent
-              isParentOverBin      = name parent /= "Bin"
+              hasParentMakeParams  = name parent `notElem` ["Bin", "Widget"]
               namespacedParentName = case name parent of
-                "Bin" -> "GContainer.bin"
-                _     -> "G" <> name parent <> "." <> ocamlParentName <> "_skel"
+                "Bin"    -> "GContainer.bin"
+                "Widget" -> "['a] GObj.widget_impl"
+                _        -> name parent <> "G." <> ocamlParentName <> "_skel"
 
-          -- TODO: not sure
-          -- parentss <- reverse . filter (not . T.isPrefixOf "Object" . name) <$> instanceTree n
+          genGObjectCasts n (objTypeInit o) (parents <> objInterfaces o)
+
+          cline
+            $  "CAMLprim value ml_"
+            <> namespacedOcamlName
+            <> "_init(value unit) {"
+          cline $ "    GType t = " <> namespacedOcamlName <> "_get_type();"
+          cline "    return Val_GType(t);"
+          cline "}"
 
           gline "open GtkSignal"
           gline "open Gobject"
@@ -450,6 +462,15 @@ genObject n o = -- do
           blank
           line "open Gtk"
           blank
+
+          group $ do
+            line
+              $  "external ml_"
+              <> namespacedOcamlName
+              <> "_init : unit -> unit = \"ml_"
+              <> namespacedOcamlName
+              <> "_init\""
+            line $ "let () = ml_" <> namespacedOcamlName <> "_init ()"
 
           let parentType =
                 case (name parent == "Object", namespace parent == "Gtk") of
@@ -523,7 +544,7 @@ genObject n o = -- do
           gline "  GObj.pack_return (create p) ~packing ~show"
 
           gline $ "let " <> ocamlName <> " = "
-          if isParentOverBin
+          if hasParentMakeParams
             then gline $ "  " <> name parent <> ".make_params [] ~cont:("
             else gline $ "  " <> objectName <> ".make_params [] ~cont:("
           gline

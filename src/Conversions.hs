@@ -33,6 +33,7 @@ module Conversions
   , ocamlDataConv
   , ocamlValueToC
   , cToOCamlValue
+  , cType
   )
 where
 
@@ -60,6 +61,8 @@ import           Code
 import           GObject
 import           SymbolNaming
 import           Util
+
+import Debug.Trace
 
 -- | The free monad.
 data Free f r = Free (f (Free f r)) | Pure r
@@ -1247,6 +1250,57 @@ outParamOcamlType t@(TInterface n) = do
       (T.toTitle (namespace n) <> "Enums." <> ocamlName) `con` []
     _ -> obj $ polyLess $ con0 ocamlName
 
+-- cTy
+cType :: Type -> ExcCodeGen Text
+cType (TBasicType t) = case t of
+  TBoolean  -> return "gboolean"
+  TInt      -> return "gint"
+  TUInt     -> return "guint"
+  TLong     -> return "glong"
+  TULong    -> return "gulong"
+  TInt8     -> return "gint8"
+  TUInt8    -> return "guint8"
+  TInt16    -> return "gint16"
+  TUInt16   -> return "guint16"
+  TInt32    -> return "gint32"
+  TUInt32   -> return "guint32"
+  TInt64    -> return "gint64"
+  TUInt64   -> return "guint64"
+  TFloat    -> return "gfloat"
+  TDouble   -> return "gdouble"
+  TUniChar  -> return "gchar"
+  TGType ->
+    notImplementedError "This cType (TGType) isn't implemented yet"
+  TUTF8     -> return "gchar*"
+  TFileName -> return "gchar*"
+  TPtr      -> return "gpointer"
+  TIntPtr   -> return "gintptr"
+  TUIntPtr  -> return "guintptr"
+cType (TError) =
+  notImplementedError "This cType (TError) isn't implemented yet"
+cType (TVariant) =
+  notImplementedError "This cType (TVariant) isn't implemented yet"
+cType (TParamSpec) =
+  notImplementedError "This cType (TParamSpec) isn't implemented yet"
+cType (TCArray _b _i1 _i2 _t) =
+  notImplementedError "This cType (TCArray) isn't implemented yet"
+cType (TGArray _t) =
+  notImplementedError "This cType (TGArray) isn't implemented yet"
+cType (TPtrArray _t) =
+  notImplementedError "This cType (TPtrArray) isn't implemented yet"
+cType (TByteArray) =
+  notImplementedError "This cType (TByteArray) isn't implemented yet"
+cType (TGList _t) =
+  notImplementedError "This cType (TGList) isn't implemented yet"
+cType (TGSList _t) =
+  notImplementedError "This cType (TGSList) isn't implemented yet"
+cType (TGHash _t1 _t2) =
+  notImplementedError "This cType (TGHash) isn't implemented yet"
+cType (TGClosure _m) =
+  notImplementedError "This cType (TGClosure) isn't implemented yet"
+cType (TInterface n) = return $ namespace n <> name n
+
+
 -- Type to data_conv
 ocamlDataConv :: Type -> ExcCodeGen Text
 ocamlDataConv (TBasicType t) = case t of
@@ -1397,7 +1451,7 @@ ocamlValueToC (TInterface n) = do
     APIFlags _f ->
       notImplementedError "This ocamlValueToC (APIFlags) isn't implemented yet"
     APIInterface _i -> return $ namespace n <> name n <> "_val"
-    APIObject    _o -> return $ namespace n <> name n <> "_val"
+    APIObject     o -> return $ objTypeName o <> "_val"
     APIStruct _s ->
       notImplementedError "This ocamlValueToC (APIStruct) isn't implemented yet"
     APIUnion _u ->
@@ -1473,7 +1527,8 @@ cToOCamlValue (Just (TInterface n)) = do
       notImplementedError "This cToOCamlValue (APIFlags) isn't implemented yet"
     APIInterface _i -> notImplementedError
       "This cToOCamlValue (APIInterface) isn't implemented yet"
-    APIObject _o -> return $ "Val_" <> namespace n <> name n
+    APIObject o ->
+      return $ "Val_" <> objTypeName o
     APIStruct _s ->
       notImplementedError "This cToOCamlValue (APIStruct) isn't implemented yet"
     APIUnion _u ->

@@ -80,36 +80,24 @@ callableReturnShow c = typeShow <$> case returnType c of
 
 -- | Generate a foreign import for the given C symbol. Return the name
 -- of the corresponding Haskell identifier.
-mkForeignImport :: Name -> Text -> Callable -> CodeGen Text
-mkForeignImport mn cSymbol callable = do
-    -- traceShowM mn
-    -- traceShowM callable
-    -- traceM ""
-  line first
+genOCamlExternal :: Name -> Text -> Callable -> CodeGen ()
+genOCamlExternal mn cSymbol callable = do
+  line $ "external " <> camelCaseToSnakeCase (lowerName mn) <> " : "
   indent $ do
-    mapM_ (\a -> line =<< fArgStr a) (args callable)
+    argTypes <- callableOCamlTypes callable
+    let argTypesStr       = map typeShow argTypes
+        (inArgs, outArgs) = splitAt (length argTypesStr - 1) argTypesStr
+        outArg            = head outArgs
+
+    -- Input args
+    forM_ inArgs (line . (<> " -> "))
+    -- Output arg
+    line outArg
+
     -- TODO: Handle exceptions in some way
     -- when (callableThrows callable) $
     --        line $ padTo 40 "Ptr (Ptr GError) -> " <> "-- error"
-    line =<< (callableReturnShow callable)
     line $ "= \"ml_gi_" <> cSymbol <> "\""
-  return hSymbol
- where
-  hSymbol = if T.any (== '_') cSymbol then lcFirst cSymbol else "_" <> cSymbol
-  first   = "external " <> camelCaseToSnakeCase (lowerName mn) <> " : "
-  fArgStr arg = do
-    ocamlType <- haskellType $ argType arg
-
-    let ocamlType' = if mayBeNull arg then option ocamlType else ocamlType
-        start      = typeShow ocamlType' <> " -> "
-
-    return
-      $  padTo 40 start
-      <> "(* "
-      <> argCName arg
-      <> " : "
-      <> tshow (argType arg)
-      <> " *)"
 
 foreignArgConverter :: Integer -> Arg -> ExcCodeGen Text
 foreignArgConverter i a = do
@@ -125,12 +113,38 @@ foreignArgConverter i a = do
 
 genMlMacro :: Text -> Callable -> ExcCodeGen ()
 genMlMacro cSymbol callable = do
-  let nArgs     = T.pack $ show $ length $ args callable
-  let macroName = "ML_" <> nArgs <> " ("
-  retTypeName <- cToOCamlValue $ returnType callable
-  argsTypes   <- zipWithM foreignArgConverter [1 ..] (args callable)
-  let macroArgs = T.intercalate ", " (cSymbol : argsTypes ++ [retTypeName])
-  cline $ macroName <> macroArgs <> ")"
+  let nArgs   = length $ args callable
+      outArgs = callableHOutArgs callable
+
+  if (not . null) outArgs
+    then do
+      let inArgs     = callableHInArgs' callable
+          numOutArgs = T.pack $ show $ length outArgs
+          numInArgs  = T.pack $ show $ length inArgs
+          macroName  = "ML_" <> numInArgs <> "in_" <> numOutArgs <> "out ("
+      outCTypes    <- mapM (cType . argType) outArgs
+      outConvTypes <- mapM (cToOCamlValue . Just . argType) outArgs
+      inArgTypes   <- zipWithM foreignArgConverter [1 ..] inArgs
+      retTypeName <- cToOCamlValue $ returnType callable
+      let outArgTypes = zip outCTypes outConvTypes
+          xxxxxx      = map (\(x, y) -> x <> ", " <> y) outArgTypes
+
+      cline
+        $  macroName
+        <> cSymbol
+        <> ", "
+        <> T.intercalate ", " inArgTypes
+        <> ", "
+        <> T.intercalate ", " xxxxxx
+        <> ", "
+        <> retTypeName
+        <> ")"
+    else do
+      let macroName = "ML_" <> T.pack (show nArgs) <> " ("
+      retTypeName <- cToOCamlValue $ returnType callable
+      argsTypes   <- zipWithM foreignArgConverter [1 ..] (args callable)
+      let macroArgs = T.intercalate ", " (cSymbol : argsTypes ++ [retTypeName])
+      cline $ macroName <> macroArgs <> ")"
 
 -- | Make a wrapper for foreign `FunPtr`s of the given type. Return
 -- the name of the resulting dynamic Haskell wrapper.
@@ -1063,7 +1077,7 @@ genCCallableWrapper mn cSymbol callable = do
 
   let callable' = fixupCallerAllocates callable
 
-  _hSymbol <- mkForeignImport mn cSymbol callable'
+  genOCamlExternal mn cSymbol callable'
 
   blank
 

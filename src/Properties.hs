@@ -215,11 +215,9 @@ genMakeParams className props = do
       parents <- instanceTree className
       unless (null parents) $ do
         let parent = head parents
-        when (name parent /= "Bin")
-          $  line
-          $  "let make_params = "
-          <> name parent
-          <> ".make_params"
+        if name parent `elem` ["Widget", "Bin"]
+          then line "let make_params ~cont pl = cont pl"
+          else line $ "let make_params = " <> name parent <> ".make_params"
  where
   isConstructor prop =
     PropertyConstructOnly
