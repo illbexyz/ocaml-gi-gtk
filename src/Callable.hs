@@ -123,11 +123,15 @@ genMlMacro cSymbol callable = do
           numInArgs  = T.pack $ show $ length inArgs
           macroName  = "ML_" <> numInArgs <> "in_" <> numOutArgs <> "out ("
       outCTypes    <- mapM (cType . argType) outArgs
-      outConvTypes <- mapM (cToOCamlValue . Just . argType) outArgs
-      inArgTypes   <- zipWithM foreignArgConverter [1 ..] inArgs
-      retTypeName <- cToOCamlValue $ returnType callable
-      let outArgTypes = zip outCTypes outConvTypes
-          xxxxxx      = map (\(x, y) -> x <> ", " <> y) outArgTypes
+      outConvTypes <- mapM
+        (\outArg -> cToOCamlValue (mayBeNull outArg) (Just (argType outArg)))
+        outArgs
+      inArgTypes  <- zipWithM foreignArgConverter [1 ..] inArgs
+      retTypeName <- cToOCamlValue (returnMayBeNull callable)
+                                   (returnType callable)
+
+      let outArgTypes =
+            map (\(x, y) -> x <> ", " <> y) (zip outCTypes outConvTypes)
 
       cline
         $  macroName
@@ -135,14 +139,16 @@ genMlMacro cSymbol callable = do
         <> ", "
         <> T.intercalate ", " inArgTypes
         <> ", "
-        <> T.intercalate ", " xxxxxx
+        <> T.intercalate ", " outArgTypes
         <> ", "
         <> retTypeName
         <> ")"
     else do
       let macroName = "ML_" <> T.pack (show nArgs) <> " ("
-      retTypeName <- cToOCamlValue $ returnType callable
-      argsTypes   <- zipWithM foreignArgConverter [1 ..] (args callable)
+      retTypeName <- cToOCamlValue (returnMayBeNull callable)
+                                   (returnType callable)
+
+      argsTypes <- zipWithM foreignArgConverter [1 ..] (args callable)
       let macroArgs = T.intercalate ", " (cSymbol : argsTypes ++ [retTypeName])
       cline $ macroName <> macroArgs <> ")"
 
@@ -768,9 +774,11 @@ callableOCamlTypes c = do
     Nothing -> return $ con0 "unit"
     Just t  -> outParamOcamlType t
 
+  let optionalRetType = if returnMayBeNull c then option retType else retType
+
   let outArgs' = case outArgs of
-        [] -> retType
-        _  -> tuple $ retType : outArgs
+        [] -> optionalRetType
+        _  -> tuple $ optionalRetType : outArgs
 
   return $ inArgs ++ [outArgs']
 

@@ -9,6 +9,7 @@ import           Control.Monad                  ( forM_
                                                 , when
                                                 , unless
                                                 )
+import           Data.Maybe                     ( fromMaybe )
 import           Data.Monoid                    ( (<>) )
 import           Data.Text                      ( Text )
 import qualified Data.Text                     as T
@@ -60,9 +61,10 @@ genPropertyOCaml classe prop = do
       uScoresName    = hyphensToUnderscores pName
       ocamlClassName = camelCaseToSnakeCase $ lowerName classe
       classType      = typeShow $ polyMore $ con0 ocamlClassName
+      isNullable     = fromMaybe False $ propReadNullable prop
   -- TODO: uncomment next line
   -- writeHaddock DocBeforeSymbol (getterDoc n prop) 
-  ocamlConverter <- ocamlDataConv $ propType prop
+  ocamlConverter <- ocamlDataConv isNullable (propType prop)
   line $ "let " <> uScoresName <> " : " <> "(" <> classType <> ",_) property ="
   indent
     $  line

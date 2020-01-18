@@ -36,6 +36,8 @@
 #define Val_GtkWidget Val_GtkAny
 #define Val_GtkWidget_sink Val_GtkAny_sink
 
+#define Val_GtkAdjustment Val_GtkAny
+
 /* For GList containing widgets */
 CAMLexport value Val_GtkWidget_func(gpointer w);
 

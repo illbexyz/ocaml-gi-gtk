@@ -451,6 +451,8 @@ CAMLprim int OptFlags_##conv (value list) \
 #define Val_option(v,f) (v ? ml_some(f(v)) : Val_unit)
 #define Make_Val_option(T) \
 value Val_option_##T(T* v) { return Val_option(v,Val_##T); }
+#define Make_Val_option2(name,T) \
+value Val_option_##T(name* v) { return Val_option(v,Val_##name); }
 
 #define Check_null(v) (v ? v : (ml_raise_null_pointer (), v))
 

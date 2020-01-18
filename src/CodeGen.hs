@@ -374,7 +374,7 @@ genObject n o = -- do
                , "RadioButton"
                , "Misc"
                , "Label"
-              --  , "Entry"
+               , "Entry"
               --  , "Image"
               --  , "Range"
                ]

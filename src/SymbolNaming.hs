@@ -8,6 +8,7 @@ module SymbolNaming
   , escapeOCamlReserved
   , classConstraint
   , typeConstraint
+  , splitCamelCase
   , hyphensToCamelCase
   , underscoresToCamelCase
   , underscoresToHyphens
@@ -196,6 +197,15 @@ camelCaseToSnakeCase = T.concatMap f . lcFirst
  where
   f c | C.isUpper c = "_" <> T.toLower (T.singleton c)
       | otherwise   = T.singleton c
+
+splitCamelCase :: Text -> [Text]
+splitCamelCase t = map T.pack $ splitCamelCase' (T.unpack t) []
+ where
+  splitCamelCase' ""       []                = []
+  splitCamelCase' ""       acc               = reverse acc
+  splitCamelCase' (x : xs) []                = splitCamelCase' xs [[x]]
+  splitCamelCase' (x : xs) acc | C.isUpper x = splitCamelCase' xs ([x] : acc)
+  splitCamelCase' (x : xs) (a : as) = splitCamelCase' xs ((a ++ [x]) : as)
 
 -- | Turn a hyphen-separated identifier into camel case.
 --

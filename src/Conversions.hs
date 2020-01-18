@@ -1323,8 +1323,10 @@ cType (TInterface n) = return $ namespace n <> name n
 
 
 -- Type to data_conv
-ocamlDataConv :: Type -> ExcCodeGen Text
-ocamlDataConv (TBasicType t) = case t of
+ocamlDataConv :: Bool             -- ^ is nullable
+              -> Type             
+              -> ExcCodeGen Text
+ocamlDataConv _ (TBasicType t) = case t of
   TBoolean -> return "boolean"
   TInt     -> return "int"
   TUInt    -> return "uint"
@@ -1351,29 +1353,29 @@ ocamlDataConv (TBasicType t) = case t of
     notImplementedError "This ocamlDataConv (TIntPtr) isn't implemented yet"
   TUIntPtr ->
     notImplementedError "This ocamlDataConv (TUIntPtr) isn't implemented yet"
-ocamlDataConv (TError) =
+ocamlDataConv _ (TError) =
   notImplementedError "This ocamlDataConv (TError) isn't implemented yet"
-ocamlDataConv (TVariant) =
+ocamlDataConv _ (TVariant) =
   notImplementedError "This ocamlDataConv (TVariant) isn't implemented yet"
-ocamlDataConv (TParamSpec) =
+ocamlDataConv _ (TParamSpec) =
   notImplementedError "This ocamlDataConv (TParamSpec) isn't implemented yet"
-ocamlDataConv (TCArray _b _i1 _i2 _t) =
+ocamlDataConv _ (TCArray _b _i1 _i2 _t) =
   notImplementedError "This ocamlDataConv (TCArray) isn't implemented yet"
-ocamlDataConv (TGArray _t) =
+ocamlDataConv _ (TGArray _t) =
   notImplementedError "This ocamlDataConv (TGArray) isn't implemented yet"
-ocamlDataConv (TPtrArray _t) =
+ocamlDataConv _ (TPtrArray _t) =
   notImplementedError "This ocamlDataConv (TPtrArray) isn't implemented yet"
-ocamlDataConv (TByteArray) =
+ocamlDataConv _ (TByteArray) =
   notImplementedError "This ocamlDataConv (TByteArray) isn't implemented yet"
-ocamlDataConv (TGList _t) =
+ocamlDataConv _ (TGList _t) =
   notImplementedError "This ocamlDataConv (TGList) isn't implemented yet"
-ocamlDataConv (TGSList _t) =
+ocamlDataConv _ (TGSList _t) =
   notImplementedError "This ocamlDataConv (TGSList) isn't implemented yet"
-ocamlDataConv (TGHash _t1 _t2) =
+ocamlDataConv _ (TGHash _t1 _t2) =
   notImplementedError "This ocamlDataConv (TGHash) isn't implemented yet"
-ocamlDataConv (TGClosure _m) =
+ocamlDataConv _ (TGClosure _m) =
   notImplementedError "This ocamlDataConv (TGClosure) isn't implemented yet"
-ocamlDataConv (TInterface n) = do
+ocamlDataConv isNullable (TInterface n) = do
   let ocamlName = camelCaseToSnakeCase $ name n
   api <- findAPIByName n
   case api of
@@ -1393,12 +1395,29 @@ ocamlDataConv (TInterface n) = do
       "This ocamlDataConv (APIInterface) isn't implemented yet"
     APIObject _o -> do
       currMod <- currentModule
-      let currModuleName = last $ T.splitOn "." currMod
-      return $ if name n == currModuleName
-        then "(gobject : t obj data_conv)"
-        else "(gobject : " <> name n <> ".t obj data_conv)"
-    APIStruct _s -> notImplementedError
-      "This ocamlDataConv (APIStruct) isn't implemented yet"
+      currNs <- currentNS
+      if namespace n == currNs then do 
+        let currModuleName = last $ T.splitOn "." currMod
+        return $ if name n == currModuleName
+          then converter "t"
+          else converter (name n <> ".t")
+      else do
+        let nspace = case namespace n of
+                        "Pixbuf" -> "GdkPixbuf"  -- TODO: this is kinda hardcoded until we can generate Pixbuf
+                        nspace -> nspace
+        return $ converter (nspace <> "." <> camelCaseToSnakeCase (name n))
+
+      where converter' False conv = "(gobject : " <> conv <> " obj data_conv)"
+            converter' True conv = "(gobject_option : " <> conv <> " obj option data_conv)"
+            converter = converter' isNullable
+    APIStruct s ->
+      case structCType s of
+        Just t ->
+          if "GdkEvent" `T.isPrefixOf` t then do
+            let eventType = last $ splitCamelCase t
+            return $ "(unsafe_pointer : GdkEvent." <> eventType <> ".t data_conv)"
+          else notImplementedError "This ocamlDataConv (APIStruct) isn't implemented yet"
+        Nothing -> notImplementedError "This ocamlDataConv (APIStruct) isn't implemented yet"
     APIUnion _u ->
       notImplementedError "This ocamlDataConv (APIUnion) isn't implemented yet"
 
@@ -1481,9 +1500,11 @@ ocamlValueToC (TInterface n) = do
       notImplementedError "This ocamlValueToC (APIUnion) isn't implemented yet"
 
 -- Converter from C to value
-cToOCamlValue :: Maybe Type -> ExcCodeGen Text
-cToOCamlValue Nothing               = return "Unit"
-cToOCamlValue (Just (TBasicType t)) = case t of
+cToOCamlValue :: Bool               -- ^ is nullable
+              -> Maybe Type
+              -> ExcCodeGen Text
+cToOCamlValue _ Nothing              = return "Unit"
+cToOCamlValue False (Just (TBasicType t)) = case t of
   TBoolean -> return "Val_bool"
   TInt     -> return "Val_int"
   TUInt    -> return "Val_int"
@@ -1513,29 +1534,29 @@ cToOCamlValue (Just (TBasicType t)) = case t of
     notImplementedError "This cToOCamlValue (TIntPtr) isn't implemented yet"
   TUIntPtr ->
     notImplementedError "This cToOCamlValue (TUIntPtr) isn't implemented yet"
-cToOCamlValue (Just (TError)) =
+cToOCamlValue False (Just (TError)) =
   notImplementedError "This cToOCamlValue (TError) isn't implemented yet"
-cToOCamlValue (Just (TVariant)) =
+cToOCamlValue False (Just (TVariant)) =
   notImplementedError "This cToOCamlValue (TVariant) isn't implemented yet"
-cToOCamlValue (Just (TParamSpec)) =
+cToOCamlValue False (Just (TParamSpec)) =
   notImplementedError "This cToOCamlValue (TParamSpec) isn't implemented yet"
-cToOCamlValue (Just (TCArray _b _i1 _i2 _t)) =
+cToOCamlValue False (Just (TCArray _b _i1 _i2 _t)) =
   notImplementedError "This cToOCamlValue (TCArray) isn't implemented yet"
-cToOCamlValue (Just (TGArray _t)) =
+cToOCamlValue False (Just (TGArray _t)) =
   notImplementedError "This cToOCamlValue (TGArray) isn't implemented yet"
-cToOCamlValue (Just (TPtrArray _t)) =
+cToOCamlValue False (Just (TPtrArray _t)) =
   notImplementedError "This cToOCamlValue (TPtrArray) isn't implemented yet"
-cToOCamlValue (Just (TByteArray)) =
+cToOCamlValue False (Just (TByteArray)) =
   notImplementedError "This cToOCamlValue (TByteArray) isn't implemented yet"
-cToOCamlValue (Just (TGList _t)) =
+cToOCamlValue False (Just (TGList _t)) =
   notImplementedError "This cToOCamlValue (TGList) isn't implemented yet"
-cToOCamlValue (Just (TGSList _t)) =
+cToOCamlValue False (Just (TGSList _t)) =
   notImplementedError "This cToOCamlValue (TGSList) isn't implemented yet"
-cToOCamlValue (Just (TGHash _t1 _t2)) =
+cToOCamlValue False (Just (TGHash _t1 _t2)) =
   notImplementedError "This cToOCamlValue (TGHash) isn't implemented yet"
-cToOCamlValue (Just (TGClosure _m)) =
+cToOCamlValue False (Just (TGClosure _m)) =
   notImplementedError "This cToOCamlValue (TGClosure) isn't implemented yet"
-cToOCamlValue (Just (TInterface n)) = do
+cToOCamlValue False (Just (TInterface n)) = do
   api <- findAPIByName n
   case api of
     APIConst _c ->
@@ -1552,6 +1573,63 @@ cToOCamlValue (Just (TInterface n)) = do
       "This cToOCamlValue (APIInterface) isn't implemented yet"
     APIObject o ->
       return $ "Val_" <> objTypeName o
+    APIStruct _s ->
+      notImplementedError "This cToOCamlValue (APIStruct) isn't implemented yet"
+    APIUnion _u ->
+      notImplementedError "This cToOCamlValue (APIUnion) isn't implemented yet"
+cToOCamlValue True (Just (TBasicType t)) = case t of
+  TUTF8 -> return "Val_option_string"
+  TFileName -> return "Val_option_string"
+  TPtr -> notImplementedError "This cToOCamlValue (TPtr) isn't implemented yet"
+  TIntPtr ->
+    notImplementedError "This cToOCamlValue (TIntPtr) isn't implemented yet"
+  TUIntPtr ->
+    notImplementedError "This cToOCamlValue (TUIntPtr) isn't implemented yet"
+  _ -> notImplementedError "This cToOCamlValue (BasicType) isn't implemented because this type should not be nullable"
+cToOCamlValue True (Just (TError)) =
+  notImplementedError "This cToOCamlValue (TError) isn't implemented yet"
+cToOCamlValue True (Just (TVariant)) =
+  notImplementedError "This cToOCamlValue (TVariant) isn't implemented yet"
+cToOCamlValue True (Just (TParamSpec)) =
+  notImplementedError "This cToOCamlValue (TParamSpec) isn't implemented yet"
+cToOCamlValue True (Just (TCArray _b _i1 _i2 _t)) =
+  notImplementedError "This cToOCamlValue (TCArray) isn't implemented yet"
+cToOCamlValue True (Just (TGArray _t)) =
+  notImplementedError "This cToOCamlValue (TGArray) isn't implemented yet"
+cToOCamlValue True (Just (TPtrArray _t)) =
+  notImplementedError "This cToOCamlValue (TPtrArray) isn't implemented yet"
+cToOCamlValue True (Just (TByteArray)) =
+  notImplementedError "This cToOCamlValue (TByteArray) isn't implemented yet"
+cToOCamlValue True (Just (TGList _t)) =
+  notImplementedError "This cToOCamlValue (TGList) isn't implemented yet"
+cToOCamlValue True (Just (TGSList _t)) =
+  notImplementedError "This cToOCamlValue (TGSList) isn't implemented yet"
+cToOCamlValue True (Just (TGHash _t1 _t2)) =
+  notImplementedError "This cToOCamlValue (TGHash) isn't implemented yet"
+cToOCamlValue True (Just (TGClosure _m)) =
+  notImplementedError "This cToOCamlValue (TGClosure) isn't implemented yet"
+cToOCamlValue True (Just (TInterface n)) = do
+  api <- findAPIByName n
+  case api of
+    APIConst _c ->
+      notImplementedError "This cToOCamlValue (APIConst) isn't implemented yet"
+    APIFunction _f -> notImplementedError
+      "This cToOCamlValue (APIFunction) isn't implemented yet"
+    APICallback _c -> notImplementedError
+      "This cToOCamlValue (APICallback) isn't implemented yet"
+    APIEnum _enum ->
+      notImplementedError "This cToOCamlValue (Enum) isn't implemented yet"
+    APIFlags _f ->
+      notImplementedError "This cToOCamlValue (APIFlags) isn't implemented yet"
+    APIInterface _i -> notImplementedError
+      "This cToOCamlValue (APIInterface) isn't implemented yet"
+    APIObject o -> do
+      currMod <- currentModule
+      unique <- getFreshTypeVariable
+      let currModuleName = last $ T.splitOn "." currMod
+          macroName = objTypeName o <> "_" <> currModuleName <> "_" <> unique
+      cline $ "Make_Val_option2(" <> objTypeName o <> ", " <> macroName<> ")"
+      return $ "Val_option_" <> macroName
     APIStruct _s ->
       notImplementedError "This cToOCamlValue (APIStruct) isn't implemented yet"
     APIUnion _u ->

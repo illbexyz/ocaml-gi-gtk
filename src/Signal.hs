@@ -47,7 +47,7 @@ import           Util                           ( parenthesize
                                                 )
 
 argsTypeRep :: [Arg] -> ExcCodeGen [Text]
-argsTypeRep = mapM (ocamlDataConv . argType)
+argsTypeRep = mapM (\arg -> ocamlDataConv (mayBeNull arg) (argType arg))
 
 ocamlMarshaller :: [Arg] -> Text -> Text -> ExcCodeGen Text
 ocamlMarshaller args sigName onName = case args of
