@@ -55,7 +55,7 @@ data TypeCon = TupleCon
 -- `TypeRep`.
 typeShow :: TypeRep -> Text
 typeShow (TypeRep TupleCon args) =
-  "(" <> T.intercalate ", " (map typeShow args) <> ")"
+  "(" <> T.intercalate " * " (map typeShow args) <> ")"
 typeShow (TypeRep ListCon args) =
   "[" <> T.intercalate ", " (map typeShow args) <> "]"
 typeShow (TypeRep OptionCon args) = T.concat (map typeShow args) <> " option"
@@ -76,7 +76,7 @@ typeShow (TypeRep (TextualCon con) args) = T.intercalate
 --       at all, investigate an alternative
 typeShowPolyToAlpha :: TypeRep -> Text
 typeShowPolyToAlpha (TypeRep TupleCon args) =
-  "(" <> T.intercalate ", " (map typeShowPolyToAlpha args) <> ")"
+  "(" <> T.intercalate " * " (map typeShowPolyToAlpha args) <> ")"
 typeShowPolyToAlpha (TypeRep ListCon args) =
   "[" <> T.intercalate ", " (map typeShowPolyToAlpha args) <> "]"
 typeShowPolyToAlpha (TypeRep OptionCon args) =
