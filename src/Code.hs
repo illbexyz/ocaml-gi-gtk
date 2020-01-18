@@ -1031,7 +1031,12 @@ cOCamlModuleImports = T.unlines
   , "#include \"ml_glib.h\""
   , "#include \"ml_gobject.h\""
   , "#include \"ml_gdk.h\""
+  , "#include \"ml_gdkpixbuf.h\""
+  , "#include \"ml_pango.h\""
   , "#include \"ml_gtk.h\""
+  , "#include \"ml_gtktext.h\""
+  , "#include \"gdk_tags.h\""
+  , "#include \"pango_tags.h\""
   , "#include \"gtk_tags.h\""
   ]
 
@@ -1086,8 +1091,8 @@ writeModuleInfo verbose dirPrefix minfo = do
                            (T.unlines [cOCamlModuleImports, genCStubs minfo])
 
   unless (isCodeEmpty $ gCode minfo) $ do
-    let gFileModulePath = addNamePrefix "g" (modulePath minfo)
-    let gModuleFile     = modulePathToFilePath dirPrefix gFileModulePath ".ml"
+    let gFileModulePath = modulePath minfo
+    let gModuleFile = modulePathToFilePath dirPrefix gFileModulePath "G.ml"
     liftIO $ utf8WriteFile gModuleFile (T.unlines [genGModule minfo])
 
 -- | Generate the .hs-boot file for the given module.
