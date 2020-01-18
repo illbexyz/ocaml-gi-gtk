@@ -2,11 +2,16 @@
 module EnumFlags
   ( genEnum
   , genFlags
+  , hashVariant
   )
 where
 
-import           Control.Monad                  ( when )
+import           Control.Monad                  ( when
+                                                , forM_
+                                                )
 import           Data.Monoid                    ( (<>) )
+import           Data.Char                      ( ord )
+import           Data.Bits
 import qualified Data.Text                     as T
 
 import           Foreign.C                      ( CUInt )
@@ -16,8 +21,18 @@ import           API
 import           Code
 import           SymbolNaming                   ( upperName
                                                 , camelCaseToSnakeCase
+                                                , escapeOCamlReserved
                                                 )
 import           Util                           ( tshow )
+
+-- OCaml's way to represent polymorphic variants in C
+hashVariant :: String -> Int
+hashVariant = toSigned64 . reduceTo31bits . variantHash
+ where
+  variantHash' xs acc = foldl (\a c -> (223 * a) + ord c) acc xs
+  variantHash xs = variantHash' xs 0
+  reduceTo31bits hash = hash .&. ((1 `shiftL` 31) - 1)
+  toSigned64 hash = if hash > 0x3FFFFFFF then hash - (1 `shiftL` 31) else hash
 
 genEnumOrFlags :: HaddockSection -> Name -> Enumeration -> ExcCodeGen ()
 genEnumOrFlags _docSection n@(Name ns _name) e = do
@@ -33,10 +48,51 @@ genEnumOrFlags _docSection n@(Name ns _name) e = do
     $  "Storage of size /= 4 not supported : "
     <> tshow (enumStorageBytes e)
 
-  let enumName  = camelCaseToSnakeCase $ T.toLower ns <> upperName n
-  let enumMembs = map (("`" <>) . T.toUpper . enumMemberName) (enumMembers e)
+  let enumName    = escapeOCamlReserved $ camelCaseToSnakeCase $ upperName n
+      memberNames = map (T.toUpper . enumMemberName) (enumMembers e)
+      variants    = map ("`" <>) memberNames
+      cIds        = map enumMemberCId (enumMembers e)
+      namesAndIds = zip memberNames cIds
+      mlTableName = "ml_gi_table_" <> enumName
+      ocamlTbl    = enumName <> "_tbl"
+      cGetterFn =
+        "ml_gi_" <> T.toLower (namespace n) <> "_get_" <> enumName <> "_table"
 
-  line $ "type " <> enumName <> " = [ " <> T.intercalate " | " enumMembs <> " ]"
+  forM_ memberNames $ \memberName -> do
+    let hashValue = T.pack $ show $ hashVariant $ T.unpack memberName
+    hline
+      $  "#define MLTAG_"
+      <> memberName
+      <> " ((value)("
+      <> hashValue
+      <> "*2+1))"
+
+  line $ "type " <> enumName <> " = [ " <> T.intercalate " | " variants <> " ]"
+  blank
+  line
+    $  "external get_"
+    <> enumName
+    <> "_table : unit -> "
+    <> enumName
+    <> " Gpointer.variant_table = \""
+    <> cGetterFn
+    <> "\""
+  line $ "let " <> ocamlTbl <> " = get_" <> enumName <> "_table ()"
+  line $ "let " <> enumName <> " = Gobject.Data.enum " <> ocamlTbl
+  blank
+
+  cline "#include \"Enums.h\""
+  cline ""
+  cline $ "const lookup_info " <> mlTableName <> "[] = {"
+  cline $ "  { 0, " <> T.pack (show (length (enumMembers e))) <> " },"
+  forM_ namesAndIds $ \(memberName, memberCId) ->
+    cline $ "  { MLTAG_" <> memberName <> ", " <> memberCId <> " },"
+  cline "};"
+  cline ""
+  cline $ "CAMLprim value " <> cGetterFn <> " () {"
+  cline $ "  return (value) " <> mlTableName <> ";"
+  cline "}"
+  cline ""
 
 genEnum :: Name -> Enumeration -> CodeGen ()
 genEnum n@(Name _ _name) enum = do

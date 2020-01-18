@@ -5,6 +5,7 @@ module SymbolNaming
   , upperName
   , noName
   , escapedArgName
+  , escapeOCamlReserved
   , classConstraint
   , typeConstraint
   , hyphensToCamelCase
@@ -152,7 +153,7 @@ submoduleLocation :: Name -> API -> ModulePath
 submoduleLocation _ (APIConst     _) = "Constants"
 submoduleLocation _ (APIFunction  _) = "Functions"
 submoduleLocation _ (APICallback  _) = "Callbacks"
-submoduleLocation _ (APIEnum      _) = "Enums"
+submoduleLocation _ (APIEnum      _) = "Enums" /. "Enums"
 submoduleLocation _ (APIFlags     _) = "Flags"
 submoduleLocation n (APIInterface _) = "Interfaces" /. upperName n
 submoduleLocation n (APIObject    _) = "Objects" /. upperName n
@@ -234,6 +235,10 @@ escapedArgName arg
   = argCName arg
   | otherwise
   = escapeReserved . lcFirst . underscoresToCamelCase . argCName $ arg
+
+escapeOCamlReserved :: Text -> Text
+escapeOCamlReserved "unit" = "unit_"
+escapeOCamlReserved t      = t
 
 -- | Reserved symbols, either because they are Haskell syntax or
 -- because the clash with symbols in scope for the generated bindings.

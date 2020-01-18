@@ -31,6 +31,7 @@ module Code
   , line
   , cline
   , gline
+  , hline
   , commentLine
   , blank
   , gblank
@@ -59,6 +60,7 @@ module Code
   , getC2HMap
   , config
   , currentModule
+  , currentNS
   )
 where
 
@@ -111,6 +113,7 @@ import           ModulePath                     ( ModulePath(..)
                                                 , dotModulePath
                                                 , (/.)
                                                 , addNamePrefix
+                                                , modulePathNS
                                                 )
 import           Type                           ( Type(..) )
 import           Util                           ( tshow
@@ -194,7 +197,8 @@ data ModuleInfo = ModuleInfo {
     , moduleCode :: Code       -- ^ Generated code for the module.
     , bootCode   :: Code       -- ^ Interfaces going into the .hs-boot file.
     , gCode      :: Code       -- ^ OOP OCaml code
-    , cCode      :: Code       -- ^ C stubs' code
+    , cCode      :: Code       -- ^ .c stubs' code
+    , hCode      :: Code       -- ^ .h stubs' code
     , submodules :: M.Map Text ModuleInfo -- ^ Indexed by the relative
                                           -- module name.
     , moduleDeps :: Deps -- ^ Set of dependencies for this module.
@@ -231,6 +235,7 @@ emptyModule m = ModuleInfo { modulePath       = m
                            , moduleCode       = emptyCode
                            , bootCode         = emptyCode
                            , cCode            = emptyCode
+                           , hCode            = emptyCode
                            , gCode            = emptyCode
                            , submodules       = M.empty
                            , moduleDeps       = Set.empty
@@ -312,6 +317,7 @@ cleanInfo :: ModuleInfo -> ModuleInfo
 cleanInfo info = info { moduleCode       = emptyCode
                       , submodules       = M.empty
                       , cCode            = emptyCode
+                      , hCode            = emptyCode
                       , gCode            = emptyCode
                       , bootCode         = emptyCode
                       , moduleExports    = Seq.empty
@@ -365,6 +371,7 @@ mergeInfoState oldState newState =
       newGHCOpts = Set.union (moduleGHCOpts oldState) (moduleGHCOpts newState)
       newFlags   = Set.union (moduleFlags oldState) (moduleFlags newState)
       newCCode   = cCode oldState <> cCode newState
+      newHCode   = hCode oldState <> hCode newState
       newGCode   = gCode oldState <> gCode newState
       newBoot    = bootCode oldState <> bootCode newState
       newDocs    = sectionDocs oldState <> sectionDocs newState
@@ -378,6 +385,7 @@ mergeInfoState oldState newState =
                , moduleFlags      = newFlags
                , bootCode         = newBoot
                , cCode            = newCCode
+               , hCode            = newHCode
                , gCode            = newGCode
                , sectionDocs      = newDocs
                , moduleMinBase    = newMinBase
@@ -448,7 +456,12 @@ config = hConfig <$> ask
 currentModule :: CodeGen Text
 currentModule = do
   (_, s) <- get
-  return (dotWithPrefix (modulePath s))
+  return $ dotWithPrefix $ modulePath s
+
+currentNS :: CodeGen Text
+currentNS = do
+  (_, s) <- get
+  return $ modulePathNS $ modulePath s
 
 -- | Return the list of APIs available to the generator.
 getAPIs :: CodeGen (M.Map Name API)
@@ -601,10 +614,13 @@ tellCode :: CodeToken -> CodeGen ()
 tellCode c = modify'
   (\(cgs, s) -> (cgs, s { moduleCode = moduleCode s <> codeSingleton c }))
 
--- | Add some code to the current generator.
 tellGCode :: CodeToken -> CodeGen ()
 tellGCode c =
   modify' (\(cgs, s) -> (cgs, s { gCode = gCode s <> codeSingleton c }))
+
+tellHCode :: CodeToken -> CodeGen ()
+tellHCode c =
+  modify' (\(cgs, s) -> (cgs, s { hCode = hCode s <> codeSingleton c }))
 
 -- | Print out a (newline-terminated) line.
 line :: Text -> CodeGen ()
@@ -613,6 +629,10 @@ line = tellCode . Line
 -- | Print out a (newline-terminated) line in the C stubs' file
 cline :: Text -> CodeGen ()
 cline l = cBoot (line l)
+
+-- | Print out a (newline-terminated) line in the .h stubs' file
+hline :: Text -> CodeGen ()
+hline = tellHCode . Line
 
 -- | Print out a (newline-terminated) line in the C stubs' file
 gline :: Text -> CodeGen ()
@@ -1037,7 +1057,6 @@ cOCamlModuleImports = T.unlines
   , "#include \"ml_gtktext.h\""
   , "#include \"gdk_tags.h\""
   , "#include \"pango_tags.h\""
-  , "#include \"gtk_tags.h\""
   ]
 
 -- | Like `dotModulePath`, but add a "GI." prefix.
@@ -1084,6 +1103,10 @@ writeModuleInfo verbose dirPrefix minfo = do
   --                                prelude, imports, deps, code])
   liftIO $ utf8WriteFile fname (T.unlines [haddock, code])
 
+  unless (isCodeEmpty $ hCode minfo) $ do
+    let hStubsFile = modulePathToFilePath dirPrefix (modulePath minfo) ".h"
+    liftIO $ utf8WriteFile hStubsFile (T.unlines [genHStubs minfo])
+
   unless (isCodeEmpty $ cCode minfo) $ do
     let cStubsFile = modulePathToFilePath dirPrefix (modulePath minfo) ".c"
     addCFile cStubsFile
@@ -1095,7 +1118,11 @@ writeModuleInfo verbose dirPrefix minfo = do
     let gModuleFile = modulePathToFilePath dirPrefix gFileModulePath "G.ml"
     liftIO $ utf8WriteFile gModuleFile (T.unlines [genGModule minfo])
 
--- | Generate the .hs-boot file for the given module.
+-- | Generate the .c file for the given module.
+genHStubs :: ModuleInfo -> Text
+genHStubs minfo = codeToText (hCode minfo)
+
+-- | Generate the .c file for the given module.
 genCStubs :: ModuleInfo -> Text
 genCStubs minfo = codeToText (cCode minfo)
 
@@ -1106,10 +1133,12 @@ genGModule minfo = codeToText (gCode minfo)
 genDuneFile :: FilePath -> [Text] -> IO ()
 genDuneFile outputDir cFiles = do
   let duneFilepath = joinPath [outputDir, "dune"]
+      libName = T.toLower (T.pack (takeBaseName outputDir))
+      enumImport = if libName == "enums" then "" else "enums"
   let commonPart =
         [ "(library"
-        , " (name " <> T.toLower (T.pack (takeBaseName outputDir)) <> ")"
-        , " (libraries lablgtk3)"
+        , " (name " <> libName <> ")"
+        , " (libraries lablgtk3 " <> enumImport <> ")"
         ]
   utf8WriteFile duneFilepath $ case cFiles of
     [] -> T.unlines $ commonPart ++ [")"]

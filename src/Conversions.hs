@@ -915,6 +915,26 @@ ocamlBasicType TUIntPtr  = undefined
 --              (APIFlags _) -> "[]" `con` [tname `con` []]
 --              _ -> tname `con` []
 
+enumResolver :: Name -> CodeGen Text
+enumResolver n = do
+  currNS <- currentNS
+  return $ if namespace n == currNS then
+    "Enums"
+  else
+    -- TODO: Once we can generate other libs (ex: Gdk, Pango), we can use
+    --       the next line
+    -- T.toTitle (namespace n) <> ".Enums"
+    T.toTitle (namespace n) <> "Enums"
+
+-- TODO: This function can just be enumResolver once we can gen other libs
+enumConvResolver :: Name -> CodeGen Text
+enumConvResolver n = do
+  currNS <- currentNS
+  return $ if namespace n == currNS then
+    "Enums"
+  else
+    T.toTitle (namespace n) <> "Enums.Conv"
+
 -- | This translates GI types to the types used for generated OCaml code.
 haskellType :: Type -> CodeGen TypeRep
 haskellType (TBasicType bt) = return $ ocamlBasicType bt
@@ -963,11 +983,12 @@ haskellType t@(TInterface n                       ) = do
   let ocamlName = camelCaseToSnakeCase $ name n
       tname     = lowerName n
   api <- getAPI t
-  return $ case api of
-    (APIFlags _) -> "[]" `con` [tname `con` []]
-    APIEnum _enum ->
-      (T.toTitle (namespace n) <> "Enums." <> ocamlName) `con` []
-    _ -> obj $ polyMore $ ocamlName `con` [] -- TODO: not sure it is objMore
+  case api of
+    (APIFlags _) -> return $ "[]" `con` [tname `con` []]
+    APIEnum _enum -> do
+      enumRes <- enumResolver n
+      return $ (enumRes <> "." <> ocamlName) `con` []
+    _ -> return $ obj $ polyMore $ ocamlName `con` [] -- TODO: not sure it is objMore
 
 -- | Whether the callable has closure arguments (i.e. "user_data"
 -- style arguments).
@@ -1244,13 +1265,13 @@ outParamOcamlType t@(TInterface n) = do
   let ocamlName = camelCaseToSnakeCase $ name n
       tname     = lowerName n
   api <- getAPI t
-  return $ case api of
-    (APIFlags _) -> "[]" `con` [tname `con` []]
-    APIEnum _enum ->
-      (T.toTitle (namespace n) <> "Enums." <> ocamlName) `con` []
-    _ -> obj $ polyLess $ con0 ocamlName
+  case api of
+    (APIFlags _) -> return $ "[]" `con` [tname `con` []]
+    APIEnum _enum -> do
+      enumRes <- enumResolver n
+      return $ (enumRes <> "." <> ocamlName) `con` []
+    _ -> return $ obj $ polyLess $ con0 ocamlName
 
--- cTy
 cType :: Type -> ExcCodeGen Text
 cType (TBasicType t) = case t of
   TBoolean  -> return "gboolean"
@@ -1362,8 +1383,10 @@ ocamlDataConv (TInterface n) = do
       "This ocamlDataConv (APIFunction) isn't implemented yet"
     APICallback _c -> notImplementedError
       "This ocamlDataConv (APICallback) isn't implemented yet"
-    APIEnum _enum ->
-      return $ T.toTitle (namespace n) <> "Enums.Conv." <> ocamlName
+    APIEnum _enum -> do
+      enumRes <- enumConvResolver n
+      return $ enumRes <> "." <> ocamlName
+      -- return $ T.toTitle (namespace n) <> "Enums.Conv." <> ocamlName
     APIFlags _f ->
       notImplementedError "This ocamlDataConv (APIFlags) isn't implemented yet" -- Probably similar to Enum
     APIInterface _i -> notImplementedError

@@ -6,6 +6,7 @@ module ModulePath
     , (/.)
     , dotModulePath
     , addNamePrefix
+    , modulePathNS
     )
 where
 
@@ -69,3 +70,6 @@ addNamePrefix :: Text -> ModulePath -> ModulePath
 addNamePrefix prefix mp =
     let pathList = modulePathToList mp
     in  ModulePath $ mapNth (length pathList - 1) (prefix <>) pathList
+
+modulePathNS :: ModulePath -> Text
+modulePathNS mp = head $ modulePathToList mp
