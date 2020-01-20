@@ -7,6 +7,7 @@ module ModulePath
     , dotModulePath
     , addNamePrefix
     , modulePathNS
+    , moduleName
     )
 where
 
@@ -73,3 +74,6 @@ addNamePrefix prefix mp =
 
 modulePathNS :: ModulePath -> Text
 modulePathNS mp = head $ modulePathToList mp
+
+moduleName :: ModulePath -> Text
+moduleName (ModulePath paths) = last paths

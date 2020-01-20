@@ -28,7 +28,7 @@ let main () =
 
   let vbox = GPack.vbox ~packing: window#add () in
 
-  let entry = Objects.EntryG.entry ~packing: vbox#add () in
+  let entry = GIGtk.EntryG.entry ~packing: vbox#add () in
   let _ = entry#set_max_length 50 in
   let _ = entry#connect#activate ~callback:(fun () -> enter_callback entry) in
   let _ = entry#set_text "Hello" in

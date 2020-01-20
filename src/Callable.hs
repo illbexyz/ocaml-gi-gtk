@@ -94,10 +94,15 @@ genOCamlExternal mn cSymbol callable = do
     -- Output arg
     line outArg
 
+    let fn       = mlGiPrefix mn cSymbol
+    let nativeFn = if length (args callable) > 5 then fn <> "_bc" else ""
     -- TODO: Handle exceptions in some way
     -- when (callableThrows callable) $
     --        line $ padTo 40 "Ptr (Ptr GError) -> " <> "-- error"
-    line $ "= \"ml_gi_" <> cSymbol <> "\""
+    line $ "= " <> addQuote nativeFn <> " " <> addQuote fn
+ where
+  addQuote "" = ""
+  addQuote s  = "\"" <> s <> "\""
 
 foreignArgConverter :: Integer -> Arg -> ExcCodeGen Text
 foreignArgConverter i a = do
@@ -111,10 +116,13 @@ foreignArgConverter i a = do
     in  let args = T.intercalate ", " [argNumStr, justConv, nothingVal]
         in  "Option_val(arg" <> args <> ") Ignore" -- TODO: Check if this Ignore is working as intended
 
-genMlMacro :: Text -> Callable -> ExcCodeGen ()
-genMlMacro cSymbol callable = do
+genMlMacro :: Name -> Text -> Callable -> ExcCodeGen ()
+genMlMacro mn cSymbol callable = do
   let nArgs   = length $ args callable
       outArgs = callableHOutArgs callable
+
+  when (any (\a -> direction a == DirectionInout) (args callable))
+    $ notImplementedError "genMlMacro: inout parameters are not implemented yet"
 
   if (not . null) outArgs
     then do
@@ -135,6 +143,8 @@ genMlMacro cSymbol callable = do
 
       cline
         $  macroName
+        <> T.toLower (namespace mn)
+        <> ", "
         <> cSymbol
         <> ", "
         <> T.intercalate ", " inArgTypes
@@ -149,8 +159,15 @@ genMlMacro cSymbol callable = do
                                    (returnType callable)
 
       argsTypes <- zipWithM foreignArgConverter [1 ..] (args callable)
-      let macroArgs = T.intercalate ", " (cSymbol : argsTypes ++ [retTypeName])
+      let macroArgs = T.intercalate
+            ", "
+            ([T.toLower $ namespace mn, cSymbol] ++ argsTypes ++ [retTypeName])
       cline $ macroName <> macroArgs <> ")"
+
+  when (length (args callable) > 5) $ do
+    let numArgs = T.pack $ show $ length $ args callable
+    cline $ "ML_bc" <> numArgs <> " (" <> mlGiPrefix mn cSymbol <> ")"
+
 
 -- | Make a wrapper for foreign `FunPtr`s of the given type. Return
 -- the name of the resulting dynamic Haskell wrapper.
@@ -1089,7 +1106,7 @@ genCCallableWrapper mn cSymbol callable = do
 
   blank
 
-  genMlMacro cSymbol callable'
+  genMlMacro mn cSymbol callable'
   -- deprecatedPragma (lowerName mn) (callableDeprecated callable)
   -- writeDocumentation DocBeforeSymbol (callableDocumentation callable)
   -- void (genHaskellWrapper mn (KnownForeignSymbol hSymbol) callable'

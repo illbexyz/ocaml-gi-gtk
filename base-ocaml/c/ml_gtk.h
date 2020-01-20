@@ -43,7 +43,6 @@ CAMLexport value Val_GtkWidget_func(gpointer w);
 
 #define GtkObject_val(val) check_cast(GTK_OBJECT,val)
 #define GtkWidget_val(val) check_cast(GTK_WIDGET,val)
-#define GtkAdjustment_val(val) check_cast(GTK_ADJUSTMENT,val)
 #define GtkItem_val(val) check_cast(GTK_ITEM,val)
 #define GtkTooltips_val(val) check_cast(GTK_TOOLTIPS,val)
 

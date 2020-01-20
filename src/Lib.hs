@@ -1,5 +1,7 @@
+{-# LANGUAGE NamedFieldPuns #-}
 module Lib
-    ( someFunc
+    ( genBindings
+    , Library(..)
     )
 where
 
@@ -50,6 +52,12 @@ import           Util                           ( utf8ReadFile
 
 import           Debug.Trace
 
+data Library = Library {
+    name :: Text,
+    version :: Text,
+    overridesFile :: Maybe FilePath
+}
+
 -- | Like `evalCodeGen`, but discard the resulting output value.
 genCode :: Config -> M.Map Name API -> ModulePath -> CodeGen () -> ModuleInfo
 genCode cfg apis mPath cg = snd $ evalCodeGen cfg apis mPath cg
@@ -90,28 +98,35 @@ genModuleCode name version verbosity overrides = do
 -- | Write a module containing information about the configuration for
 -- the package.
 genConfigFiles :: Maybe FilePath -> Text -> Maybe TaggedOverride -> IO ()
-genConfigFiles outputDir _modName _maybeGiven = do
-    let baseDir = joinPath [fromMaybe "" outputDir]
-        dunePrj = joinPath [baseDir, "dune-project"]
-        dune    = joinPath [baseDir, "dune"]
-        dirname = takeDirectory baseDir
+genConfigFiles outputDir modName _maybeGiven = do
+    let baseDir      = joinPath [fromMaybe "" outputDir]
+        dunePrj      = joinPath [baseDir, "dune-project"]
+        duneBindings = joinPath [baseDir, "dune"]
+        duneModule   = joinPath [baseDir, T.unpack modName, "dune"]
+        dirname      = takeDirectory baseDir
 
     createDirectoryIfMissing True dirname
 
-    utf8WriteFile dunePrj "(lang dune 2.0)"
+    utf8WriteFile dunePrj $ T.unlines
+        ["(lang dune 2.0)", "(package", " (name GI" <> modName <> "))"]
 
-    utf8WriteFile dune $ T.unlines
+    utf8WriteFile duneBindings $ T.unlines
         ["(env", " (_", "  (binaries", "   ./tools/dune_config.exe)))"]
 
+    -- utf8WriteFile duneModule $ T.unlines
+    --     [ "(library"
+    --     , " (name " <> modName <> ")"
+    --     , " (libraries objects enums)"
+    --     , ")"
+    --     ]
 
-someFunc :: IO ()
-someFunc = do
-    let name               = "Gtk"
-        version            = "3.0"
-        verbosity          = False
-        overridesFile      = Just $ "overrides" </> "Gtk.overrides"
-        inheritedOverrides = []
-        outputDir          = "bindings"
+
+genBindings :: Bool -> Library -> IO ()
+genBindings verbosity Library { Lib.name, version, overridesFile } = do
+    -- let name               = "Gdk"
+    --     overridesFile      = Just $ "overrides" </> "Gdk.overrides"
+    let inheritedOverrides = []
+        outputDir          = "bindings" </> T.unpack name
 
     dirExists <- doesDirectoryExist outputDir
     when dirExists $ removeDirectoryContents outputDir
@@ -128,8 +143,8 @@ someFunc = do
     genConfigFiles (Just outputDir) name givenOvs
 
     copyDirectory "base-ocaml/tools" (outputDir </> "tools")
-    copyDirectory "examples"         (outputDir </> "examples")
+    -- copyDirectory "examples"         (outputDir </> "examples")
 
-    forM_ cDirs $ \dir -> copyDirectory "base-ocaml/c" dir
+    -- forM_ cDirs $ \dir -> copyDirectory "base-ocaml/c" dir
 
     -- return ()

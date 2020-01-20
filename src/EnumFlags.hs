@@ -22,8 +22,13 @@ import           Code
 import           SymbolNaming                   ( upperName
                                                 , camelCaseToSnakeCase
                                                 , escapeOCamlReserved
+                                                , mlGiPrefix
                                                 )
 import           Util                           ( tshow )
+
+data EnumOrFlag = Enum
+                | Flag
+                 deriving (Show, Eq, Ord)
 
 -- OCaml's way to represent polymorphic variants in C
 hashVariant :: String -> Int
@@ -34,8 +39,9 @@ hashVariant = toSigned64 . reduceTo31bits . variantHash
   reduceTo31bits hash = hash .&. ((1 `shiftL` 31) - 1)
   toSigned64 hash = if hash > 0x3FFFFFFF then hash - (1 `shiftL` 31) else hash
 
-genEnumOrFlags :: HaddockSection -> Name -> Enumeration -> ExcCodeGen ()
-genEnumOrFlags _docSection n@(Name ns _name) e = do
+genEnumOrFlags
+  :: HaddockSection -> Name -> Enumeration -> EnumOrFlag -> ExcCodeGen ()
+genEnumOrFlags _docSection n@(Name ns _name) e enumOrFlag = do
   -- Conversion functions expect enums and flags to map to CUInt,
   -- which we assume to be of 32 bits. Fail early, instead of giving
   -- strange errors at runtime.
@@ -48,15 +54,17 @@ genEnumOrFlags _docSection n@(Name ns _name) e = do
     $  "Storage of size /= 4 not supported : "
     <> tshow (enumStorageBytes e)
 
-  let enumName    = escapeOCamlReserved $ camelCaseToSnakeCase $ upperName n
-      memberNames = map (T.toUpper . enumMemberName) (enumMembers e)
-      variants    = map ("`" <>) memberNames
-      cIds        = map enumMemberCId (enumMembers e)
-      namesAndIds = zip memberNames cIds
-      mlTableName = "ml_gi_table_" <> enumName
-      ocamlTbl    = enumName <> "_tbl"
-      cGetterFn =
-        "ml_gi_" <> T.toLower (namespace n) <> "_get_" <> enumName <> "_table"
+  let
+    enumName = escapeOCamlReserved $ camelCaseToSnakeCase $ upperName n
+    memberNames =
+      map (escapeOCamlReserved . T.toUpper . enumMemberName) (enumMembers e)
+    variants    = map ("`" <>) memberNames
+    cIds        = map enumMemberCId (enumMembers e)
+    namesAndIds = zip memberNames cIds
+    mlTableName = mlGiPrefix n ("table_" <> enumName)
+    ocamlTbl    = enumName <> "_tbl"
+    cGetterFn =
+      mlGiPrefix n $ T.toLower (namespace n) <> "_get_" <> enumName <> "_table"
 
   forM_ memberNames $ \memberName -> do
     let hashValue = T.pack $ show $ hashVariant $ T.unpack memberName
@@ -78,11 +86,13 @@ genEnumOrFlags _docSection n@(Name ns _name) e = do
     <> cGetterFn
     <> "\""
   line $ "let " <> ocamlTbl <> " = get_" <> enumName <> "_table ()"
-  line $ "let " <> enumName <> " = Gobject.Data.enum " <> ocamlTbl
+  if enumOrFlag == Enum
+    then line $ "let " <> enumName <> " = Gobject.Data.enum " <> ocamlTbl
+    else line $ "let " <> enumName <> " = Gobject.Data.flags " <> ocamlTbl
   blank
 
-  cline "#include \"Enums.h\""
-  cline ""
+  addCDep $ ns <> "Enums"
+
   cline $ "const lookup_info " <> mlTableName <> "[] = {"
   cline $ "  { 0, " <> T.pack (show (length (enumMembers e))) <> " },"
   forM_ namesAndIds $ \(memberName, memberCId) ->
@@ -102,15 +112,15 @@ genEnum n@(Name _ _name) enum = do
 
   handleCGExc
     (\e -> commentLine $ "Could not generate: " <> describeCGError e)
-    (genEnumOrFlags docSection n enum)
+    (genEnumOrFlags docSection n enum Enum)
 
 -- | Very similar to enums, but we also declare ourselves as members of
 -- the IsGFlag typeclass.
 genFlags :: Name -> Flags -> CodeGen ()
 genFlags n@(Name _ name) (Flags enum) = do
-  line $ "-- Flags " <> name
+  -- line $ "-- Flags " <> name
 
   let docSection = NamedSubsection FlagSection (upperName n)
   handleCGExc
     (\e -> commentLine $ "Could not generate: " <> describeCGError e)
-    (genEnumOrFlags docSection n enum)
+    (genEnumOrFlags docSection n enum Flag)

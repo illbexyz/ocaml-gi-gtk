@@ -92,3 +92,6 @@ CAMLexport lookup_info *ml_table_extension_events;
 #define GdkDragContext_val(val) check_cast(GDK_DRAG_CONTEXT,val)
 #define Val_GdkDragContext Val_GAnyObject
 CAMLexport int Flags_GdkDragAction_val (value);
+
+#define GdkMonitor_val(val) ((GdkMonitor*) val)
+#define Val_GdkMonitor(monitor) ((value) monitor)

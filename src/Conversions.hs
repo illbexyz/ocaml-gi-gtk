@@ -919,22 +919,10 @@ enumResolver :: Name -> CodeGen Text
 enumResolver n = do
   currNS <- currentNS
   return $ if namespace n == currNS then
-    "Enums"
+    currNS <> "Enums"
   else
-    -- TODO: Once we can generate other libs (ex: Gdk, Pango), we can use
-    --       the next line
-    -- T.toTitle (namespace n) <> ".Enums"
-    T.toTitle (namespace n) <> "Enums"
-
--- TODO: This function can just be enumResolver once we can gen other libs
-enumConvResolver :: Name -> CodeGen Text
-enumConvResolver n = do
-  currNS <- currentNS
-  return $ if namespace n == currNS then
-    "Enums"
-  else
-    T.toTitle (namespace n) <> "Enums.Conv"
-
+    "GI" <> namespace n <> "." <> namespace n <> "Enums"
+    
 -- | This translates GI types to the types used for generated OCaml code.
 haskellType :: Type -> CodeGen TypeRep
 haskellType (TBasicType bt) = return $ ocamlBasicType bt
@@ -1348,7 +1336,9 @@ ocamlDataConv _ (TBasicType t) = case t of
     notImplementedError "This ocamlDataConv (TGType) isn't implemented yet"
   TUTF8 -> return "string"
   TFileName -> return "string"
-  TPtr -> notImplementedError "This ocamlDataConv (TPtr) isn't implemented yet"
+  TPtr -> do
+    traceShowM "Warning: ocamlDataConv has defaulted a TPtr to int"
+    return "int"
   TIntPtr ->
     notImplementedError "This ocamlDataConv (TIntPtr) isn't implemented yet"
   TUIntPtr ->
@@ -1376,7 +1366,6 @@ ocamlDataConv _ (TGHash _t1 _t2) =
 ocamlDataConv _ (TGClosure _m) =
   notImplementedError "This ocamlDataConv (TGClosure) isn't implemented yet"
 ocamlDataConv isNullable (TInterface n) = do
-  let ocamlName = camelCaseToSnakeCase $ name n
   api <- findAPIByName n
   case api of
     APIConst _c ->
@@ -1385,12 +1374,8 @@ ocamlDataConv isNullable (TInterface n) = do
       "This ocamlDataConv (APIFunction) isn't implemented yet"
     APICallback _c -> notImplementedError
       "This ocamlDataConv (APICallback) isn't implemented yet"
-    APIEnum _enum -> do
-      enumRes <- enumConvResolver n
-      return $ enumRes <> "." <> ocamlName
-      -- return $ T.toTitle (namespace n) <> "Enums.Conv." <> ocamlName
-    APIFlags _f ->
-      notImplementedError "This ocamlDataConv (APIFlags) isn't implemented yet" -- Probably similar to Enum
+    APIEnum _enum -> enumFlagConv n
+    APIFlags _f -> enumFlagConv n
     APIInterface _i -> notImplementedError
       "This ocamlDataConv (APIInterface) isn't implemented yet"
     APIObject _o -> do
@@ -1420,7 +1405,11 @@ ocamlDataConv isNullable (TInterface n) = do
         Nothing -> notImplementedError "This ocamlDataConv (APIStruct) isn't implemented yet"
     APIUnion _u ->
       notImplementedError "This ocamlDataConv (APIUnion) isn't implemented yet"
-
+  where enumFlagConv n = do
+          enumRes <- enumResolver n
+          return $ enumRes <> "." <> camelCaseToSnakeCase (name n)
+          -- return $ T.toTitle (namespace n) <> "Enums.Conv." <> ocamlName
+          
 -- Converter from value to C
 ocamlValueToC :: Type -> ExcCodeGen Text
 ocamlValueToC (TBasicType t) = case t of
@@ -1493,7 +1482,10 @@ ocamlValueToC (TInterface n) = do
     APIFlags _f ->
       notImplementedError "This ocamlValueToC (APIFlags) isn't implemented yet"
     APIInterface _i -> return $ namespace n <> name n <> "_val"
-    APIObject     o -> return $ objTypeName o <> "_val"
+    APIObject     o -> do
+      currNS <- currentNS 
+      when (namespace n == currNS) $ addCDep (name n)
+      return $ objTypeName o <> "_val"
     APIStruct _s ->
       notImplementedError "This ocamlValueToC (APIStruct) isn't implemented yet"
     APIUnion _u ->

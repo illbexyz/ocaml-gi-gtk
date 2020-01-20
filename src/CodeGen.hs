@@ -314,10 +314,10 @@ genMethod cn Method { methodName = mn, methodSymbol = sym, methodCallable = c, m
 
       -- export (NamedSubsection MethodSection $ lowerName mn) (lowerName mn')
 
-genGObjectCasts :: Name -> Text -> [Name] -> CodeGen ()
-genGObjectCasts (Name nspace n) _cn_ _parents = do
+genGObjectCasts :: Name -> CodeGen ()
+genGObjectCasts (Name nspace n) = do
   let upperObjName = T.toUpper (nspace <> "_" <> camelCaseToSnakeCase n)
-  cline
+  hline
     $  "#define "
     <> nspace
     <> n
@@ -325,6 +325,19 @@ genGObjectCasts (Name nspace n) _cn_ _parents = do
     <> "val) check_cast("
     <> upperObjName
     <> ", val)"
+
+  -- TODO: uncomment
+  -- hline
+  --   $  "#define Val_"
+  --   <> nspace
+  --   <> n
+  --   <> "("
+  --   <> T.toLower n
+  --   <> ") ((value) "
+  --   <> T.toLower n
+  --   <> ")"
+
+  addCDep n
 
 
 isSetterOrGetter :: Object -> Method -> Bool
@@ -375,6 +388,12 @@ genObject n o = -- do
                , "Misc"
                , "Label"
                , "Entry"
+               , "ActionBar"
+               , "MenuShell"
+               , "RadioMenuItem"
+               , "CheckMenuItem"
+               , "Menu"
+               , "MenuItem"
               --  , "Image"
               --  , "Range"
                ]
@@ -392,6 +411,7 @@ genObject n o = -- do
               (_   , True) -> "" <> name parent <> ".t"
               _            -> "`" <> camelCaseToSnakeCase (name parent)
       line $ "type t = [" <> parentType <> " | `" <> ocamlName <> "]"
+      genGObjectCasts n
   else
     do
       let name' = upperName n
@@ -424,7 +444,7 @@ genObject n o = -- do
                 "Widget"    -> "['a] GObj.widget_impl"
                 _           -> name parent <> "G." <> ocamlParentName <> "_skel"
 
-          genGObjectCasts n (objTypeInit o) (parents <> objInterfaces o)
+          genGObjectCasts n
 
           cline
             $  "CAMLprim value ml_"
@@ -445,8 +465,6 @@ genObject n o = -- do
           gline $ "  method as_" <> ocamlName <> " : t obj"
           gline "end"
           gblank
-
-          genSignalClass n o
 
           gline $ "class " <> ocamlName <> "_skel obj = object (self)"
           gline $ "  inherit " <> namespacedParentName <> " obj"
@@ -525,6 +543,9 @@ genObject n o = -- do
               (genMethod n f)
           gline "end"
           gblank
+
+          genSignalClass n o
+
           gline $ "class " <> ocamlName <> " obj = object (self)"
           gline $ "  inherit " <> ocamlName <> "_skel obj"
           unless (null $ objSignals o)
@@ -587,7 +608,7 @@ genInterface n iface = do
       gobjectPrereqs <- filterM nameIsGObject (ifPrerequisites iface)
       allParents     <- forM gobjectPrereqs $ \p -> (p :) <$> instanceTree p
       let uniqueParents = nub (concat allParents)
-      genGObjectCasts n cn_ uniqueParents
+      -- genGObjectCasts n cn_ uniqueParents
 
       genInterfaceProperties n iface
     else group $ do
@@ -658,7 +679,7 @@ genAPI :: Name -> API -> CodeGen ()
 genAPI _n (APIConst     _c) = return ()
 genAPI _n (APIFunction  _f) = return ()
 genAPI n  (APIEnum      e ) = genEnum n e
-genAPI _n (APIFlags     _f) = return ()
+genAPI n  (APIFlags     f ) = genFlags n f
 genAPI _n (APICallback  _c) = return ()
 genAPI _n (APIStruct    _s) = return ()
 genAPI _n (APIUnion     _u) = return ()

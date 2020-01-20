@@ -28,6 +28,7 @@ module SymbolNaming
   , submoduleLocation
   , qualifiedAPI
   , qualifiedSymbol
+  , mlGiPrefix
   )
 where
 
@@ -154,10 +155,10 @@ submoduleLocation :: Name -> API -> ModulePath
 submoduleLocation _ (APIConst     _) = "Constants"
 submoduleLocation _ (APIFunction  _) = "Functions"
 submoduleLocation _ (APICallback  _) = "Callbacks"
-submoduleLocation _ (APIEnum      _) = "Enums" /. "Enums"
-submoduleLocation _ (APIFlags     _) = "Flags"
+submoduleLocation n (APIEnum      _) = "" /. (namespace n <> "Enums")
+submoduleLocation n (APIFlags     _) = "" /. (namespace n <> "Enums")
 submoduleLocation n (APIInterface _) = "Interfaces" /. upperName n
-submoduleLocation n (APIObject    _) = "Objects" /. upperName n
+submoduleLocation n (APIObject    _) = "" /. upperName n
 submoduleLocation n (APIStruct    _) = "Structs" /. upperName n
 submoduleLocation n (APIUnion     _) = "Unions" /. upperName n
 
@@ -248,7 +249,9 @@ escapedArgName arg
 
 escapeOCamlReserved :: Text -> Text
 escapeOCamlReserved "unit" = "unit_"
-escapeOCamlReserved t      = t
+escapeOCamlReserved t      = do
+  let (nums, text) = T.span C.isNumber t
+  text <> nums
 
 -- | Reserved symbols, either because they are Haskell syntax or
 -- because the clash with symbols in scope for the generated bindings.
@@ -298,3 +301,6 @@ signalHaskellName sn =
 
 signalOCamlName :: Text -> Text
 signalOCamlName = hyphensToUnderscores
+
+mlGiPrefix :: Name -> Text -> Text
+mlGiPrefix nm t = "ml_gi" <> T.toLower (namespace nm) <> "_" <> t

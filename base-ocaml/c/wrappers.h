@@ -101,33 +101,33 @@ CAMLprim value ml_gi_##cname () \
 
 #define ID(x) (x)
 
-#define ML_0(cname, conv) \
-CAMLprim value ml_gi_##cname (value unit) { return conv (cname ()); }
-#define ML_1(cname, conv1, conv) \
-CAMLprim value ml_gi_##cname (value arg1) { return conv (cname (conv1 (arg1))); }
-#define ML_1_post(cname, conv1, conv, post) \
-CAMLprim value ml_gi_##cname (value arg1) \
+#define ML_0(namespace, cname, conv) \
+CAMLprim value ml_gi##namespace##_##cname (value unit) { return conv (cname ()); }
+#define ML_1(namespace, cname, conv1, conv) \
+CAMLprim value ml_gi##namespace##_##cname (value arg1) { return conv (cname (conv1 (arg1))); }
+#define ML_1_post(namespace, cname, conv1, conv, post) \
+CAMLprim value ml_gi##namespace##_##cname (value arg1) \
 { value ret = conv (cname (conv1(arg1))); post; return ret; }
-#define ML_2(cname, conv1, conv2, conv) \
-CAMLprim value ml_gi_##cname (value arg1, value arg2) \
+#define ML_2(namespace, cname, conv1, conv2, conv) \
+CAMLprim value ml_gi##namespace##_##cname (value arg1, value arg2) \
 { return conv (cname (conv1(arg1), conv2(arg2))); }
 #define ML_2_name(mlname, cname, conv1, conv2, conv) \
 CAMLprim value mlname (value arg1, value arg2) \
 { return conv (cname (conv1(arg1), conv2(arg2))); }
-#define ML_3(cname, conv1, conv2, conv3, conv) \
-CAMLprim value ml_gi_##cname (value arg1, value arg2, value arg3) \
+#define ML_3(namespace, cname, conv1, conv2, conv3, conv) \
+CAMLprim value ml_gi##namespace##_##cname (value arg1, value arg2, value arg3) \
 { return conv (cname (conv1(arg1), conv2(arg2), conv3(arg3))); }
 #define ML_3_name(mlname, cname, conv1, conv2, conv3, conv) \
 CAMLprim value mlname (value arg1, value arg2, value arg3) \
 { return conv (cname (conv1(arg1), conv2(arg2), conv3(arg3))); }
-#define ML_4(cname, conv1, conv2, conv3, conv4, conv) \
-CAMLprim value ml_gi_##cname (value arg1, value arg2, value arg3, value arg4) \
+#define ML_4(namespace, cname, conv1, conv2, conv3, conv4, conv) \
+CAMLprim value ml_gi##namespace##_##cname (value arg1, value arg2, value arg3, value arg4) \
 { return conv (cname (conv1(arg1), conv2(arg2), conv3(arg3), conv4(arg4))); }
 #define ML_4_name(mlname, cname, conv1, conv2, conv3, conv4, conv) \
 CAMLprim value mlname (value arg1, value arg2, value arg3, value arg4) \
 { return conv (cname (conv1(arg1), conv2(arg2), conv3(arg3), conv4(arg4))); }
-#define ML_5(cname, conv1, conv2, conv3, conv4, conv5, conv) \
-CAMLprim value ml_gi_##cname (value arg1, value arg2, value arg3, value arg4, \
+#define ML_5(namespace, cname, conv1, conv2, conv3, conv4, conv5, conv) \
+CAMLprim value ml_gi##namespace##_##cname (value arg1, value arg2, value arg3, value arg4, \
                            value arg5) \
 { return conv (cname (conv1(arg1), conv2(arg2), conv3(arg3), conv4(arg4), \
 		      conv5(arg5))); }
@@ -136,25 +136,25 @@ CAMLprim value mlname (value arg1, value arg2, value arg3, value arg4, \
                        value arg5) \
 { return conv (cname (conv1(arg1), conv2(arg2), conv3(arg3), conv4(arg4), \
 		      conv5(arg5))); }
-#define ML_6(cname, conv1, conv2, conv3, conv4, conv5, conv6, conv) \
-CAMLprim value ml_gi_##cname (value arg1, value arg2, value arg3, value arg4, \
+#define ML_6(namespace, cname, conv1, conv2, conv3, conv4, conv5, conv6, conv) \
+CAMLprim value ml_gi##namespace##_##cname (value arg1, value arg2, value arg3, value arg4, \
                            value arg5, value arg6) \
 { return conv (cname (conv1(arg1), conv2(arg2), conv3(arg3), conv4(arg4), \
 		      conv5(arg5), conv6(arg6))); }
-#define ML_7(cname, conv1, conv2, conv3, conv4, conv5, conv6, conv7, conv) \
-CAMLprim value ml_gi_##cname (value arg1, value arg2, value arg3, value arg4, \
+#define ML_7(namespace, cname, conv1, conv2, conv3, conv4, conv5, conv6, conv7, conv) \
+CAMLprim value ml_gi##namespace##_##cname (value arg1, value arg2, value arg3, value arg4, \
                            value arg5, value arg6, value arg7) \
 { return conv (cname (conv1(arg1), conv2(arg2), conv3(arg3), conv4(arg4), \
 		      conv5(arg5), conv6(arg6), conv7(arg7))); }
-#define ML_8(cname, conv1, conv2, conv3, conv4, conv5, conv6, conv7, conv8, \
+#define ML_8(namespace, cname, conv1, conv2, conv3, conv4, conv5, conv6, conv7, conv8, \
 	     conv) \
-CAMLprim value ml_gi_##cname (value arg1, value arg2, value arg3, value arg4, \
+CAMLprim value ml_gi##namespace##_##cname (value arg1, value arg2, value arg3, value arg4, \
                            value arg5, value arg6, value arg7, value arg8) \
 { return conv (cname (conv1(arg1), conv2(arg2), conv3(arg3), conv4(arg4), \
 		      conv5(arg5), conv6(arg6), conv7(arg7), conv8(arg8))); }
-#define ML_9(cname, conv1, conv2, conv3, conv4, conv5, conv6, conv7, conv8, \
+#define ML_9(namespace, cname, conv1, conv2, conv3, conv4, conv5, conv6, conv7, conv8, \
 	      conv9, conv) \
-CAMLprim value ml_gi_##cname (value arg1, value arg2, value arg3, value arg4, \
+CAMLprim value ml_gi##namespace##_##cname (value arg1, value arg2, value arg3, value arg4, \
                            value arg5, value arg6, value arg7, value arg8, \
                            value arg9) \
 { return conv (cname (conv1(arg1), conv2(arg2), conv3(arg3), conv4(arg4), \
@@ -168,34 +168,34 @@ CAMLprim value mlname (value arg1, value arg2, value arg3, value arg4, \
 { return conv (cname (conv1(arg1), conv2(arg2), conv3(arg3), conv4(arg4), \
 		      conv5(arg5), conv6(arg6), conv7(arg7), conv8(arg8), \
 		      conv9(arg9))); }
-#define ML_10(cname, conv1, conv2, conv3, conv4, conv5, conv6, conv7, conv8, \
+#define ML_10(namespace, cname, conv1, conv2, conv3, conv4, conv5, conv6, conv7, conv8, \
 	      conv9, conv10, conv) \
-CAMLprim value ml_gi_##cname (value arg1, value arg2, value arg3, value arg4, \
+CAMLprim value ml_gi##namespace##_##cname (value arg1, value arg2, value arg3, value arg4, \
                            value arg5, value arg6, value arg7, value arg8, \
                            value arg9, value arg10)\
 { return conv (cname (conv1(arg1), conv2(arg2), conv3(arg3), conv4(arg4), \
 		      conv5(arg5), conv6(arg6), conv7(arg7), conv8(arg8), \
 		      conv9(arg9), conv10(arg10))); }
-#define ML_11(cname, conv1, conv2, conv3, conv4, conv5, conv6, conv7, conv8, \
+#define ML_11(namespace, cname, conv1, conv2, conv3, conv4, conv5, conv6, conv7, conv8, \
 	      conv9, conv10, conv11, conv) \
-CAMLprim value ml_gi_##cname (value arg1, value arg2, value arg3, value arg4, \
+CAMLprim value ml_gi##namespace##_##cname (value arg1, value arg2, value arg3, value arg4, \
                            value arg5, value arg6, value arg7, value arg8, \
                            value arg9, value arg10, value arg11) \
 { return conv (cname (conv1(arg1), conv2(arg2), conv3(arg3), conv4(arg4), \
 		      conv5(arg5), conv6(arg6), conv7(arg7), conv8(arg8), \
 		      conv9(arg9), conv10(arg10), conv11(arg11))); }
-#define ML_12(cname, conv1, conv2, conv3, conv4, conv5, conv6, conv7, conv8, \
+#define ML_12(namespace, cname, conv1, conv2, conv3, conv4, conv5, conv6, conv7, conv8, \
 	      conv9, conv10, conv11, conv12, conv) \
-CAMLprim value ml_gi_##cname (value arg1, value arg2, value arg3, value arg4, \
+CAMLprim value ml_gi##namespace##_##cname (value arg1, value arg2, value arg3, value arg4, \
                            value arg5, value arg6, value arg7, value arg8, \
                            value arg9, value arg10, value arg11, value arg12) \
 { return conv (cname (conv1(arg1), conv2(arg2), conv3(arg3), conv4(arg4), \
 		      conv5(arg5), conv6(arg6), conv7(arg7), conv8(arg8), \
 		      conv9(arg9), conv10(arg10), conv11(arg11), \
 		      conv12(arg12))); }
-#define ML_13(cname, conv1, conv2, conv3, conv4, conv5, conv6, conv7, conv8, \
+#define ML_13(namespace, cname, conv1, conv2, conv3, conv4, conv5, conv6, conv7, conv8, \
 	      conv9, conv10, conv11, conv12, conv13, conv) \
-CAMLprim value ml_gi_##cname (value arg1, value arg2, value arg3, value arg4, \
+CAMLprim value ml_gi##namespace##_##cname (value arg1, value arg2, value arg3, value arg4, \
                            value arg5, value arg6, value arg7, value arg8, \
                            value arg9, value arg10, value arg11, value arg12, \
                            value arg13) \
@@ -244,8 +244,8 @@ CAMLprim value cname##_bc (value *argv, int argn) \
 { return cname(argv[0],argv[1],argv[2],argv[3],argv[4],argv[5],argv[6], \
 	       argv[7],argv[8],argv[9],argv[10],argv[11],argv[12]); }
 
-#define ML_1in_1out(cname, conv1in, cType1out, conv1out, convRes) \
-CAMLprim value ml_gi_##cname (value arg1) \
+#define ML_1in_1out(namespace, cname, conv1in, cType1out, conv1out, convRes) \
+CAMLprim value ml_gi##namespace##_##cname (value arg1) \
 { \
     CAMLparam1(arg1); CAMLlocal1(tuple); \
     cType1out a; tuple = alloc_tuple(2); \
@@ -254,8 +254,8 @@ CAMLprim value ml_gi_##cname (value arg1) \
     CAMLreturn (tuple); \
 }
 
-#define ML_1in_2out(cname, conv1in, cType1out, conv1out, cType2out, conv2out, convRes) \
-CAMLprim value ml_gi_##cname (value arg1) \
+#define ML_1in_2out(namespace, cname, conv1in, cType1out, conv1out, cType2out, conv2out, convRes) \
+CAMLprim value ml_gi##namespace##_##cname (value arg1) \
 { \
     CAMLparam1(arg1); CAMLlocal1(tuple); \
     cType1out a; cType2out b; tuple = alloc_tuple(3); \
@@ -264,8 +264,8 @@ CAMLprim value ml_gi_##cname (value arg1) \
     CAMLreturn (tuple); \
 }
 
-#define ML_1in_3out(cname, conv1in, cType1out, conv1out, cType2out, conv2out, cType3out, conv3out, convRes) \
-CAMLprim value ml_gi_##cname (value arg1) \
+#define ML_1in_3out(namespace, cname, conv1in, cType1out, conv1out, cType2out, conv2out, cType3out, conv3out, convRes) \
+CAMLprim value ml_gi##namespace##_##cname (value arg1) \
 { \
     CAMLparam1(arg1); CAMLlocal1(tuple); \
     cType1out a; cType2out b; cType3out c; tuple = alloc_tuple(4); \
@@ -274,8 +274,8 @@ CAMLprim value ml_gi_##cname (value arg1) \
     CAMLreturn (tuple); \
 }
 
-#define ML_1in_4out(cname, conv1in, cType1out, conv1out, cType2out, conv2out, cType3out, conv3out, cType4out, conv4out, convRes) \
-CAMLprim value ml_gi_##cname (value arg1) \
+#define ML_1in_4out(namespace, cname, conv1in, cType1out, conv1out, cType2out, conv2out, cType3out, conv3out, cType4out, conv4out, convRes) \
+CAMLprim value ml_gi##namespace##_##cname (value arg1) \
 { \
     CAMLparam1(arg1); CAMLlocal1(tuple); \
     cType1out a; cType2out b; cType2out c; cType2out d; tuple = alloc_tuple(5); \
@@ -284,8 +284,8 @@ CAMLprim value ml_gi_##cname (value arg1) \
     CAMLreturn (tuple); \
 }
 
-#define ML_2in_1out(cname, conv1in, conv2in, cType1out, conv1out, convRes) \
-CAMLprim value ml_gi_##cname (value arg1, value arg2) \
+#define ML_2in_1out(namespace, cname, conv1in, conv2in, cType1out, conv1out, convRes) \
+CAMLprim value ml_gi##namespace##_##cname (value arg1, value arg2) \
 { \
     CAMLparam2(arg1, arg2); CAMLlocal1(tuple); \
     cType1out a; tuple = alloc_tuple(2); \
@@ -294,8 +294,8 @@ CAMLprim value ml_gi_##cname (value arg1, value arg2) \
     CAMLreturn (tuple); \
 }
 
-#define ML_2in_2out(cname, conv1in, conv2in, cType1out, conv1out, cType2out, conv2out, convRes) \
-CAMLprim value ml_gi_##cname (value arg1, value arg2) \
+#define ML_2in_2out(namespace, cname, conv1in, conv2in, cType1out, conv1out, cType2out, conv2out, convRes) \
+CAMLprim value ml_gi##namespace##_##cname (value arg1, value arg2) \
 { \
     CAMLparam2(arg1, arg2); CAMLlocal1(tuple); \
     cType1out a; cType2out b; tuple = alloc_tuple(3); \
@@ -304,8 +304,8 @@ CAMLprim value ml_gi_##cname (value arg1, value arg2) \
     CAMLreturn (tuple); \
 }
 
-#define ML_2in_3out(cname, conv1in, conv2in, cType1out, conv1out, cType2out, conv2out, cType3out, conv3out, convRes) \
-CAMLprim value ml_gi_##cname (value arg1, value arg2) \
+#define ML_2in_3out(namespace, cname, conv1in, conv2in, cType1out, conv1out, cType2out, conv2out, cType3out, conv3out, convRes) \
+CAMLprim value ml_gi##namespace##_##cname (value arg1, value arg2) \
 { \
     CAMLparam2(arg1, arg2); CAMLlocal1(tuple); \
     cType1out a; cType2out b; cType3out c; tuple = alloc_tuple(4); \
@@ -314,8 +314,8 @@ CAMLprim value ml_gi_##cname (value arg1, value arg2) \
     CAMLreturn (tuple); \
 }
 
-#define ML_2in_4out(cname, conv1in, conv2in, cType1out, conv1out, cType2out, conv2out, cType3out, conv3out, cType4out, conv4out, convRes) \
-CAMLprim value ml_gi_##cname (value arg1, value arg2) \
+#define ML_2in_4out(namespace, cname, conv1in, conv2in, cType1out, conv1out, cType2out, conv2out, cType3out, conv3out, cType4out, conv4out, convRes) \
+CAMLprim value ml_gi##namespace##_##cname (value arg1, value arg2) \
 { \
     CAMLparam2(arg1, arg2); CAMLlocal1(tuple); \
     cType1out a; cType2out b; cType2out c; cType2out d; tuple = alloc_tuple(5); \
@@ -324,8 +324,8 @@ CAMLprim value ml_gi_##cname (value arg1, value arg2) \
     CAMLreturn (tuple); \
 }
 
-#define ML_4in_2out(cname, conv1in, conv2in, conv3in, conv4in, cType1out, conv1out, cType2out, conv2out, convRes) \
-CAMLprim value ml_gi_##cname (value arg1, value arg2, value arg3, value arg4) \
+#define ML_4in_2out(namespace, cname, conv1in, conv2in, conv3in, conv4in, cType1out, conv1out, cType2out, conv2out, convRes) \
+CAMLprim value ml_gi##namespace##_##cname (value arg1, value arg2, value arg3, value arg4) \
 { \
     CAMLparam4(arg1, arg2, arg3, arg4); CAMLlocal1(tuple); \
     cType1out a; cType2out b; tuple = alloc_tuple(3); \

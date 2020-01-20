@@ -1,0 +1,1 @@
+#define GMenuModel_val(val) ((GMenuModel*) val)

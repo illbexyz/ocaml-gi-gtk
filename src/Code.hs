@@ -61,6 +61,7 @@ module Code
   , config
   , currentModule
   , currentNS
+  , addCDep
   )
 where
 
@@ -114,6 +115,7 @@ import           ModulePath                     ( ModulePath(..)
                                                 , (/.)
                                                 , addNamePrefix
                                                 , modulePathNS
+                                                , moduleName
                                                 )
 import           Type                           ( Type(..) )
 import           Util                           ( tshow
@@ -202,6 +204,7 @@ data ModuleInfo = ModuleInfo {
     , submodules :: M.Map Text ModuleInfo -- ^ Indexed by the relative
                                           -- module name.
     , moduleDeps :: Deps -- ^ Set of dependencies for this module.
+    , cDeps      :: Deps -- ^ Set of dependencies for this module (c-side)   
     , moduleExports :: Seq.Seq Export -- ^ Exports for the module.
     , qualifiedImports :: Set.Set ModulePath -- ^ Qualified (source) imports.
     , modulePragmas :: Set.Set Text -- ^ Set of language pragmas for the module.
@@ -239,6 +242,7 @@ emptyModule m = ModuleInfo { modulePath       = m
                            , gCode            = emptyCode
                            , submodules       = M.empty
                            , moduleDeps       = Set.empty
+                           , cDeps            = Set.empty
                            , moduleExports    = Seq.empty
                            , qualifiedImports = Set.empty
                            , modulePragmas    = Set.empty
@@ -362,7 +366,8 @@ recurseWithAPIs apis cg = do
 -- | Merge everything but the generated code for the two given `ModuleInfo`.
 mergeInfoState :: ModuleInfo -> ModuleInfo -> ModuleInfo
 mergeInfoState oldState newState =
-  let newDeps = Set.union (moduleDeps oldState) (moduleDeps newState)
+  let newDeps  = Set.union (moduleDeps oldState) (moduleDeps newState)
+      newCDeps = Set.union (cDeps oldState) (cDeps newState)
       newSubmodules =
           M.unionWith mergeInfo (submodules oldState) (submodules newState)
       newExports = moduleExports oldState <> moduleExports newState
@@ -377,6 +382,7 @@ mergeInfoState oldState newState =
       newDocs    = sectionDocs oldState <> sectionDocs newState
       newMinBase = max (moduleMinBase oldState) (moduleMinBase newState)
   in  oldState { moduleDeps       = newDeps
+               , cDeps            = newCDeps
                , submodules       = newSubmodules
                , moduleExports    = newExports
                , qualifiedImports = newImports
@@ -443,6 +449,13 @@ handleCGExc fallback action = do
     Right (r, newInfo) -> do
       put (cgs, mergeInfo oldInfo newInfo)
       return r
+
+addCDep :: Text -> CodeGen ()
+addCDep dep =
+  modify' (\(cgs, s) -> (cgs, s { cDeps = Set.insert (dep) (cDeps s) }))
+
+getCDeps :: CodeGen Deps
+getCDeps = cDeps . snd <$> get
 
 -- | Return the currently loaded set of dependencies.
 getDeps :: CodeGen Deps
@@ -1050,6 +1063,7 @@ cOCamlModuleImports = T.unlines
   , "#include \"wrappers.h\""
   , "#include \"ml_glib.h\""
   , "#include \"ml_gobject.h\""
+  , "#include \"ml_gio.h\""
   , "#include \"ml_gdk.h\""
   , "#include \"ml_gdkpixbuf.h\""
   , "#include \"ml_pango.h\""
@@ -1077,9 +1091,10 @@ addCFile file = modify (file :)
 writeModuleInfo :: Bool -> Maybe FilePath -> ModuleInfo -> WithCFiles ()
 writeModuleInfo verbose dirPrefix minfo = do
   let
-    _submodulePaths   = map (modulePath) (M.elems (submodules minfo))
+    _submodulePaths   = map modulePath (M.elems (submodules minfo))
     -- We reexport any submodules.
     _submoduleExports = map dotWithPrefix _submodulePaths
+    _pkgRoot = ModulePath (take 1 (modulePathToList $ modulePath minfo))
     fname             = modulePathToFilePath dirPrefix (modulePath minfo) ".ml"
     dirname           = takeDirectory fname
     code              = codeToText (moduleCode minfo)
@@ -1092,31 +1107,42 @@ writeModuleInfo verbose dirPrefix minfo = do
     _imports = if ImplicitPrelude `Set.member` moduleFlags minfo
       then ""
       else moduleImports
-    _pkgRoot = ModulePath (take 1 (modulePathToList $ modulePath minfo))
-    _deps    = importDeps _pkgRoot (Set.toList $ qualifiedImports minfo)
-    haddock  = moduleHaddock (M.lookup ToplevelSection (sectionDocs minfo))
+    _deps   = importDeps _pkgRoot (Set.toList $ qualifiedImports minfo)
+    haddock = moduleHaddock (M.lookup ToplevelSection (sectionDocs minfo))
 
   when verbose $ liftIO $ putStrLn
     ((T.unpack . dotWithPrefix . modulePath) minfo ++ " -> " ++ fname)
+
   liftIO $ createDirectoryIfMissing True dirname
   -- utf8WriteFile fname (T.unlines [pragmas, optionsGHC, haddock, cppMacros,
   --                                prelude, imports, deps, code])
-  liftIO $ utf8WriteFile fname (T.unlines [haddock, code])
+
+  unless (isCodeEmpty $ moduleCode minfo) $ liftIO $ utf8WriteFile
+    fname
+    (T.unlines [haddock, code])
 
   unless (isCodeEmpty $ hCode minfo) $ do
-    let hStubsFile = modulePathToFilePath dirPrefix (modulePath minfo) ".h"
-    liftIO $ utf8WriteFile hStubsFile (T.unlines [genHStubs minfo])
+    let hPrefix    = fromMaybe "" dirPrefix </> "include"
+        hName      = T.unpack $ moduleName $ modulePath minfo
+        hStubsFile = hPrefix </> hName <> ".h"
+    liftIO $ do
+      createDirectoryIfMissing True hPrefix
+      utf8WriteFile hStubsFile (T.unlines [genHStubs minfo])
 
   unless (isCodeEmpty $ cCode minfo) $ do
     let cStubsFile = modulePathToFilePath dirPrefix (modulePath minfo) ".c"
+        deps'      = filter (/= "Widget") (Set.toList $ cDeps minfo)
+        deps       = T.unlines $ fmap (\d -> "#include \"" <> d <> ".h\"") deps'
     addCFile cStubsFile
-    liftIO $ utf8WriteFile cStubsFile
-                           (T.unlines [cOCamlModuleImports, genCStubs minfo])
+    liftIO $ utf8WriteFile
+      cStubsFile
+      (T.unlines [cOCamlModuleImports, deps, genCStubs minfo])
 
   unless (isCodeEmpty $ gCode minfo) $ do
     let gFileModulePath = modulePath minfo
     let gModuleFile = modulePathToFilePath dirPrefix gFileModulePath "G.ml"
     liftIO $ utf8WriteFile gModuleFile (T.unlines [genGModule minfo])
+
 
 -- | Generate the .c file for the given module.
 genHStubs :: ModuleInfo -> Text
@@ -1133,12 +1159,17 @@ genGModule minfo = codeToText (gCode minfo)
 genDuneFile :: FilePath -> [Text] -> IO ()
 genDuneFile outputDir cFiles = do
   let duneFilepath = joinPath [outputDir, "dune"]
-      libName = T.toLower (T.pack (takeBaseName outputDir))
-      enumImport = if libName == "enums" then "" else "enums"
+      libName      = T.pack (takeBaseName outputDir)
+
+  let libs = T.pack <$> case libName of
+        "Gtk" -> ["GIGdk", "GIPango"]
+        _     -> []
+
   let commonPart =
         [ "(library"
-        , " (name " <> libName <> ")"
-        , " (libraries lablgtk3 " <> enumImport <> ")"
+        , " (name GI" <> libName <> ")"
+        , " (public_name GI" <> libName <> ")"
+        , " (libraries lablgtk3 " <> T.intercalate " " libs <> ")"
         ]
   utf8WriteFile duneFilepath $ case cFiles of
     [] -> T.unlines $ commonPart ++ [")"]
@@ -1156,7 +1187,8 @@ genDuneFile outputDir cFiles = do
            , " (foreign_stubs"
            , "  (language c)"
            , "  (names " <> T.intercalate " " cFiles <> ")"
-           , "  (flags (:include cflag-gtk+-3.0.sexp) (:include cflag-extraflags.sexp) -Wno-deprecated-declarations)))"
+           , "  (include_dirs %{project_root}/include)"
+           , "  (flags (:include cflag-gtk+-3.0.sexp) -I$BASE_OCAML_C -I$GDK_INCLUDES  -Wno-deprecated-declarations)))"
            ]
 
 
