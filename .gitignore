@@ -4,3 +4,4 @@
 ocaml-gi-gtk.cabal
 *~
 bindings/
+_build
