@@ -8,8 +8,9 @@ module Type
   , con
   , con0
   , typeShow
-  , typeShowPolyToAlpha
   , typeConName
+  , varsInTypeRep
+  , showTypeVar
   , io
   , ptr
   , funptr
@@ -20,6 +21,7 @@ module Type
   , obj
   , option
   , tuple
+  , typevar
   )
 where
 
@@ -42,13 +44,14 @@ data PolyDirection = Less
   deriving (Eq)
 
 -- | A type constructor. We single out some specific constructors
--- since they have special syntax in their Haskell representation.
+-- since they have special syntax in their OCaml representation.
 data TypeCon = TupleCon
              | ListCon
              | OptionCon
              | PolyCon PolyDirection
              | ObjCon
              | TextualCon Text
+             | TypeVar Text Bool
   deriving (Eq)
 
 -- | Give a valid Haskell source representation of the given
@@ -64,37 +67,24 @@ typeShow (TypeRep (PolyCon More) args) =
 typeShow (TypeRep (PolyCon Less) args) =
   "[<`" <> T.intercalate ", " (map typeShow args) <> "]"
 typeShow (TypeRep (PolyCon Exact) args) = "`" <> T.concat (map typeShow args)
-typeShow (TypeRep ObjCon args) = T.concat (map typeShow args) <> " obj"
-typeShow (TypeRep (TextualCon con) args) = T.intercalate
+typeShow (TypeRep ObjCon          args) = T.concat (map typeShow args) <> " obj"
+typeShow (TypeRep (TypeVar var True) args) =
+  "(" <> T.concat (map typeShow args) <> " as '" <> var <> ")"
+typeShow (TypeRep (TypeVar var False) args) = T.concat (map typeShow args)
+typeShow (TypeRep (TextualCon con   ) args) = T.intercalate
   " "
   (con : map (parenthesize . typeShow) args)
  where
   parenthesize :: Text -> Text
   parenthesize s = if T.any (== ' ') s then "(" <> s <> ")" else s
 
--- TODO: I don't like the repetition of the function
---       at all, investigate an alternative
-typeShowPolyToAlpha :: TypeRep -> Text
-typeShowPolyToAlpha (TypeRep TupleCon args) =
-  "(" <> T.intercalate " * " (map typeShowPolyToAlpha args) <> ")"
-typeShowPolyToAlpha (TypeRep ListCon args) =
-  "[" <> T.intercalate ", " (map typeShowPolyToAlpha args) <> "]"
-typeShowPolyToAlpha (TypeRep OptionCon args) =
-  T.concat (map typeShowPolyToAlpha args) <> " option"
-typeShowPolyToAlpha (TypeRep (PolyCon More) args) =
-  "'a.([>`" <> T.intercalate ", " (map typeShowPolyToAlpha args) <> "] as 'a)"
-typeShowPolyToAlpha (TypeRep (PolyCon Less) args) =
-  "'a.([<`" <> T.intercalate ", " (map typeShowPolyToAlpha args) <> "] as 'a)"
-typeShowPolyToAlpha (TypeRep (PolyCon Exact) args) =
-  "`" <> T.concat (map typeShowPolyToAlpha args)
-typeShowPolyToAlpha (TypeRep ObjCon args) =
-  T.concat (map typeShowPolyToAlpha args) <> " obj"
-typeShowPolyToAlpha (TypeRep (TextualCon con) args) = T.intercalate
-  " "
-  (con : map (parenthesize . typeShowPolyToAlpha) args)
+varsInTypeRep :: TypeRep -> [Text]
+varsInTypeRep = inner []
  where
-  parenthesize :: Text -> Text
-  parenthesize s = if T.any (== ' ') s then "(" <> s <> ")" else s
+  inner acc (TypeRep (TypeVar var _) []) = var : acc
+  inner acc (TypeRep (TypeVar var _) xs) = concatMap (inner (var : acc)) xs
+  inner acc (TypeRep _               []) = acc
+  inner acc (TypeRep _               xs) = concatMap (inner acc) xs
 
 -- | Return a textual representation of the type constructor for the
 -- given `TypeRep`.
@@ -106,6 +96,7 @@ typeConName (TypeRep (PolyCon More ) _) = "[`>]"
 typeConName (TypeRep (PolyCon Less ) _) = "[`<]"
 typeConName (TypeRep (PolyCon Exact) _) = "`"
 typeConName (TypeRep ObjCon          _) = "obj"
+typeConName (TypeRep (TypeVar _ _ )  _) = "typevar"
 typeConName (TypeRep (TextualCon s)  _) = s
 
 -- | Type constructor applied to the given types.
@@ -118,6 +109,15 @@ con "[<`]"   xs = TypeRep { typeCon = PolyCon Less, typeConArgs = xs }
 con "`"      xs = TypeRep { typeCon = PolyCon Exact, typeConArgs = xs }
 con "obj"    xs = TypeRep { typeCon = ObjCon, typeConArgs = xs }
 con s        xs = TypeRep { typeCon = TextualCon s, typeConArgs = xs }
+
+conOk :: TypeCon -> [TypeRep] -> TypeRep
+conOk TupleCon       xs = TypeRep { typeCon = TupleCon, typeConArgs = xs }
+conOk ListCon        xs = TypeRep { typeCon = ListCon, typeConArgs = xs }
+conOk OptionCon      xs = TypeRep { typeCon = OptionCon, typeConArgs = xs }
+conOk (PolyCon dir)  xs = TypeRep { typeCon = PolyCon dir, typeConArgs = xs }
+conOk ObjCon         xs = TypeRep { typeCon = ObjCon, typeConArgs = xs }
+conOk (TypeVar t b ) xs = TypeRep { typeCon = TypeVar t b, typeConArgs = xs }
+conOk (TextualCon t) xs = TypeRep { typeCon = TextualCon t, typeConArgs = xs }
 
 -- | A shorthand for a type constructor taking no arguments.
 con0 :: Text -> TypeRep
@@ -159,3 +159,13 @@ obj t = "obj" `con` [t]
 
 tuple :: [TypeRep] -> TypeRep
 tuple t = "(,)" `con` t
+
+typevar :: Text -> TypeRep -> TypeRep
+typevar var t = TypeVar var False `conOk` [t]
+
+showTypeVar :: TypeRep -> TypeRep
+showTypeVar (TypeRep (TypeVar var _) []) = TypeRep (TypeVar var True) []
+showTypeVar (TypeRep (TypeVar var _) xs) =
+  TypeRep (TypeVar var True) (map showTypeVar xs)
+showTypeVar t@(TypeRep _   []) = t
+showTypeVar (  TypeRep con xs) = TypeRep con (map showTypeVar xs)

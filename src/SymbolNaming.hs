@@ -159,7 +159,7 @@ submoduleLocation n (APIEnum      _) = "" /. (namespace n <> "Enums")
 submoduleLocation n (APIFlags     _) = "" /. (namespace n <> "Enums")
 submoduleLocation n (APIInterface _) = "Interfaces" /. upperName n
 submoduleLocation n (APIObject    _) = "" /. upperName n
-submoduleLocation n (APIStruct    _) = "Structs" /. upperName n
+submoduleLocation n (APIStruct    _) = "" /. upperName n
 submoduleLocation n (APIUnion     _) = "Unions" /. upperName n
 
 -- | Return an identifier for the given interface type valid in the current

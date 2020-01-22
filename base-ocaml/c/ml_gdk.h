@@ -60,7 +60,7 @@ CAMLexport value Val_GdkEvent (GdkEvent *);
 #define GdkVisual_val(val) ((GdkVisual*) val)
 #define Val_GdkVisual(visual) ((value) visual)
 
-#define GdkScreen_val(val) check_cast(GDK_SCREEN,val)
+// #define GdkScreen_val(val) check_cast(GDK_SCREEN,val)
 #define Val_GdkScreen Val_GAnyObject
 
 #define GdkDevice_val(val) ((GdkDevice*) val)
@@ -93,5 +93,6 @@ CAMLexport lookup_info *ml_table_extension_events;
 #define Val_GdkDragContext Val_GAnyObject
 CAMLexport int Flags_GdkDragAction_val (value);
 
-#define GdkMonitor_val(val) ((GdkMonitor*) val)
+// TODO: Check if GDK_MONITOR is right
+// #define GdkMonitor_val(val) ((GdkMonitor*) val)
 #define Val_GdkMonitor(monitor) ((value) monitor)

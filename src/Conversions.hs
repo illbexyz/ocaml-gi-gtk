@@ -42,8 +42,12 @@ import           Control.Applicative            ( (<$>)
                                                 , pure
                                                 , Applicative
                                                 )
-import           Control.Monad                  ( when )
-import           Data.Maybe                     ( isJust )
+import           Control.Monad                  ( when
+                                                , unless
+                                                )
+import           Data.Maybe                     ( isJust
+                                                , fromMaybe
+                                                )
 import           Data.Monoid                    ( (<>) )
 import           Data.Text                      ( Text )
 import qualified Data.Text                     as T
@@ -62,7 +66,7 @@ import           GObject
 import           SymbolNaming
 import           Util
 
-import Debug.Trace
+import           Debug.Trace
 
 -- | The free monad.
 data Free f r = Free (f (Free f r)) | Pure r
@@ -918,11 +922,10 @@ ocamlBasicType TUIntPtr  = undefined
 enumResolver :: Name -> CodeGen Text
 enumResolver n = do
   currNS <- currentNS
-  return $ if namespace n == currNS then
-    currNS <> "Enums"
-  else
-    "GI" <> namespace n <> "." <> namespace n <> "Enums"
-    
+  return $ if namespace n == currNS
+    then currNS <> "Enums"
+    else "GI" <> namespace n <> "." <> namespace n <> "Enums"
+
 -- | This translates GI types to the types used for generated OCaml code.
 haskellType :: Type -> CodeGen TypeRep
 haskellType (TBasicType bt) = return $ ocamlBasicType bt
@@ -972,11 +975,30 @@ haskellType t@(TInterface n                       ) = do
       tname     = lowerName n
   api <- getAPI t
   case api of
-    (APIFlags _) -> return $ "[]" `con` [tname `con` []]
-    APIEnum _enum -> do
+    APIFlags     _f -> return $ "[]" `con` [tname `con` []]
+    APIEnum      _e -> do
       enumRes <- enumResolver n
       return $ (enumRes <> "." <> ocamlName) `con` []
-    _ -> return $ obj $ polyMore $ ocamlName `con` [] -- TODO: not sure it is objMore
+    APIObject    _o -> handleObj ocamlName
+    APIInterface _i -> handleObj ocamlName
+    APIStruct    _s -> do
+      currModule <- currentModule
+      currNS     <- currentNS
+      let currModuleName = last $ T.splitOn "." currModule
+
+      return $ case (currModuleName == name n, currNS == namespace n) of
+        (True , _    ) -> "t" `con` []
+        (False, True ) -> (name n <> ".t") `con` []
+        (False, False) -> ("GI" <> namespace n <> "." <> name n <> ".t") `con` []
+    APIConst    _c -> return $ "const" `con` []
+    APIFunction _f -> return $ "function" `con` []
+    APICallback _c -> return $ "callback" `con` []
+    APIUnion    _u -> return $ "union" `con` []
+  where
+    handleObj ocamlName = do
+      freshVar <- getFreshTypeVariable
+      let typeVarCon = typevar freshVar
+      return $ obj $ typeVarCon $ polyMore $ ocamlName `con` []
 
 -- | Whether the callable has closure arguments (i.e. "user_data"
 -- style arguments).
@@ -1254,11 +1276,18 @@ outParamOcamlType t@(TInterface n) = do
       tname     = lowerName n
   api <- getAPI t
   case api of
-    (APIFlags _) -> return $ "[]" `con` [tname `con` []]
+    APIFlags _    -> return $ "[]" `con` [tname `con` []]
     APIEnum _enum -> do
       enumRes <- enumResolver n
       return $ (enumRes <> "." <> ocamlName) `con` []
-    _ -> return $ obj $ polyLess $ con0 ocamlName
+    APIInterface _ -> handleObj ocamlName
+    APIObject _ -> handleObj ocamlName
+    _ -> return $ con0 "error"
+  where
+    handleObj ocamlName = do
+      freshVar <- getFreshTypeVariable
+      let typeVarCon = typevar freshVar
+      return $ obj $ typeVarCon $ polyLess $ ocamlName `con` [] 
 
 cType :: Type -> ExcCodeGen Text
 cType (TBasicType t) = case t of
@@ -1278,8 +1307,7 @@ cType (TBasicType t) = case t of
   TFloat    -> return "gfloat"
   TDouble   -> return "gdouble"
   TUniChar  -> return "gchar"
-  TGType ->
-    notImplementedError "This cType (TGType) isn't implemented yet"
+  TGType    -> notImplementedError "This cType (TGType) isn't implemented yet"
   TUTF8     -> return "gchar*"
   TFileName -> return "gchar*"
   TPtr      -> return "gpointer"
@@ -1311,9 +1339,10 @@ cType (TInterface n) = return $ namespace n <> name n
 
 
 -- Type to data_conv
-ocamlDataConv :: Bool             -- ^ is nullable
-              -> Type             
-              -> ExcCodeGen Text
+ocamlDataConv
+  :: Bool             -- ^ is nullable
+  -> Type
+  -> ExcCodeGen Text
 ocamlDataConv _ (TBasicType t) = case t of
   TBoolean -> return "boolean"
   TInt     -> return "int"
@@ -1334,9 +1363,9 @@ ocamlDataConv _ (TBasicType t) = case t of
   TUniChar -> return "char"
   TGType ->
     notImplementedError "This ocamlDataConv (TGType) isn't implemented yet"
-  TUTF8 -> return "string"
+  TUTF8     -> return "string"
   TFileName -> return "string"
-  TPtr -> do
+  TPtr      -> do
     traceShowM "Warning: ocamlDataConv has defaulted a TPtr to int"
     return "int"
   TIntPtr ->
@@ -1374,42 +1403,47 @@ ocamlDataConv isNullable (TInterface n) = do
       "This ocamlDataConv (APIFunction) isn't implemented yet"
     APICallback _c -> notImplementedError
       "This ocamlDataConv (APICallback) isn't implemented yet"
-    APIEnum _enum -> enumFlagConv n
-    APIFlags _f -> enumFlagConv n
-    APIInterface _i -> notImplementedError
+    APIEnum      _enum -> enumFlagConv n
+    APIFlags     _f    -> enumFlagConv n
+    APIInterface _i    -> notImplementedError
       "This ocamlDataConv (APIInterface) isn't implemented yet"
     APIObject _o -> do
       currMod <- currentModule
-      currNs <- currentNS
-      if namespace n == currNs then do 
-        let currModuleName = last $ T.splitOn "." currMod
-        return $ if name n == currModuleName
-          then converter "t"
-          else converter (name n <> ".t")
-      else do
-        let nspace = case namespace n of
-                        "Pixbuf" -> "GdkPixbuf"  -- TODO: this is kinda hardcoded until we can generate Pixbuf
-                        nspace -> nspace
-        return $ converter (nspace <> "." <> camelCaseToSnakeCase (name n))
+      currNs  <- currentNS
+      if namespace n == currNs
+        then do
+          let currModuleName = last $ T.splitOn "." currMod
+          return $ if name n == currModuleName
+            then converter "t"
+            else converter (name n <> ".t")
+        else do
+          let nspace = case namespace n of
+                "Pixbuf" -> "GdkPixbuf"  -- TODO: this is kinda hardcoded until we can generate Pixbuf
+                nspace   -> nspace
+          return $ converter (nspace <> "." <> camelCaseToSnakeCase (name n))
 
-      where converter' False conv = "(gobject : " <> conv <> " obj data_conv)"
-            converter' True conv = "(gobject_option : " <> conv <> " obj option data_conv)"
-            converter = converter' isNullable
-    APIStruct s ->
-      case structCType s of
-        Just t ->
-          if "GdkEvent" `T.isPrefixOf` t then do
-            let eventType = last $ splitCamelCase t
-            return $ "(unsafe_pointer : GdkEvent." <> eventType <> ".t data_conv)"
-          else notImplementedError "This ocamlDataConv (APIStruct) isn't implemented yet"
-        Nothing -> notImplementedError "This ocamlDataConv (APIStruct) isn't implemented yet"
+     where
+      converter' False conv = "(gobject : " <> conv <> " obj data_conv)"
+      converter' True conv =
+        "(gobject_option : " <> conv <> " obj option data_conv)"
+      converter = converter' isNullable
+    APIStruct s -> case structCType s of
+      Just t -> if "GdkEvent" `T.isPrefixOf` t
+        then do
+          let eventType = last $ splitCamelCase t
+          return $ "(unsafe_pointer : GdkEvent." <> eventType <> ".t data_conv)"
+        else notImplementedError
+          "This ocamlDataConv (APIStruct) isn't implemented yet"
+      Nothing -> notImplementedError
+        "This ocamlDataConv (APIStruct) isn't implemented yet"
     APIUnion _u ->
       notImplementedError "This ocamlDataConv (APIUnion) isn't implemented yet"
-  where enumFlagConv n = do
-          enumRes <- enumResolver n
-          return $ enumRes <> "." <> camelCaseToSnakeCase (name n)
+ where
+  enumFlagConv n = do
+    enumRes <- enumResolver n
+    return $ enumRes <> "." <> camelCaseToSnakeCase (name n)
           -- return $ T.toTitle (namespace n) <> "Enums.Conv." <> ocamlName
-          
+
 -- Converter from value to C
 ocamlValueToC :: Type -> ExcCodeGen Text
 ocamlValueToC (TBasicType t) = case t of
@@ -1446,11 +1480,11 @@ ocamlValueToC (TBasicType t) = case t of
     notImplementedError "This ocamlValueToC (TIntPtr) isn't implemented yet"
   TUIntPtr ->
     notImplementedError "This ocamlValueToC (TUIntPtr) isn't implemented yet"
-ocamlValueToC (TError) =
+ocamlValueToC TError =
   notImplementedError "This ocamlValueToC (TError) isn't implemented yet"
-ocamlValueToC (TVariant) =
+ocamlValueToC TVariant =
   notImplementedError "This ocamlValueToC (TVariant) isn't implemented yet"
-ocamlValueToC (TParamSpec) =
+ocamlValueToC TParamSpec =
   notImplementedError "This ocamlValueToC (TParamSpec) isn't implemented yet"
 ocamlValueToC (TCArray _b _i1 _i2 _t) =
   notImplementedError "This ocamlValueToC (TCArray) isn't implemented yet"
@@ -1458,7 +1492,7 @@ ocamlValueToC (TGArray _t) =
   notImplementedError "This ocamlValueToC (TGArray) isn't implemented yet"
 ocamlValueToC (TPtrArray _t) =
   notImplementedError "This ocamlValueToC (TPtrArray) isn't implemented yet"
-ocamlValueToC (TByteArray) =
+ocamlValueToC TByteArray =
   notImplementedError "This ocamlValueToC (TByteArray) isn't implemented yet"
 ocamlValueToC (TGList _t) =
   notImplementedError "This ocamlValueToC (TGList) isn't implemented yet"
@@ -1477,25 +1511,30 @@ ocamlValueToC (TInterface n) = do
       "This ocamlValueToC (APIFunction) isn't implemented yet"
     APICallback _c -> notImplementedError
       "This ocamlValueToC (APICallback) isn't implemented yet"
-    APIEnum _enum ->
-      notImplementedError "This ocamlValueToC (Enum) isn't implemented yet"
+    APIEnum _enum -> do
+      addCDep $ namespace n <> "Enums"
+      return $ T.toTitle (camelCaseToSnakeCase $ name n) <> "_val"
     APIFlags _f ->
       notImplementedError "This ocamlValueToC (APIFlags) isn't implemented yet"
-    APIInterface _i -> return $ namespace n <> name n <> "_val"
-    APIObject     o -> do
-      currNS <- currentNS 
-      when (namespace n == currNS) $ addCDep (name n)
-      return $ objTypeName o <> "_val"
-    APIStruct _s ->
-      notImplementedError "This ocamlValueToC (APIStruct) isn't implemented yet"
+    APIInterface i -> do
+      let typ = fromMaybe (namespace n <> name n) (ifCType i)
+      return $ typ <> "_val"
+    APIObject    o  -> converter $ objTypeName o
+    APIStruct    _s -> converter $ namespace n <> name n
     APIUnion _u ->
       notImplementedError "This ocamlValueToC (APIUnion) isn't implemented yet"
-
+ where
+  converter typename = do
+    currNS <- currentNS
+    unless (namespace n `elem` ["Gio", "GdkPixbuf"]) $ addCDep (name n)
+    return $ typename <> "_val"
+  
 -- Converter from C to value
-cToOCamlValue :: Bool               -- ^ is nullable
-              -> Maybe Type
-              -> ExcCodeGen Text
-cToOCamlValue _ Nothing              = return "Unit"
+cToOCamlValue
+  :: Bool               -- ^ is nullable
+  -> Maybe Type
+  -> ExcCodeGen Text
+cToOCamlValue _     Nothing               = return "Unit"
 cToOCamlValue False (Just (TBasicType t)) = case t of
   TBoolean -> return "Val_bool"
   TInt     -> return "Val_int"
@@ -1557,14 +1596,12 @@ cToOCamlValue False (Just (TInterface n)) = do
       "This cToOCamlValue (APIFunction) isn't implemented yet"
     APICallback _c -> notImplementedError
       "This cToOCamlValue (APICallback) isn't implemented yet"
-    APIEnum _enum ->
-      notImplementedError "This cToOCamlValue (Enum) isn't implemented yet"
+    APIEnum _enum -> return $ "Val_" <> camelCaseToSnakeCase (name n)
     APIFlags _f ->
       notImplementedError "This cToOCamlValue (APIFlags) isn't implemented yet"
     APIInterface _i -> notImplementedError
       "This cToOCamlValue (APIInterface) isn't implemented yet"
-    APIObject o ->
-      return $ "Val_" <> objTypeName o
+    APIObject o -> return $ "Val_" <> objTypeName o
     APIStruct _s ->
       notImplementedError "This cToOCamlValue (APIStruct) isn't implemented yet"
     APIUnion _u ->
@@ -1577,7 +1614,9 @@ cToOCamlValue True (Just (TBasicType t)) = case t of
     notImplementedError "This cToOCamlValue (TIntPtr) isn't implemented yet"
   TUIntPtr ->
     notImplementedError "This cToOCamlValue (TUIntPtr) isn't implemented yet"
-  _ -> notImplementedError "This cToOCamlValue (BasicType) isn't implemented because this type should not be nullable"
+  _ ->
+    notImplementedError
+      "This cToOCamlValue (BasicType) isn't implemented because this type should not be nullable"
 cToOCamlValue True (Just (TError)) =
   notImplementedError "This cToOCamlValue (TError) isn't implemented yet"
 cToOCamlValue True (Just (TVariant)) =
@@ -1617,12 +1656,12 @@ cToOCamlValue True (Just (TInterface n)) = do
       "This cToOCamlValue (APIInterface) isn't implemented yet"
     APIObject o -> do
       currMod <- currentModule
-      unique <- getFreshTypeVariable
+      unique  <- getFreshTypeVariable
       let currModuleName = last $ T.splitOn "." currMod
           macroName = objTypeName o <> "_" <> currModuleName <> "_" <> unique
-      cline $ "Make_Val_option2(" <> objTypeName o <> ", " <> macroName<> ")"
+      cline $ "Make_Val_option2(" <> objTypeName o <> ", " <> macroName <> ")"
       return $ "Val_option_" <> macroName
-    APIStruct _s ->
-      notImplementedError "This cToOCamlValue (APIStruct) isn't implemented yet"
+    APIStruct _s -> notImplementedError
+      "This cToOCamlValue (APIStruct) isn't implemented yet"
     APIUnion _u ->
       notImplementedError "This cToOCamlValue (APIUnion) isn't implemented yet"

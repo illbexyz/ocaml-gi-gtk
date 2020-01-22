@@ -588,8 +588,8 @@ getFreshTypeVariable = do
   let (tyvar, next) = case available of
         SingleCharTyvar char -> case char of
           'z' -> ("z", IndexedTyvar "a" 0)
-          -- 'm' is reserved for the MonadIO constraint in signatures
-          'm' -> ("n", SingleCharTyvar 'o')
+          -- 'a' is reserved for the 'a obj class
+          'a' -> ("b", SingleCharTyvar 'c')
           c   -> (T.singleton c, SingleCharTyvar (toEnum $ fromEnum c + 1))
         IndexedTyvar root index ->
           (root <> tshow index, IndexedTyvar root (index + 1))
@@ -1069,8 +1069,6 @@ cOCamlModuleImports = T.unlines
   , "#include \"ml_pango.h\""
   , "#include \"ml_gtk.h\""
   , "#include \"ml_gtktext.h\""
-  , "#include \"gdk_tags.h\""
-  , "#include \"pango_tags.h\""
   ]
 
 -- | Like `dotModulePath`, but add a "GI." prefix.

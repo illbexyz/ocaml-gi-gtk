@@ -13,6 +13,7 @@ import           Data.Monoid                    ( (<>) )
 import           Data.Char                      ( ord )
 import           Data.Bits
 import qualified Data.Text                     as T
+import           Data.List                      ( sortOn )
 
 import           Foreign.C                      ( CUInt )
 import           Foreign.Storable               ( sizeOf )
@@ -60,11 +61,17 @@ genEnumOrFlags _docSection n@(Name ns _name) e enumOrFlag = do
       map (escapeOCamlReserved . T.toUpper . enumMemberName) (enumMembers e)
     variants    = map ("`" <>) memberNames
     cIds        = map enumMemberCId (enumMembers e)
-    namesAndIds = zip memberNames cIds
     mlTableName = mlGiPrefix n ("table_" <> enumName)
     ocamlTbl    = enumName <> "_tbl"
     cGetterFn =
       mlGiPrefix n $ T.toLower (namespace n) <> "_get_" <> enumName <> "_table"
+    -- The key value pairs have to be sorted by the hash of the name
+    -- because of the implementation of the map lookup
+    namesAndIds = discardHash $ sortByHash $ addHash <$> zip memberNames cIds
+     where
+      addHash (n, id) = (hashVariant $ T.unpack n, (n, id))
+      sortByHash  = sortOn fst
+      discardHash = map snd
 
   forM_ memberNames $ \memberName -> do
     let hashValue = T.pack $ show $ hashVariant $ T.unpack memberName
@@ -74,6 +81,22 @@ genEnumOrFlags _docSection n@(Name ns _name) e enumOrFlag = do
       <> " ((value)("
       <> hashValue
       <> "*2+1))"
+
+  hline ""
+  hline $ "extern const lookup_info " <> mlTableName <> "[];"
+  hline
+    $  "#define Val_"
+    <> enumName
+    <> "(data) ml_lookup_from_c ("
+    <> mlTableName
+    <> ", data)"
+  hline
+    $  "#define "
+    <> T.toTitle enumName
+    <> "_val(key) ml_lookup_to_c ("
+    <> mlTableName
+    <> ", key)"
+  hline ""
 
   line $ "type " <> enumName <> " = [ " <> T.intercalate " | " variants <> " ]"
   blank

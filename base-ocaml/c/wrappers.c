@@ -153,9 +153,9 @@ CAMLexport int ml_lookup_to_c (const lookup_info table[], value key)
 {
     int first = 1, last = table[0].data, current;
     while (first < last) {
-	current = (first+last)/2;
-	if (table[current].key >= key) last = current;
-	else first = current + 1;
+      current = (first+last)/2;
+      if (table[current].key >= key) last = current;
+      else first = current + 1;
     }
     if (table[first].key == key) return table[first].data;
     invalid_argument ("ml_lookup_to_c");

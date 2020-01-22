@@ -1,0 +1,6 @@
+#thread;;
+let locale = GMain.init ();;
+let thread = GtkThread.start();;
+let w = GWindow.window ~show:true ();;
+let entry = GIGtk.EntryG.entry ~packing: w#add ();;
+entry#set_icon_from_icon_name `SECONDARY None;;

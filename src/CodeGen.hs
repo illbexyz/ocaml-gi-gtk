@@ -69,10 +69,8 @@ import           SymbolNaming                   ( upperName
                                                 , hyphensToUnderscores
                                                 )
 import           Type
+import           Debug.Trace
 
--- | Standard derived instances for newtypes wrapping @ManagedPtr@s.
-newtypeDeriving :: CodeGen ()
-newtypeDeriving = indent $ line $ "deriving (Eq)"
 
 genFunction :: Name -> Function -> CodeGen ()
 genFunction n (Function symbol fnMovedTo callable) =
@@ -116,56 +114,58 @@ genBoxedObject n typeInit = do
 genStruct :: Name -> Struct -> CodeGen ()
 genStruct n s = unless (ignoreStruct n s) $ do
   let name' = upperName n
+  -- writeHaddock DocBeforeSymbol "Memory-managed wrapper type."
 
-  writeHaddock DocBeforeSymbol "Memory-managed wrapper type."
-  line
-    $  "newtype "
-    <> name'
-    <> " = "
-    <> name'
-    <> " (ManagedPtr "
-    <> name'
-    <> ")"
+  -- addSectionDocumentation ToplevelSection (structDocumentation s)
 
-  newtypeDeriving
+  line "type t"
 
-  addSectionDocumentation ToplevelSection (structDocumentation s)
+  hline
+    $  "#define "
+    <> (namespace n <> name n)
+    <> "_val(val) (("
+    <> (namespace n <> name n)
+    <> "*) MLPointer_val(val))"
 
   if structIsBoxed s
-    then genBoxedObject n (fromJust $ structTypeInit s)
-    else genWrappedPtr n (structAllocationInfo s) (structSize s)
+    then traceShowM $ "Struct " <> show n <> " is boxed"
+    else traceShowM $ "Struct " <> show n <> " not boxed"
 
-  exportDecl (name' <> "(..)")
+  -- if structIsBoxed s
+  --   then genBoxedObject n (fromJust $ structTypeInit s)
+  --   else genWrappedPtr n (structAllocationInfo s) (structSize s)
 
-  -- Generate a builder for a structure filled with zeroes.
-  genZeroStruct n s
+  -- exportDecl (name' <> "(..)")
 
-  noName name'
+  -- -- Generate a builder for a structure filled with zeroes.
+  -- genZeroStruct n s
 
-  -- Generate code for fields.
-  genStructOrUnionFields n (structFields s)
+  -- noName name'
 
-  -- Methods
-  _methods <- forM (structMethods s) $ \f -> do
-    let mn = methodName f
-    isFunction <- symbolFromFunction (methodSymbol f)
-    if not isFunction
-      then handleCGExc
-        (\e ->
-          line
-              (  "(* Could not generate method "
-              <> name'
-              <> "::"
-              <> name mn
-              <> " *)\n"
-              <> "(* Error was : "
-              <> describeCGError e
-              <> " *)"
-              )
-            >> return Nothing
-        )
-        (genMethod n f >> return (Just (n, f)))
-      else return Nothing
+  -- -- Generate code for fields.
+  -- genStructOrUnionFields n (structFields s)
+
+  -- -- Methods
+  -- _methods <- forM (structMethods s) $ \f -> do
+  --   let mn = methodName f
+  --   isFunction <- symbolFromFunction (methodSymbol f)
+  --   if not isFunction
+  --     then handleCGExc
+  --       (\e ->
+  --         line
+  --             (  "(* Could not generate method "
+  --             <> name'
+  --             <> "::"
+  --             <> name mn
+  --             <> " *)\n"
+  --             <> "(* Error was : "
+  --             <> describeCGError e
+  --             <> " *)"
+  --             )
+  --           >> return Nothing
+  --       )
+  --       (genMethod n f >> return (Just (n, f)))
+  --     else return Nothing
 
   return ()
 
@@ -175,16 +175,6 @@ genUnion n u = do
   let name' = upperName n
 
   writeHaddock DocBeforeSymbol "Memory-managed wrapper type."
-  line
-    $  "newtype "
-    <> name'
-    <> " = "
-    <> name'
-    <> " (ManagedPtr "
-    <> name'
-    <> ")"
-
-  newtypeDeriving
 
   addSectionDocumentation ToplevelSection (unionDocumentation u)
 
@@ -299,12 +289,17 @@ genMethod cn Method { methodName = mn, methodSymbol = sym, methodCallable = c, m
           <> name mn
           <> " obj"
       _ -> do
-        let typeReps' = tail typeReps
-            typesStr  = map typeShowPolyToAlpha typeReps'
+        let
+          typeReps'  = tail typeReps
+          typeReps'' = map showTypeVar typeReps'
+          typesStr   = map typeShow typeReps''
+          typeVars =
+            map (\t -> "'" <> t <> ".") $ concatMap varsInTypeRep typeReps''
         gline
           $  "  method "
           <> name mn
           <> " : "
+          <> T.concat typeVars
           <> T.intercalate " -> " typesStr
           <> " = "
           <> name cn
@@ -578,7 +573,6 @@ genInterface n iface = do
   writeHaddock DocBeforeSymbol ("Memory-managed wrapper type.")
   deprecatedPragma name' $ ifDeprecated iface
 
-  newtypeDeriving
   exportDecl (name' <> "(..)")
 
   addSectionDocumentation ToplevelSection (ifDocumentation iface)
@@ -681,7 +675,7 @@ genAPI _n (APIFunction  _f) = return ()
 genAPI n  (APIEnum      e ) = genEnum n e
 genAPI n  (APIFlags     f ) = genFlags n f
 genAPI _n (APICallback  _c) = return ()
-genAPI _n (APIStruct    _s) = return ()
+genAPI n  (APIStruct    s ) = genStruct n s
 genAPI _n (APIUnion     _u) = return ()
 genAPI n  (APIObject    o ) = genObject n o
 genAPI _n (APIInterface _i) = return ()
