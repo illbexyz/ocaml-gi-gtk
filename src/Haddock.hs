@@ -23,6 +23,7 @@ import           Data.GI.GIR.Arg                ( Arg(..) )
 import           Data.GI.GIR.Callable           ( Callable(..) )
 import           Data.GI.GIR.Deprecation        ( DeprecationInfo(..) )
 import           Data.GI.GIR.Documentation      ( Documentation(..) )
+import           Data.GI.CodeGen.Signal         ( signalHaskellName )
 
 import           Code                           ( CodeGen
                                                 , config
@@ -45,9 +46,7 @@ import           GtkDoc                         ( GtkDoc(..)
                                                 , parseGtkDoc
                                                 )
 import           Overrides                      ( onlineDocsMap )
-import           SymbolNaming                   ( lowerSymbol
-                                                , signalHaskellName
-                                                )
+import           SymbolNaming                   ( lowerSymbol )
 import           Util                           ( mapNth )
 
 -- | Where is the documentation located with respect to the relevant

@@ -15,6 +15,7 @@ import           Data.List                      ( nub )
 import           Data.Maybe                     ( fromJust
                                                 , fromMaybe
                                                 , mapMaybe
+                                                , isNothing
                                                 )
 import           Data.Monoid                    ( (<>) )
 import qualified Data.Map                      as M
@@ -43,8 +44,7 @@ import           Haddock                        ( deprecatedPragma
 import           Properties                     ( genInterfaceProperties
                                                 , genObjectProperties
                                                 )
-import           Struct                         ( genStructOrUnionFields
-                                                , extractCallbacksInStruct
+import           Struct                         ( extractCallbacksInStruct
                                                 , fixAPIStructs
                                                 , ignoreStruct
                                                 , genZeroStruct
@@ -58,11 +58,8 @@ import           Callable                       ( genCCallableWrapper
 import           Inheritance                    ( instanceTree )
 import           Signal                         ( genSignal
                                                 , genGSignal
-                                                , genCallback
                                                 )
 import           SymbolNaming                   ( upperName
-                                                , classConstraint
-                                                , noName
                                                 , submoduleLocation
                                                 , lowerName
                                                 , camelCaseToSnakeCase
@@ -187,10 +184,8 @@ genUnion n u = do
   -- Generate a builder for a structure filled with zeroes.
   genZeroUnion n u
 
-  noName name'
-
   -- Generate code for fields.
-  genStructOrUnionFields n (unionFields u)
+  -- genStructOrUnionFields n (unionFields u)
 
   -- Methods
   _methods <- forM (unionMethods u) $ \f -> do
@@ -577,8 +572,6 @@ genInterface n iface = do
 
   addSectionDocumentation ToplevelSection (ifDocumentation iface)
 
-  noName name'
-
   forM_ (ifSignals iface) $ \s -> handleCGExc
     ( commentLine
     . (T.concat
@@ -606,8 +599,6 @@ genInterface n iface = do
 
       genInterfaceProperties n iface
     else group $ do
-      cls <- classConstraint n
-      exportDecl cls
       writeHaddock DocBeforeSymbol
                    ("Type class for types which implement `" <> name' <> "`.")
 
@@ -649,13 +640,10 @@ genInterface n iface = do
 --
 -- It may be more expedient to keep a map of symbol -> function.
 symbolFromFunction :: Text -> CodeGen Bool
-symbolFromFunction sym
-  = do
-    apis <- getAPIs
-    return $ any (hasSymbol sym . snd) $ M.toList apis
+symbolFromFunction sym = any (hasSymbol sym . snd) . M.toList <$> getAPIs
  where
-  hasSymbol sym1 (APIFunction (Function { fnSymbol = sym2, fnMovedTo = movedTo }))
-    = sym1 == sym2 && movedTo == Nothing
+  hasSymbol sym1 (APIFunction Function { fnSymbol = sym2, fnMovedTo = movedTo })
+    = sym1 == sym2 && isNothing movedTo
   hasSymbol _ _ = False
 
 -- genAPI :: Name -> API -> CodeGen ()

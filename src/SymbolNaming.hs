@@ -3,28 +3,16 @@ module SymbolNaming
   ( lowerName
   , lowerSymbol
   , upperName
-  , noName
   , escapedArgName
   , escapeOCamlReserved
-  , classConstraint
-  , typeConstraint
   , splitCamelCase
   , hyphensToCamelCase
   , underscoresToCamelCase
   , underscoresToHyphens
   , hyphensToUnderscores
   , camelCaseToSnakeCase
-  , callbackCType
-  , callbackHTypeWithClosures
-  , callbackDropClosures
-  , callbackDynamicWrapper
-  , callbackWrapperAllocator
-  , callbackHaskellToForeign
-  , callbackHaskellToForeignWithClosures
-  , callbackClosureGenerator
-  , signalHaskellName
   , signalOCamlName
-  , signalInfoName
+  , signalHaskellName
   , submoduleLocation
   , qualifiedAPI
   , qualifiedSymbol
@@ -56,60 +44,6 @@ import           Util                           ( lcFirst
                                                 , modifyQualified
                                                 )
 
--- | Return a qualified form of the constraint for the given name
--- (which should correspond to a valid `TInterface`).
-classConstraint :: Name -> CodeGen Text
-classConstraint n@(Name _ s) = qualifiedSymbol ("Is" <> s) n
-
--- | Same as `classConstraint`, but applicable directly to a type. The
--- type should be a `TInterface`, otherwise an error will be raised.
-typeConstraint :: Type -> CodeGen Text
-typeConstraint (TInterface n) = classConstraint n
-typeConstraint t =
-  error $ "Class constraint for non-interface type: " <> show t
-
--- | Foreign type associated with a callback type. It can be passed in
--- qualified.
-callbackCType :: Text -> Text
-callbackCType = modifyQualified ("C_" <>)
-
--- | Haskell type exposing the closure arguments, which are generally
--- elided.
-callbackHTypeWithClosures :: Text -> Text
-callbackHTypeWithClosures = modifyQualified (<> "_WithClosures")
-
--- | The name of the dynamic wrapper for the given callback type. It
--- can be passed in qualified.
-callbackDynamicWrapper :: Text -> Text
-callbackDynamicWrapper = modifyQualified ("dynamic_" <>)
-
--- | The name of the Haskell to foreign wrapper for the given callback
--- type. It can be passed in qualified.
-callbackHaskellToForeign :: Text -> Text
-callbackHaskellToForeign = modifyQualified ("wrap_" <>)
-
--- | The name of the Haskell to foreign wrapper for the given callback
--- type, keeping the closure arguments (we usually elide them). The
--- callback type can be passed in qualified.
-callbackHaskellToForeignWithClosures :: Text -> Text
-callbackHaskellToForeignWithClosures = modifyQualified ("with_closures_" <>)
-
--- | The name of a function which takes a callback without closure
--- arguments, and generates a function which does accep the closures,
--- but simply ignores them.
-callbackDropClosures :: Text -> Text
-callbackDropClosures = modifyQualified ("drop_closures_" <>)
-
--- | The name for the foreign wrapper allocator (@foreign import
--- "wrapper" ...@) for the given callback type. It can be passed in
--- qualified.
-callbackWrapperAllocator :: Text -> Text
-callbackWrapperAllocator = modifyQualified ("mk_" <>)
-
--- | The name for the closure generator for the given callback
--- type. It can be passed in qualified.
-callbackClosureGenerator :: Text -> Text
-callbackClosureGenerator = modifyQualified ("genClosure_" <>)
 
 -- | Move leading underscores to the end.
 --
@@ -175,17 +109,6 @@ qualifiedSymbol s n@(Name ns _) = do
   api <- getAPI (TInterface n)
   qualified (toModulePath (ucFirst ns) <> submoduleLocation n api)
             (Name ns (camelCaseToSnakeCase s))
-
--- | Save a bit of typing for optional arguments in the case that we
--- want to pass Nothing.
-noName :: Text -> CodeGen ()
-noName name' = group $ do
-  -- We should use `writeHaddock` here, but it would give rise to a
-  -- cyclic import.
-  line $ "-- | A convenience alias for `Nothing` :: `Maybe` `" <> name' <> "`."
-  line $ "no" <> name' <> " :: Maybe " <> name'
-  line $ "no" <> name' <> " = Nothing"
-  exportDecl ("no" <> name')
 
 underscoresToHyphens :: Text -> Text
 underscoresToHyphens = T.replace "_" "-"
@@ -284,15 +207,6 @@ escapeReserved "default"      = "default_"
 escapeReserved s | "set_" `T.isPrefixOf` s = s <> "_"
                  | "get_" `T.isPrefixOf` s = s <> "_"
                  | otherwise               = s
-
--- | Qualified name for the "(sigName, info)" tag for a given signal.
-signalInfoName :: Name -> Signal -> CodeGen Text
-signalInfoName n signal = do
-  let infoName =
-        upperName n
-          <> (ucFirst . signalHaskellName . sigName) signal
-          <> "SignalInfo"
-  qualifiedSymbol infoName n
 
 -- | Return the name for the signal in Haskell CamelCase conventions.
 signalHaskellName :: Text -> Text

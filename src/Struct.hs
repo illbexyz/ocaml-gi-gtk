@@ -1,7 +1,6 @@
 -- | Marshalling of structs and unions.
 module Struct
-  ( genStructOrUnionFields
-  , genZeroStruct
+  ( genZeroStruct
   , genZeroUnion
   , extractCallbacksInStruct
   , fixAPIStructs
@@ -35,12 +34,12 @@ import           SymbolNaming                   ( upperName
                                                 , lowerName
                                                 , underscoresToCamelCase
                                                 , qualifiedSymbol
-                                                , callbackHaskellToForeign
-                                                , callbackWrapperAllocator
                                                 )
 
 import           Type
 import           Util
+
+-- TODO: ignore private structs
 
 -- | Whether (not) to generate bindings for the given struct.
 ignoreStruct :: Name -> Struct -> Bool
@@ -140,61 +139,6 @@ getterDoc n field = T.unlines
   , "@"
   ]
 
--- Notice that when reading the field we return a copy of any embedded
--- structs, so modifications of the returned struct will not affect
--- the original struct. This is on purpose, in order to increase
--- safety (otherwise the garbage collector may decide to free the
--- parent structure while we are modifying the embedded one, and havoc
--- will ensue).
--- | Extract a field from a struct.
-buildFieldReader :: Name -> Field -> ExcCodeGen ()
-buildFieldReader n field = group $ do
-  let name'  = upperName n
-      getter = fieldGetter n field
-
-  embedded    <- isEmbedded field
-  nullConvert <- if embedded
-    then return Nothing
-    else maybeNullConvert (fieldType field)
-  hType <- typeShow <$> if isJust nullConvert
-    then maybeT <$> isoHaskellType (fieldType field)
-    else isoHaskellType (fieldType field)
-  fType <- typeShow <$> foreignType (fieldType field)
-
-  writeHaddock DocBeforeSymbol (getterDoc n field)
-
-  line
-    $  getter
-    <> " :: MonadIO m => "
-    <> name'
-    <> " -> m "
-    <> if T.any (== ' ') hType then parenthesize hType else hType
-  line $ getter <> " s = liftIO $ withManagedPtr s $ \\ptr -> do"
-  indent $ do
-    let peekedType = if T.any (== ' ') fType then parenthesize fType else fType
-    if embedded
-      then
-        line
-        $  "let val = ptr `plusPtr` "
-        <> tshow (fieldOffset field)
-        <> " :: "
-        <> peekedType
-      else
-        line
-        $  "val <- peek (ptr `plusPtr` "
-        <> tshow (fieldOffset field)
-        <> ") :: IO "
-        <> peekedType
-    result <- case nullConvert of
-      Nothing -> convert "val" $ fToH (fieldType field) TransferNothing
-      Just nullConverter -> do
-        line $ "result <- " <> nullConverter <> " val $ \\val' -> do"
-        indent $ do
-          val' <- convert "val'" $ fToH (fieldType field) TransferNothing
-          line $ "return " <> val'
-        return "result"
-    line $ "return " <> result
-
 -- | Name for the setter function
 fieldSetter :: Name -> Field -> Text
 fieldSetter name' field = "set" <> upperName name' <> fName field
@@ -214,78 +158,6 @@ setterDoc n field = T.unlines
   , "@"
   ]
 
--- | Write a field into a struct. Note that, since we cannot know for
--- sure who will be deallocating the fields in the struct, we leave
--- any conversions that involve pointers to the caller. What this
--- means in practice is that scalar fields will get marshalled to/from
--- Haskell, while anything that involves pointers will be returned in
--- the C representation.
-buildFieldWriter :: Name -> Field -> ExcCodeGen ()
-buildFieldWriter n field = group $ do
-  let name'  = upperName n
-  let setter = fieldSetter n field
-
-  isPtr <- typeIsPtr (fieldType field)
-
-  fType <- typeShow <$> foreignType (fieldType field)
-  hType <- if isPtr
-    then return fType
-    else typeShow <$> haskellType (fieldType field)
-
-  writeHaddock DocBeforeSymbol (setterDoc n field)
-
-  line $ setter <> " :: MonadIO m => " <> name' <> " -> " <> hType <> " -> m ()"
-  line $ setter <> " s val = liftIO $ withManagedPtr s $ \\ptr -> do"
-  indent $ do
-    converted <- if isPtr
-      then return "val"
-      else convert "val" $ hToF (fieldType field) TransferNothing
-    line
-      $  "poke (ptr `plusPtr` "
-      <> tshow (fieldOffset field)
-      <> ") ("
-      <> converted
-      <> " :: "
-      <> fType
-      <> ")"
-
--- | Name for the clear function
-fieldClear :: Name -> Field -> Text
-fieldClear name' field = "clear" <> upperName name' <> fName field
-
--- | Documentation for the @clear@ method.
-clearDoc :: Field -> Text
-clearDoc field = T.unlines
-  [ "Set the value of the “@" <> fieldName field <> "@” field to `Nothing`."
-  , "When <https://github.com/haskell-gi/haskell-gi/wiki/Overloading overloading> is enabled, this is equivalent to"
-  , ""
-  , "@"
-  , "'Data.GI.Base.Attributes.clear'" <> " #" <> labelName field
-  , "@"
-  ]
-
--- | Write a @NULL@ into a field of a struct of type `Ptr`.
-buildFieldClear :: Name -> Field -> Text -> ExcCodeGen ()
-buildFieldClear n field nullPtr = group $ do
-  let name' = upperName n
-  let clear = fieldClear n field
-
-  fType <- typeShow <$> foreignType (fieldType field)
-
-  writeHaddock DocBeforeSymbol (clearDoc field)
-
-  line $ clear <> " :: MonadIO m => " <> name' <> " -> m ()"
-  line $ clear <> " s = liftIO $ withManagedPtr s $ \\ptr -> do"
-  indent
-    $  line
-    $  "poke (ptr `plusPtr` "
-    <> tshow (fieldOffset field)
-    <> ") ("
-    <> nullPtr
-    <> " :: "
-    <> fType
-    <> ")"
-
 -- | Return whether the given type corresponds to a callback that does
 -- not throw exceptions. See [Note: Callables that throw] for the
 -- reason why we do not try to wrap callbacks that throw exceptions.
@@ -298,43 +170,6 @@ isRegularCallback t@(TInterface _) = do
     _ -> return False
 isRegularCallback _ = return False
 
--- | The types accepted by the allocating set function
--- 'Data.GI.Base.Attributes.(:&=)'.
-fieldTransferTypeConstraint :: Type -> CodeGen Text
-fieldTransferTypeConstraint t = do
-  isPtr             <- typeIsPtr t
-  isRegularCallback <- isRegularCallback t
-  inType            <- if isPtr && not isRegularCallback
-    then typeShow <$> foreignType t
-    else typeShow <$> isoHaskellType t
-  return $ "(~)" <> if T.any (== ' ') inType
-    then parenthesize inType
-    else inType
-
--- | The type generated by 'Data.GI.Base.attrTransfer' for this
--- field. This type should satisfy the
--- 'Data.GI.Base.Attributes.AttrSetTypeConstraint' for the type.
-fieldTransferType :: Type -> CodeGen Text
-fieldTransferType t = do
-  isPtr  <- typeIsPtr t
-  inType <- if isPtr
-    then typeShow <$> foreignType t
-    else typeShow <$> haskellType t
-  return $ if T.any (== ' ') inType then parenthesize inType else inType
-
--- | Generate the field transfer function, which marshals Haskell
--- values to types that we can set, even if we need to allocate memory.
-genFieldTransfer :: Text -> Type -> CodeGen ()
-genFieldTransfer var t@(TInterface tn@(Name _ n)) = do
-  isRegularCallback <- isRegularCallback t
-  if isRegularCallback
-    then do
-      wrapper <- qualifiedSymbol (callbackHaskellToForeign n) tn
-      maker   <- qualifiedSymbol (callbackWrapperAllocator n) tn
-      line $ maker <> " " <> parenthesize (wrapper <> " Nothing " <> var)
-    else line $ "return " <> var
-genFieldTransfer var _ = line $ "return " <> var
-
 -- | Haskell name for the field
 fName :: Field -> Text
 fName = underscoresToCamelCase . fieldName
@@ -342,142 +177,6 @@ fName = underscoresToCamelCase . fieldName
 -- | Label associated to the field.
 labelName :: Field -> Text
 labelName = lcFirst . fName
-
--- | Support for modifying fields as attributes. Returns a tuple with
--- the name of the overloaded label to be used for the field, and the
--- associated info type.
-genAttrInfo :: Name -> Field -> ExcCodeGen Text
-genAttrInfo owner field = do
-  it <- infoType owner field
-  let on = upperName owner
-
-  isPtr      <- typeIsPtr (fieldType field)
-
-  embedded   <- isEmbedded field
-  isNullable <- typeIsNullable (fieldType field)
-  outType    <- typeShow <$> if not embedded && isNullable
-    then maybeT <$> isoHaskellType (fieldType field)
-    else isoHaskellType (fieldType field)
-  inType <- if isPtr
-    then typeShow <$> foreignType (fieldType field)
-    else typeShow <$> haskellType (fieldType field)
-  transferType       <- fieldTransferType (fieldType field)
-  transferConstraint <- fieldTransferTypeConstraint (fieldType field)
-
-  line $ "data " <> it
-  line $ "instance AttrInfo " <> it <> " where"
-  indent $ do
-    line $ "type AttrBaseTypeConstraint " <> it <> " = (~) " <> on
-    line $ "type AttrAllowedOps " <> it <> if embedded
-      then " = '[ 'AttrGet]"
-      else if isPtr
-        then " = '[ 'AttrSet, 'AttrGet, 'AttrClear]"
-        else " = '[ 'AttrSet, 'AttrGet]"
-    line
-      $  "type AttrSetTypeConstraint "
-      <> it
-      <> " = (~) "
-      <> if T.any (== ' ') inType then parenthesize inType else inType
-    line
-      $  "type AttrTransferTypeConstraint "
-      <> it
-      <> " = "
-      <> transferConstraint
-    line $ "type AttrTransferType " <> it <> " = " <> transferType
-    line $ "type AttrGetType " <> it <> " = " <> outType
-    line $ "type AttrLabel " <> it <> " = \"" <> fieldName field <> "\""
-    line $ "type AttrOrigin " <> it <> " = " <> on
-    line $ "attrGet = " <> fieldGetter owner field
-    line $ "attrSet = " <> if not embedded
-      then fieldSetter owner field
-      else "undefined"
-    line $ "attrConstruct = undefined"
-    line $ "attrClear = " <> if not embedded && isPtr
-      then fieldClear owner field
-      else "undefined"
-    if not embedded
-      then do
-        line $ "attrTransfer _ v = do"
-        indent $ genFieldTransfer "v" (fieldType field)
-      else line $ "attrTransfer = undefined"
-
-  blank
-
-  group $ do
-    let labelProxy = lcFirst on <> "_" <> lcFirst (fName field)
-    line
-      $  labelProxy
-      <> " :: AttrLabelProxy \""
-      <> lcFirst (fName field)
-      <> "\""
-    line $ labelProxy <> " = AttrLabelProxy"
-
-    export (NamedSubsection PropertySection $ lcFirst $ fName field) labelProxy
-
-  return $ "'(\"" <> labelName field <> "\", " <> it <> ")"
-
--- | Build code for a single field.
-buildFieldAttributes :: Name -> Field -> ExcCodeGen (Maybe Text)
-buildFieldAttributes n field
-  | not (fieldVisible field) = return Nothing
-  | privateType (fieldType field) = return Nothing
-  | otherwise = group $ do
-
-     -- We don't generate bindings for private and class structs, so
-     -- do not generate bindings for fields pointing to class structs
-     -- either.
-    ignored <- isIgnoredStructType (fieldType field)
-    when ignored
-      $ notImplementedError "Field type is an unsupported struct type"
-
-    nullPtr  <- nullPtrForType (fieldType field)
-
-    embedded <- isEmbedded field
-
-    addSectionDocumentation docSection (fieldDocumentation field)
-
-    buildFieldReader n field
-    export docSection (fieldGetter n field)
-
-    when (not embedded) $ do
-      buildFieldWriter n field
-      export docSection (fieldSetter n field)
-
-      case nullPtr of
-        Just null -> do
-          buildFieldClear n field null
-          export docSection (fieldClear n field)
-        Nothing -> return ()
-
-    Just <$> cppIf CPPOverloading (genAttrInfo n field)
-
- where
-  privateType :: Type -> Bool
-  privateType (TInterface n) = "Private" `T.isSuffixOf` name n
-  privateType _              = False
-
-  docSection = NamedSubsection PropertySection $ lcFirst $ fName field
-
--- | Generate code for the given list of fields.
-genStructOrUnionFields :: Name -> [Field] -> CodeGen ()
-genStructOrUnionFields n fields = do
-  let name' = upperName n
-
-  _attrs <- forM fields $ \field -> handleCGExc
-    (\e ->
-      line
-          (  "-- XXX Skipped attribute for \""
-          <> name'
-          <> ":"
-          <> fieldName field
-          <> "\" :: "
-          <> describeCGError e
-          )
-        >> return Nothing
-    )
-    (buildFieldAttributes n field)
-
-  return ()
 
 -- | Generate a constructor for a zero-filled struct/union of the given
 -- type, using the boxed (or GLib, for unboxed types) allocator.
