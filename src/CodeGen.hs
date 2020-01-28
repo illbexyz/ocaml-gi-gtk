@@ -34,6 +34,7 @@ import           Fixups                         ( dropMovedItems
                                                 , checkClosureDestructors
                                                 )
 import           GObject
+import           Method                         ( genMethod )
 import           Haddock                        ( deprecatedPragma
                                                 , addSectionDocumentation
                                                 , writeHaddock
@@ -124,9 +125,9 @@ genStruct n s = unless (ignoreStruct n s) $ do
     <> (namespace n <> name n)
     <> "*) MLPointer_val(val))"
 
-  if structIsBoxed s
-    then traceShowM $ "Struct " <> show n <> " is boxed"
-    else traceShowM $ "Struct " <> show n <> " not boxed"
+  -- if structIsBoxed s
+  --   then traceShowM $ "Struct " <> show n <> " is boxed"
+  --   else traceShowM $ "Struct " <> show n <> " not boxed"
 
   -- if structIsBoxed s
   --   then genBoxedObject n (fromJust $ structTypeInit s)
@@ -211,99 +212,6 @@ genUnion n u = do
 
   return ()
 
--- | When parsing the GIR file we add the implicit object argument to
--- methods of an object.  Since we are prepending an argument we need
--- to adjust the offset of the length arguments of CArrays, and
--- closure and destroyer offsets.
-fixMethodArgs :: Callable -> Callable
-fixMethodArgs c = c { args = args'', returnType = returnType' }
- where
-  returnType' = maybe Nothing (Just . fixCArrayLength) (returnType c)
-  args'       = map (fixDestroyers . fixClosures . fixLengthArg) (args c)
-  args''      = fixInstance (head args') : tail args'
-
-  fixLengthArg :: Arg -> Arg
-  fixLengthArg arg = arg { argType = fixCArrayLength (argType arg) }
-
-  fixCArrayLength :: Type -> Type
-  fixCArrayLength (TCArray zt fixed length t) = if length > -1
-    then TCArray zt fixed (length + 1) t
-    else TCArray zt fixed length t
-
-  fixCArrayLength t = t
-
-  fixDestroyers :: Arg -> Arg
-  fixDestroyers arg =
-    let destroy = argDestroy arg
-    in  if destroy > -1 then arg { argDestroy = destroy + 1 } else arg
-
-  fixClosures :: Arg -> Arg
-  fixClosures arg =
-    let closure = argClosure arg
-    in  if closure > -1 then arg { argClosure = closure + 1 } else arg
-
-  -- We always treat the instance argument of a method as non-null
-  -- and "in", even if sometimes the introspection data may say
-  -- otherwise.
-  fixInstance :: Arg -> Arg
-  fixInstance arg = arg { mayBeNull = False, direction = DirectionIn }
-
--- For constructors we want to return the actual type of the object,
--- rather than a generic superclass (so Gtk.labelNew returns a
--- Gtk.Label, rather than a Gtk.Widget)
-fixConstructorReturnType :: Bool -> Name -> Callable -> Callable
-fixConstructorReturnType returnsGObject cn c = c { returnType = returnType' }
- where
-  returnType' = if returnsGObject then Just (TInterface cn) else returnType c
-
-genMethod :: Name -> Method -> ExcCodeGen ()
-genMethod cn Method { methodName = mn, methodSymbol = sym, methodCallable = c, methodType = t }
-  = when (t /= Constructor) $ do
-    returnsGObject <- maybe (return False) isGObject (returnType c)
-
-    -- commentLine $ "method " <> name' <> "::" <> name mn
-    -- commentLine $ "method type : " <> tshow t
-
-    let c' = if Constructor == t
-          then fixConstructorReturnType returnsGObject cn c
-          else c
-        c'' = if OrdinaryMethod == t then fixMethodArgs c' else c'
-
-    genCCallableWrapper mn sym c''
-
-    typeReps <- callableOCamlTypes c
-
-    case typeReps of
-      [] ->
-        gline
-          $  "  method "
-          <> name mn
-          <> " = "
-          <> name cn
-          <> "."
-          <> name mn
-          <> " obj"
-      _ -> do
-        let
-          typeReps'  = tail typeReps
-          typeReps'' = map showTypeVar typeReps'
-          typesStr   = map typeShow typeReps''
-          typeVars =
-            map (\t -> "'" <> t <> ".") $ concatMap varsInTypeRep typeReps''
-        gline
-          $  "  method "
-          <> name mn
-          <> " : "
-          <> T.concat typeVars
-          <> T.intercalate " -> " typesStr
-          <> " = "
-          <> name cn
-          <> "."
-          <> name mn
-          <> " obj"
-
-      -- export (NamedSubsection MethodSection $ lowerName mn) (lowerName mn')
-
 genGObjectCasts :: Name -> CodeGen ()
 genGObjectCasts (Name nspace n) = do
   let upperObjName = T.toUpper (nspace <> "_" <> camelCaseToSnakeCase n)
@@ -346,10 +254,11 @@ genSignalClass n o = do
   gline $ "class " <> ocamlName <> "_signals obj = object (self)"
 
   parents <- instanceTree n
-  let parents' = filter (\p -> name p /= "Object") parents
-  case name $ head parents' of
+
+  case name $ head parents of
     "Container" -> gline "  inherit GContainer.container_signals_impl obj"
     "Widget"    -> gline "  inherit GObj.widget_signals_impl obj"
+    "Object"    -> gline "  inherit [_] GObj.gobject_signals obj"
     parent      -> do
       let ocamlParentName = camelCaseToSnakeCase parent
       gline
@@ -369,7 +278,9 @@ genSignalClass n o = do
 genObject :: Name -> Object -> CodeGen ()
 genObject n o = -- do
   -- if name n `notElem` ["Button", "ToggleButton", "RadioButton", "Toolbar", "ColorButton", "FontButton", "Range"] then
-  if name n
+  if namespace n
+     /=        "Gtk"
+     ||        name n
      `notElem` [ "Bin"
                , "Button"
                , "CheckButton"
@@ -384,6 +295,11 @@ genObject n o = -- do
                , "CheckMenuItem"
                , "Menu"
                , "MenuItem"
+               , "Adjustment"
+              --  , "AccelMap"
+              --  , "Layout"
+              --  , "Container"
+              --  , "Window"
               --  , "Image"
               --  , "Range"
                ]
@@ -401,6 +317,12 @@ genObject n o = -- do
               (_   , True) -> "" <> name parent <> ".t"
               _            -> "`" <> camelCaseToSnakeCase (name parent)
       line $ "type t = [" <> parentType <> " | `" <> ocamlName <> "]"
+
+      when (objectName == "Widget") $ do
+        gline "class type widget_o = object"
+        gline "  method as_widget : Widget.t Gobject.obj"
+        gline "end"
+
       genGObjectCasts n
   else
     do
@@ -422,7 +344,6 @@ genObject n o = -- do
 
         -- Type safe casting to parent objects, and implemented interfaces.
           parents <- instanceTree n
-
           let nspace               = namespace n
               objectName           = name n
               ocamlName            = camelCaseToSnakeCase objectName
@@ -432,6 +353,7 @@ genObject n o = -- do
               namespacedParentName = case name parent of
                 "Container" -> "['a] GContainer.container_impl"
                 "Widget"    -> "['a] GObj.widget_impl"
+                "Object"    -> "GObj.gtkobj"
                 _           -> name parent <> "G." <> ocamlParentName <> "_skel"
 
           genGObjectCasts n
@@ -546,19 +468,29 @@ genObject n o = -- do
             <> "_signals obj"
           gline "end"
 
-          gline "let pack_return create p ?packing ?show () ="
-          gline "  GObj.pack_return (create p) ~packing ~show"
+          if "Widget" `elem` map name parents
+            then do
+              gline "let pack_return create p ?packing ?show () ="
+              gline "  GObj.pack_return (create p) ~packing ~show"
 
-          gline $ "let " <> ocamlName <> " = "
-          gline $ "  " <> objectName <> ".make_params [] ~cont:("
-          gline
-            $  "    "
-            <> "pack_return (fun p -> new "
-            <> ocamlName
-            <> " ("
-            <> objectName
-            <> ".create p)))"
-
+              gline $ "let " <> ocamlName <> " = "
+              gline $ "  " <> objectName <> ".make_params [] ~cont:("
+              gline
+                $  "    pack_return (fun p -> new "
+                <> ocamlName
+                <> " ("
+                <> objectName
+                <> ".create p)))"
+            else do
+              gline $ "let " <> ocamlName <> " = "
+              gline
+                $  "  "
+                <> objectName
+                <> ".make_params [] ~cont:(fun p -> new "
+                <> ocamlName
+                <> " ("
+                <> objectName
+                <> ".create p))"
 
 genInterface :: Name -> Interface -> CodeGen ()
 genInterface n iface = do

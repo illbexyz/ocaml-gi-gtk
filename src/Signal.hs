@@ -78,7 +78,7 @@ genOCamlCallbackPrototype subsec cb _htype classe expose _doc = do
 
   -- ret <- hOutType cb hOutArgs
   let ocamlClassName = camelCaseToSnakeCase classe
-      classType      = typeShow $ poly $ con0 ocamlClassName
+      classType      = typeShow $ poly $ con0 ("`" <> ocamlClassName)
 
   marshaller <- ocamlMarshaller hInArgs subsec classe
 

@@ -27,7 +27,7 @@
 #define Val_GtkAccelGroup(val) (Val_GObject(&val->parent))
 #define Val_GtkStyle(val) (Val_GObject(&val->parent_instance))
 
-#define GtkAccelGroup_val(val) check_cast(GTK_ACCEL_GROUP,val)
+// #define GtkAccelGroup_val(val) check_cast(GTK_ACCEL_GROUP,val)
 #define GtkStyle_val(val) check_cast(GTK_STYLE,val)
 
 /* GtkObjects */

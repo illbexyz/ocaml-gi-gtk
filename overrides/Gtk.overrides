@@ -2,7 +2,13 @@ namespace Gtk
 
 C-docs-url Gtk https://developer.gnome.org/gtk3/stable
 
-# 
+set-attr Gtk/Adjustment/lower construct 1
+set-attr Gtk/Adjustment/page-increment construct 1
+set-attr Gtk/Adjustment/page-size construct 1
+set-attr Gtk/Adjustment/step-increment construct 1
+set-attr Gtk/Adjustment/upper construct 1
+set-attr Gtk/Adjustment/value construct 1
+
 set-attr Gtk/MenuShell/append/@parameters/child/@type name Widget
 
 # We do not generate wrappers for GtkTreeModelModifyFunc, since it has

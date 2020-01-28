@@ -12,13 +12,13 @@ let main () =
 
   let button2 = GIGtk.RadioButtonG.radio_button ~label:"button2"
       ~packing: box2#add () in
-  let _ = button2#join_group (Some button1#as_radio_button) in
+  let _ = button2#join_group (Some button1) in
   let _ = button2#connect#clicked ~callback:(fun () -> 
       Gc.compact ();
       prerr_endline "button2") in
 
   let button3 = GIGtk.RadioButtonG.radio_button ~label:"button3" ~packing: box2#add () in
-  let _ = button3#join_group (Some button1#as_radio_button) in
+  let _ = button3#join_group (Some button1) in
   let _ = button3#connect#clicked ~callback:(fun () -> prerr_endline "button3") in
 
   let _separator = GMisc.separator `HORIZONTAL ~packing: box1#pack () in

@@ -283,7 +283,7 @@ data NamedTyvar = SingleCharTyvar Char
 -- | Clean slate for `CGState`.
 emptyCGState :: CGState
 emptyCGState = CGState { cgsCPPConditionals    = []
-                       , cgsNextAvailableTyvar = SingleCharTyvar 'a'
+                       , cgsNextAvailableTyvar = SingleCharTyvar 'b'
                        }
 
 -- | The base type for the code generator monad.
@@ -600,7 +600,7 @@ getFreshTypeVariable = do
 -- variable will be called 'a'.
 resetTypeVariableScope :: CodeGen ()
 resetTypeVariableScope = modify'
-  (\(cgs, s) -> (cgs { cgsNextAvailableTyvar = SingleCharTyvar 'a' }, s))
+  (\(cgs, s) -> (cgs { cgsNextAvailableTyvar = SingleCharTyvar 'b' }, s))
 
 findAPI :: Type -> CodeGen (Maybe API)
 findAPI TError         = Just <$> findAPIByName (Name "GLib" "Error")
@@ -1160,7 +1160,7 @@ genDuneFile outputDir cFiles = do
       libName      = T.pack (takeBaseName outputDir)
 
   let libs = T.pack <$> case libName of
-        "Gtk" -> ["GIGdk", "GIPango"]
+        "Gtk" -> ["GIGdk", "GIPango", "GIGdkPixbuf"]
         _     -> []
 
   let commonPart =

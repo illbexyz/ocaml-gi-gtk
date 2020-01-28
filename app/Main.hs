@@ -23,6 +23,12 @@ gdkLib = Library { name          = "Gdk"
                  , overridesFile = Just "overrides/Gdk.overrides"
                  }
 
+gdkPixbufLib :: Library
+gdkPixbufLib = Library { name          = "GdkPixbuf"
+                       , version       = "2.0"
+                       , overridesFile = Just "overrides/GdkPixbuf.overrides"
+                       }
+
 pangoLib :: Library
 pangoLib = Library { name          = "Pango"
                    , version       = "1.0"
@@ -36,13 +42,14 @@ gioLib = Library { name          = "Gio"
                  }
 
 parseArg :: String -> IO Library
-parseArg "gtk"   = return gtkLib
-parseArg "gdk"   = return gdkLib
-parseArg "pango" = return pangoLib
-parseArg "gio"   = return gioLib
-parseArg "-h"    = printUsage >> exitSuccess
-parseArg "-v"    = printVersion >> exitSuccess
-parseArg _       = printUsage >> exitSuccess
+parseArg "gtk"       = return gtkLib
+parseArg "gdk"       = return gdkLib
+parseArg "gdkpixbuf" = return gdkPixbufLib
+parseArg "pango"     = return pangoLib
+parseArg "gio"       = return gioLib
+parseArg "-h"        = printUsage >> exitSuccess
+parseArg "-v"        = printVersion >> exitSuccess
+parseArg _           = printUsage >> exitSuccess
 
 main :: IO ()
 main = do
@@ -52,7 +59,8 @@ main = do
     forM_ libs (genBindings verbose)
 
 printUsage :: IO ()
-printUsage = putStrLn "Usage: ocaml-gi-gtk [-h] [-v] [gdk, pango, gtk, gio]"
+printUsage =
+    putStrLn "Usage: ocaml-gi-gtk [-h] [-v] [gdk, gdkpixbuf, pango, gtk, gio]"
 
 printVersion :: IO ()
 printVersion = putStrLn "ocaml-gi-gtk 0.1"

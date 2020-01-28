@@ -18,7 +18,7 @@ done
 
 
 if $full; then
-    libs="pango gdk gtk"
+    libs="pango gdk gdkpixbuf gtk"
 else
     libs="gtk"
 fi

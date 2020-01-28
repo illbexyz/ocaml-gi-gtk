@@ -113,8 +113,9 @@ haskellType TParamSpec    = return $ "GParamSpec" `con` []
 haskellType (TGClosure _) = do
   tyvar <- getFreshTypeVariable
   return $ "GClosure" `con` [con0 tyvar]
-haskellType (  TInterface (Name "GObject" "Value")) = return $ "GValue" `con` []
-haskellType t@(TInterface n                       ) = do
+haskellType (TInterface (Name "GObject" "Value")) =
+  return $ "Gobject.g_value" `con` []
+haskellType t@(TInterface n) = do
   let ocamlName = camelCaseToSnakeCase $ name n
       tname     = lowerName n
   api <- getAPI t
@@ -142,8 +143,16 @@ haskellType t@(TInterface n                       ) = do
  where
   handleObj ocamlName = do
     freshVar <- getFreshTypeVariable
-    let typeVarCon = typevar freshVar
-    return $ obj $ typeVarCon $ polyMore $ ocamlName `con` []
+    currMod  <- currentModule
+    currNS   <- currentNS
+    let currModuleName = last $ T.splitOn "." currMod
+        typeVarCon     = typevar freshVar
+        ocamlName      = camelCaseToSnakeCase $ name n
+        typeRep = case (currNS == namespace n, currModuleName == name n) of
+          (True , True ) -> classCon ocamlName
+          (True , False) -> classCon $ name n <> "G." <> ocamlName
+          (False, _    ) -> ("`" <> ocamlName) `con` []
+    return $ obj $ typeVarCon $ polyMore typeRep
 
 enumResolver :: Name -> CodeGen Text
 enumResolver n = do
@@ -228,7 +237,7 @@ outParamOcamlType (TGClosure _) = do
   tyvar <- getFreshTypeVariable
   return $ "GClosure" `con` [con0 tyvar]
 outParamOcamlType (TInterface (Name "GObject" "Value")) =
-  return $ "GValue" `con` []
+  return $ "Gobject.g_value" `con` []
 outParamOcamlType t@(TInterface n) = do
   let ocamlName = camelCaseToSnakeCase $ name n
       tname     = lowerName n
@@ -238,14 +247,27 @@ outParamOcamlType t@(TInterface n) = do
     APIEnum  _enum -> do
       enumRes <- enumResolver n
       return $ (enumRes <> "." <> ocamlName) `con` []
-    APIInterface _ -> handleObj ocamlName
-    APIObject    _ -> handleObj ocamlName
+    APIInterface _ -> handleObj n
+    APIObject    _ -> handleObj n
     _              -> return $ con0 "error"
  where
-  handleObj ocamlName = do
+  handleObj n = do
     freshVar <- getFreshTypeVariable
-    let typeVarCon = typevar freshVar
-    return $ obj $ typeVarCon $ polyLess $ ocamlName `con` []
+    currNs   <- currentNS
+    currMod  <- currentModule
+    let
+      typeVarCon     = typevar freshVar
+      currModuleName = last $ T.splitOn "." currMod
+      namespacedType =
+        case (namespace n == currNs, name n == currModuleName) of
+          (True , True ) -> "t"
+          (True , False) -> name n <> ".t"
+          (False, _    ) -> "GI" <> namespace n <> "." <> name n <> ".t"
+      variant = polyLess $ namespacedType `con` []
+      object  = if namespace n == currNs -- TODO: remove if we can construct a class from another lib
+        then obj variant
+        else obj $ typeVarCon variant
+    return object
 
 cType :: Type -> ExcCodeGen Text
 cType (TBasicType t) = case t of

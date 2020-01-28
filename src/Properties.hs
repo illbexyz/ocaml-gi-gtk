@@ -60,7 +60,7 @@ genPropertyOCaml classe prop = do
   let pName          = propName prop
       uScoresName    = hyphensToUnderscores pName
       ocamlClassName = camelCaseToSnakeCase $ lowerName classe
-      classType      = typeShow $ polyMore $ con0 ocamlClassName
+      classType      = typeShow $ polyMore $ con0 ("`" <> ocamlClassName)
       isNullable     = fromMaybe False $ propReadNullable prop
   -- TODO: uncomment next line
   -- writeHaddock DocBeforeSymbol (getterDoc n prop) 
@@ -217,7 +217,7 @@ genMakeParams className props = do
       parents <- instanceTree className
       unless (null parents) $ do
         let parent = head parents
-        if name parent `elem` ["Widget", "Container"]
+        if name parent `elem` ["Object", "Widget", "Container"]
           then line "let make_params ~cont pl = cont pl"
           else line $ "let make_params = " <> name parent <> ".make_params"
  where
