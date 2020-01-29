@@ -496,18 +496,21 @@ ocamlValueToC (TInterface n) = do
       return $ T.toTitle (camelCaseToSnakeCase $ name n) <> "_val"
     APIFlags _f -> notImplementedError
       "This ocamlValueToC (APIFlags) isn't implemented yet"
-    APIInterface i -> do
-      let typ = fromMaybe (namespace n <> name n) (ifCType i)
-      return $ typ <> "_val"
-    APIObject o  -> converter $ objTypeName o
-    APIStruct _s -> converter $ namespace n <> name n
-    APIUnion  _u -> notImplementedError
-      "This ocamlValueToC (APIUnion) isn't implemented yet"
+    APIInterface Interface { ifCType = Just ctype } -> converter ctype
+    APIInterface _ ->
+      notImplementedError "This ocamlValueToC (APIInterface) has no ctype"
+    APIObject Object { objCType = Just ctype } -> converter ctype
+    APIObject _ ->
+      notImplementedError "This ocamlValueToC (APIObject) has no ctype"
+    APIStruct Struct { structCType = Just ctype } -> converter ctype
+    APIStruct _ ->
+      notImplementedError "This ocamlValueToC (APIStruct) has no ctype"
+    APIUnion _u ->
+      notImplementedError "This ocamlValueToC (APIUnion) isn't implemented yet"
  where
   converter typename = do
     currNS <- currentNS
-    unless (namespace n `elem` ["Gio", "GdkPixbuf"])
-      $ addCDep (namespace n <> name n)
+    addCDep (namespace n <> name n)
     return $ typename <> "_val"
 
 -- Converter from C to value

@@ -1050,8 +1050,8 @@ moduleImports = T.unlines
   , "import qualified GHC.OverloadedLabels as OL"
   ]
 
-cOCamlModuleImports :: Text
-cOCamlModuleImports = T.unlines
+commonCImports :: Text
+commonCImports = T.unlines
   [ "#include <string.h>"
   , "#include <gtk/gtk.h>"
   , "#include <caml/mlvalues.h>"
@@ -1059,11 +1059,13 @@ cOCamlModuleImports = T.unlines
   , "#include <caml/memory.h>"
   , "#include <caml/callback.h>"
   , "#include <caml/fail.h>"
-  , ""
   , "#include \"wrappers.h\""
-  , "#include \"ml_glib.h\""
+  ]
+
+gtkCImports :: Text
+gtkCImports = T.unlines
+  [ "#include \"ml_glib.h\""
   , "#include \"ml_gobject.h\""
-  , "#include \"ml_gio.h\""
   , "#include \"ml_gdk.h\""
   , "#include \"ml_gdkpixbuf.h\""
   , "#include \"ml_pango.h\""
@@ -1128,15 +1130,13 @@ writeModuleInfo verbose dirPrefix minfo = do
       utf8WriteFile hStubsFile (T.unlines [genHStubs minfo])
 
   unless (isCodeEmpty $ cCode minfo) $ do
-    let
-      cStubsFile = modulePathToFilePath dirPrefix (modulePath minfo) ".c"
-      deps'      = filter (/= "Widget") (Set.toList $ cDeps minfo)
-      deps =
-        T.unlines $ fmap (\d -> "#include \"GI" <> d <> ".h\"") deps'
+    let cStubsFile = modulePathToFilePath dirPrefix (modulePath minfo) ".c"
+        deps'      = filter (/= "Widget") (Set.toList $ cDeps minfo)
+        deps = T.unlines $ fmap (\d -> "#include \"GI" <> d <> ".h\"") deps'
+        cImports   = if nspace == "Gtk" then commonCImports <> gtkCImports else commonCImports
     addCFile cStubsFile
-    liftIO $ utf8WriteFile
-      cStubsFile
-      (T.unlines [cOCamlModuleImports, deps, genCStubs minfo])
+    liftIO
+      $ utf8WriteFile cStubsFile (T.unlines [cImports, deps, genCStubs minfo])
 
   unless (isCodeEmpty $ gCode minfo) $ do
     let gFileModulePath = modulePath minfo
@@ -1188,7 +1188,7 @@ genDuneFile outputDir cFiles = do
            , "  (language c)"
            , "  (names " <> T.intercalate " " cFiles <> ")"
            , "  (include_dirs %{project_root}/include)"
-           , "  (flags (:include cflag-gtk+-3.0.sexp) -I$BASE_OCAML_C $GDK_INCLUDES  -Wno-deprecated-declarations)))"
+           , "  (flags (:include cflag-gtk+-3.0.sexp) -I$BASE_OCAML_C $GI_INCLUDES -Wno-deprecated-declarations)))"
            ]
 
 
