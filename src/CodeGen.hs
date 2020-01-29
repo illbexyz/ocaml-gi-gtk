@@ -65,6 +65,7 @@ import           SymbolNaming                   ( upperName
                                                 , lowerName
                                                 , camelCaseToSnakeCase
                                                 , hyphensToUnderscores
+                                                , escapeOCamlReserved
                                                 )
 import           Type
 import           Debug.Trace
@@ -224,7 +225,7 @@ genGObjectCasts (Name nspace n) = do
     <> upperObjName
     <> ", val)"
 
-  -- TODO: uncomment
+  hline $ "#define Val_" <> nspace <> n <> " Val_GAnyObject"
   -- hline
   --   $  "#define Val_"
   --   <> nspace
@@ -235,7 +236,7 @@ genGObjectCasts (Name nspace n) = do
   --   <> T.toLower n
   --   <> ")"
 
-  addCDep n
+  addCDep $ nspace <> n
 
 
 isSetterOrGetter :: Object -> Method -> Bool
@@ -296,6 +297,9 @@ genObject n o = -- do
                , "Menu"
                , "MenuItem"
                , "Adjustment"
+               , "Alignment"
+               , "AppChooserButton"
+               , "ComboBox"
               --  , "AccelMap"
               --  , "Layout"
               --  , "Container"
@@ -308,7 +312,7 @@ genObject n o = -- do
       commentLine "Ignored: I'm generating only button and range"
       parents <- instanceTree n
       let objectName = name n
-          ocamlName  = camelCaseToSnakeCase objectName
+          ocamlName  = escapeOCamlReserved $ camelCaseToSnakeCase objectName
           parent     = head parents
 
       let parentType =

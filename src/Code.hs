@@ -1093,6 +1093,7 @@ writeModuleInfo verbose dirPrefix minfo = do
     -- We reexport any submodules.
     _submoduleExports = map dotWithPrefix _submodulePaths
     _pkgRoot = ModulePath (take 1 (modulePathToList $ modulePath minfo))
+    nspace            = head $ take 1 (modulePathToList $ modulePath minfo)
     fname             = modulePathToFilePath dirPrefix (modulePath minfo) ".ml"
     dirname           = takeDirectory fname
     code              = codeToText (moduleCode minfo)
@@ -1118,19 +1119,20 @@ writeModuleInfo verbose dirPrefix minfo = do
   unless (isCodeEmpty $ moduleCode minfo) $ liftIO $ utf8WriteFile
     fname
     (T.unlines [haddock, code])
-
   unless (isCodeEmpty $ hCode minfo) $ do
     let hPrefix    = fromMaybe "" dirPrefix </> "include"
         hName      = T.unpack $ moduleName $ modulePath minfo
-        hStubsFile = hPrefix </> hName <> ".h"
+        hStubsFile = hPrefix </> ("GI" <> T.unpack nspace <> hName <> ".h")
     liftIO $ do
       createDirectoryIfMissing True hPrefix
       utf8WriteFile hStubsFile (T.unlines [genHStubs minfo])
 
   unless (isCodeEmpty $ cCode minfo) $ do
-    let cStubsFile = modulePathToFilePath dirPrefix (modulePath minfo) ".c"
-        deps'      = filter (/= "Widget") (Set.toList $ cDeps minfo)
-        deps       = T.unlines $ fmap (\d -> "#include \"" <> d <> ".h\"") deps'
+    let
+      cStubsFile = modulePathToFilePath dirPrefix (modulePath minfo) ".c"
+      deps'      = filter (/= "Widget") (Set.toList $ cDeps minfo)
+      deps =
+        T.unlines $ fmap (\d -> "#include \"GI" <> d <> ".h\"") deps'
     addCFile cStubsFile
     liftIO $ utf8WriteFile
       cStubsFile
@@ -1160,7 +1162,7 @@ genDuneFile outputDir cFiles = do
       libName      = T.pack (takeBaseName outputDir)
 
   let libs = T.pack <$> case libName of
-        "Gtk" -> ["GIGdk", "GIPango", "GIGdkPixbuf"]
+        "Gtk" -> ["GIGdk", "GIPango", "GIGdkPixbuf", "GIAtk"]
         _     -> []
 
   let commonPart =
@@ -1186,7 +1188,7 @@ genDuneFile outputDir cFiles = do
            , "  (language c)"
            , "  (names " <> T.intercalate " " cFiles <> ")"
            , "  (include_dirs %{project_root}/include)"
-           , "  (flags (:include cflag-gtk+-3.0.sexp) -I$BASE_OCAML_C -I$GDK_INCLUDES  -Wno-deprecated-declarations)))"
+           , "  (flags (:include cflag-gtk+-3.0.sexp) -I$BASE_OCAML_C $GDK_INCLUDES  -Wno-deprecated-declarations)))"
            ]
 
 

@@ -46,8 +46,8 @@ CAMLexport value Val_cairo_t (cairo_t *);
 CAMLexport value Val_cairo_t_new (cairo_t *);
 #define Val_Cairo Val_cairo_t
 
-#define GdkWindow_val(val) check_cast(GDK_WINDOW,val)
-#define Val_GdkWindow Val_GAnyObject
+// #define GdkWindow_val(val) check_cast(GDK_WINDOW,val)
+// #define Val_GdkWindow Val_GAnyObject
 
 #define GdkCursor_val(val) ((GdkCursor*)Pointer_val(val))
 
@@ -63,8 +63,8 @@ CAMLexport value Val_GdkEvent (GdkEvent *);
 // #define GdkScreen_val(val) check_cast(GDK_SCREEN,val)
 #define Val_GdkScreen Val_GAnyObject
 
-#define GdkDevice_val(val) ((GdkDevice*) val)
-#define Val_GdkDevice(device) ((value) device)
+// #define GdkDevice_val(val) ((GdkDevice*) val)
+// #define Val_GdkDevice(device) ((value) device)
 
 // Future replacement for XID?
 #ifdef GDK_NATIVE_WINDOW_POINTER
@@ -92,7 +92,3 @@ CAMLexport lookup_info *ml_table_extension_events;
 #define GdkDragContext_val(val) check_cast(GDK_DRAG_CONTEXT,val)
 #define Val_GdkDragContext Val_GAnyObject
 CAMLexport int Flags_GdkDragAction_val (value);
-
-// TODO: Check if GDK_MONITOR is right
-// #define GdkMonitor_val(val) ((GdkMonitor*) val)
-#define Val_GdkMonitor(monitor) ((value) monitor)

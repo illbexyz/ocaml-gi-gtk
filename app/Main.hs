@@ -11,6 +11,13 @@ import           Lib                            ( genBindings
                                                 , Library(..)
                                                 )
 
+
+atkLib :: Library
+atkLib = Library { name          = "Atk"
+                 , version       = "1.0"
+                 , overridesFile = Just "overrides/Atk.overrides"
+                 }
+
 gtkLib :: Library
 gtkLib = Library { name          = "Gtk"
                  , version       = "3.0"
@@ -42,6 +49,7 @@ gioLib = Library { name          = "Gio"
                  }
 
 parseArg :: String -> IO Library
+parseArg "atk"       = return atkLib
 parseArg "gtk"       = return gtkLib
 parseArg "gdk"       = return gdkLib
 parseArg "gdkpixbuf" = return gdkPixbufLib
@@ -59,8 +67,8 @@ main = do
     forM_ libs (genBindings verbose)
 
 printUsage :: IO ()
-printUsage =
-    putStrLn "Usage: ocaml-gi-gtk [-h] [-v] [gdk, gdkpixbuf, pango, gtk, gio]"
+printUsage = putStrLn
+    "Usage: ocaml-gi-gtk [-h] [-v] [atk, gdk, gdkpixbuf, pango, gtk, gio]"
 
 printVersion :: IO ()
 printVersion = putStrLn "ocaml-gi-gtk 0.1"

@@ -38,7 +38,7 @@ genPropertySetter setter classe _prop =
   gline
     $  "  method set_"
     <> setter
-    <> " = set "
+    <> " = Gobject.set "
     <> name classe
     <> ".P."
     <> setter
@@ -49,7 +49,7 @@ genPropertyGetter getter classe _prop =
   gline
     $  "  method "
     <> getter
-    <> " = get "
+    <> " = Gobject.get "
     <> name classe
     <> ".P."
     <> getter

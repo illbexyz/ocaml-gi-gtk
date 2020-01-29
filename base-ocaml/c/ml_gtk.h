@@ -33,16 +33,16 @@
 /* GtkObjects */
 #define Val_GtkAny(w) (Val_GObject((GObject*)w))
 #define Val_GtkAny_sink(w) (Val_GObject_sink(G_INITIALLY_UNOWNED(w)))
-#define Val_GtkWidget Val_GtkAny
+// #define Val_GtkWidget Val_GtkAny
 #define Val_GtkWidget_sink Val_GtkAny_sink
 
-#define Val_GtkAdjustment Val_GtkAny
+// #define Val_GtkAdjustment Val_GtkAny
 
 /* For GList containing widgets */
 CAMLexport value Val_GtkWidget_func(gpointer w);
 
 #define GtkObject_val(val) check_cast(GTK_OBJECT,val)
-#define GtkWidget_val(val) check_cast(GTK_WIDGET,val)
+// #define GtkWidget_val(val) check_cast(GTK_WIDGET,val)
 #define GtkItem_val(val) check_cast(GTK_ITEM,val)
 #define GtkTooltips_val(val) check_cast(GTK_TOOLTIPS,val)
 

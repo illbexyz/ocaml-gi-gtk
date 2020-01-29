@@ -89,8 +89,8 @@ submoduleLocation :: Name -> API -> ModulePath
 submoduleLocation _ (APIConst     _) = "Constants"
 submoduleLocation _ (APIFunction  _) = "Functions"
 submoduleLocation _ (APICallback  _) = "Callbacks"
-submoduleLocation n (APIEnum      _) = "" /. (namespace n <> "Enums")
-submoduleLocation n (APIFlags     _) = "" /. (namespace n <> "Enums")
+submoduleLocation n (APIEnum      _) = "Enums"
+submoduleLocation n (APIFlags     _) = "Enums"
 submoduleLocation n (APIInterface _) = "Interfaces" /. upperName n
 submoduleLocation n (APIObject    _) = "" /. upperName n
 submoduleLocation n (APIStruct    _) = "" /. upperName n
@@ -171,8 +171,11 @@ escapedArgName arg
   = escapeReserved . lcFirst . underscoresToCamelCase . argCName $ arg
 
 escapeOCamlReserved :: Text -> Text
-escapeOCamlReserved "unit" = "unit_"
-escapeOCamlReserved t      = do
+escapeOCamlReserved "unit"   = "unit_"
+escapeOCamlReserved "object" = "object_"
+escapeOCamlReserved "begin"  = "begin_"
+escapeOCamlReserved "end"    = "end_"
+escapeOCamlReserved t        = do
   let (nums, text) = T.span C.isNumber t
   text <> nums
 

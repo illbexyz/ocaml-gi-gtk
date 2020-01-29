@@ -158,8 +158,8 @@ enumResolver :: Name -> CodeGen Text
 enumResolver n = do
   currNS <- currentNS
   return $ if namespace n == currNS
-    then currNS <> "Enums"
-    else "GI" <> namespace n <> "." <> namespace n <> "Enums"
+    then "Enums"
+    else "GI" <> namespace n <> "." <> "Enums"
 
 -- | Whether the callable has closure arguments (i.e. "user_data"
 -- style arguments).
@@ -506,7 +506,8 @@ ocamlValueToC (TInterface n) = do
  where
   converter typename = do
     currNS <- currentNS
-    unless (namespace n `elem` ["Gio", "GdkPixbuf"]) $ addCDep (name n)
+    unless (namespace n `elem` ["Gio", "GdkPixbuf"])
+      $ addCDep (namespace n <> name n)
     return $ typename <> "_val"
 
 -- Converter from C to value
@@ -581,9 +582,11 @@ cToOCamlValue False (Just (TInterface n)) = do
       notImplementedError "This cToOCamlValue (APIFlags) isn't implemented yet"
     APIInterface _i -> notImplementedError
       "This cToOCamlValue (APIInterface) isn't implemented yet"
-    APIObject o -> return $ "Val_" <> objTypeName o
-    APIStruct _s ->
-      notImplementedError "This cToOCamlValue (APIStruct) isn't implemented yet"
+    APIObject o -> do
+      addCDep (namespace n <> name n)
+      return $ "Val_" <> objTypeName o
+    APIStruct _s -> notImplementedError
+      "This cToOCamlValue (APIStruct) isn't implemented yet"
     APIUnion _u ->
       notImplementedError "This cToOCamlValue (APIUnion) isn't implemented yet"
 cToOCamlValue True (Just (TBasicType t)) = case t of
@@ -635,6 +638,7 @@ cToOCamlValue True (Just (TInterface n)) = do
     APIInterface _i -> notImplementedError
       "This cToOCamlValue (APIInterface) isn't implemented yet"
     APIObject o -> do
+      addCDep (namespace n <> name n)
       currMod <- currentModule
       unique  <- getFreshTypeVariable
       let currModuleName = last $ T.splitOn "." currMod
