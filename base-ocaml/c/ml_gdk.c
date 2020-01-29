@@ -66,10 +66,6 @@ CAMLprim value ml_gdk_init(value unit)
 
 #include "gdk_tags.c"
 
-Make_OptFlags_val (GdkModifier_val)
-Make_Flags_val (GdkModifier_val)
-Make_Flags_val (Event_mask_val)
-
 #include <stdio.h>
 
 #define Make_test(conv) \
@@ -598,7 +594,6 @@ Make_Extractor (GdkEventWindowState, GdkEvent_arg(WindowState),
                 new_window_state, Val_int)
 
 /* DnD */
-Make_Flags_val (GdkDragAction_val)
 #define GdkDragAction_optval(v) Option_val(v,GdkDragAction_val,0)
 ML_3 (gdk_drag_status, GdkDragContext_val, GdkDragAction_optval, Int32_val,
       Unit)

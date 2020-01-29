@@ -120,8 +120,10 @@ haskellType t@(TInterface n) = do
       tname     = lowerName n
   api <- getAPI t
   case api of
-    APIFlags _f -> return $ "[]" `con` [tname `con` []]
-    APIEnum  _e -> do
+    APIFlags _f -> do
+      flagsRes <- enumResolver n
+      return $ list $ (flagsRes <> "." <> ocamlName) `con` []
+    APIEnum _e -> do
       enumRes <- enumResolver n
       return $ (enumRes <> "." <> ocamlName) `con` []
     APIObject    _o -> handleObj ocamlName
@@ -493,9 +495,10 @@ ocamlValueToC (TInterface n) = do
       "This ocamlValueToC (APICallback) isn't implemented yet"
     APIEnum _enum -> do
       addCDep $ namespace n <> "Enums"
-      return $ T.toTitle (camelCaseToSnakeCase $ name n) <> "_val"
-    APIFlags _f -> notImplementedError
-      "This ocamlValueToC (APIFlags) isn't implemented yet"
+      return $ enumVal n
+    APIFlags _f -> do
+      addCDep $ namespace n <> "Enums"
+      return $ flagsVal n
     APIInterface Interface { ifCType = Just ctype } -> converter ctype
     APIInterface _ ->
       notImplementedError "This ocamlValueToC (APIInterface) has no ctype"
@@ -580,7 +583,7 @@ cToOCamlValue False (Just (TInterface n)) = do
       "This cToOCamlValue (APIFunction) isn't implemented yet"
     APICallback _c -> notImplementedError
       "This cToOCamlValue (APICallback) isn't implemented yet"
-    APIEnum _enum -> return $ "Val_" <> camelCaseToSnakeCase (name n)
+    APIEnum _enum -> return $ valEnum n
     APIFlags _f ->
       notImplementedError "This cToOCamlValue (APIFlags) isn't implemented yet"
     APIInterface _i -> notImplementedError

@@ -24,6 +24,7 @@ module Type
   , obj
   , option
   , tuple
+  , list
   , typevar
   , classCon
   , isHighLevelObj
@@ -75,7 +76,7 @@ typeShow'
 typeShow' sc (TypeRep TupleCon args) =
   "(" <> T.intercalate " * " (map (typeShow' sc) args) <> ")"
 typeShow' sc (TypeRep ListCon args) =
-  "[" <> T.intercalate ", " (map (typeShow' sc) args) <> "]"
+  T.intercalate ", " (map (typeShow' sc) args) <> " list"
 typeShow' sc (TypeRep OptionCon args) =
   T.concat (map (typeShow' sc) args) <> " option"
 typeShow' sc (TypeRep (PolyCon More) args) =
@@ -202,6 +203,9 @@ obj t = "obj" `con` [t]
 
 tuple :: [TypeRep] -> TypeRep
 tuple t = "(,)" `con` t
+
+list :: TypeRep -> TypeRep
+list t = "[]" `con` [t]
 
 typevar :: Text -> TypeRep -> TypeRep
 typevar var t = TypeVar var False `conOk` [t]

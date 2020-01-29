@@ -17,6 +17,10 @@ module SymbolNaming
   , qualifiedAPI
   , qualifiedSymbol
   , mlGiPrefix
+  , enumVal
+  , flagsVal
+  , optFlagsVal
+  , valEnum
   )
 where
 
@@ -221,3 +225,18 @@ signalOCamlName = hyphensToUnderscores
 
 mlGiPrefix :: Name -> Text -> Text
 mlGiPrefix nm t = "ml_gi" <> T.toLower (namespace nm) <> "_" <> t
+
+cGIPrefix :: Text
+cGIPrefix = "GI_"
+
+enumVal :: Name -> Text
+enumVal (Name ns n) = cGIPrefix <> ns <> n <> "_val"
+
+flagsVal :: Name -> Text
+flagsVal n = "Flags_" <> enumVal n
+
+optFlagsVal :: Name -> Text
+optFlagsVal n = "Opt" <> flagsVal n
+
+valEnum :: Name -> Text
+valEnum (Name ns n) = cGIPrefix <> "Val_" <> ns <> n

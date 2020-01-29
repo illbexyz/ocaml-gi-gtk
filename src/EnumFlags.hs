@@ -20,11 +20,7 @@ import           Foreign.Storable               ( sizeOf )
 
 import           API
 import           Code
-import           SymbolNaming                   ( upperName
-                                                , camelCaseToSnakeCase
-                                                , escapeOCamlReserved
-                                                , mlGiPrefix
-                                                )
+import           SymbolNaming
 import           Util                           ( tshow )
 
 data EnumOrFlag = Enum
@@ -85,15 +81,15 @@ genEnumOrFlags _docSection n@(Name ns _name) e enumOrFlag = do
   hline ""
   hline $ "extern const lookup_info " <> mlTableName <> "[];"
   hline
-    $  "#define Val_"
-    <> enumName
+    $  "#define "
+    <> valEnum n
     <> "(data) ml_lookup_from_c ("
     <> mlTableName
     <> ", data)"
   hline
     $  "#define "
-    <> T.toTitle enumName
-    <> "_val(key) ml_lookup_to_c ("
+    <> enumVal n
+    <> "(key) ml_lookup_to_c ("
     <> mlTableName
     <> ", key)"
   hline ""
@@ -125,6 +121,11 @@ genEnumOrFlags _docSection n@(Name ns _name) e enumOrFlag = do
   cline $ "CAMLprim value " <> cGetterFn <> " () {"
   cline $ "  return (value) " <> mlTableName <> ";"
   cline "}"
+  when (enumOrFlag == Flag) $ do
+    cline ("Make_Flags_val(" <> enumVal n <> ")")
+    cline ("Make_OptFlags_val(" <> enumVal n <> ")")
+    hline ("CAMLprim int " <> flagsVal n <> " (value list);")
+    hline ("CAMLprim int " <> optFlagsVal n <> " (value list);")
   cline ""
 
 genEnum :: Name -> Enumeration -> CodeGen ()
