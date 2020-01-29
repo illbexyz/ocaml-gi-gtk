@@ -18,7 +18,7 @@ done
 
 
 if $full; then
-    libs="pango gdk gdkpixbuf gtk"
+    libs="atk pango gdk gdkpixbuf gtk"
 else
     libs="gtk"
 fi
@@ -27,7 +27,7 @@ fi
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
 
 export BASE_OCAML_C=$DIR/base-ocaml/c
-export GDK_INCLUDES=$DIR/bindings/Gdk/include
+export GDK_INCLUDES="-I$DIR/bindings/Gdk/include -I$DIR/bindings/Atk/include -I$DIR/bindings/Pango/include -I$DIR/bindings/GdkPixbuf/include"
 
 generate () {
     stack build && stack exec ocaml-gi-gtk-exe $libs
@@ -46,6 +46,8 @@ build () {
 generate
 
 if $full; then
+    build Atk
+    build GdkPixbuf
     build Gdk
     build Pango
 fi
