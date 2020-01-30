@@ -1,0 +1,9 @@
+#include <gio/gio.h>
+#include <gio/gdesktopappinfo.h>
+#include <gio/gunixconnection.h>
+#include <gio/gunixsocketaddress.h>
+#include <gio/gunixinputstream.h>
+#include <gio/gunixfdmessage.h>
+#include <gio/gunixfdmessage.h>
+#include <gio/gunixoutputstream.h>
+#include <gio/gunixmounts.h>

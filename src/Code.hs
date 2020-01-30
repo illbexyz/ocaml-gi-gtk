@@ -1024,53 +1024,19 @@ importDeps (ModulePath prefix) deps = T.unlines . map toImport $ deps
   importSource (ModulePath [_, "Callbacks"]) = False
   importSource (ModulePath mp              ) = take (length prefix) mp == prefix
 
--- | Standard imports.
-moduleImports :: Text
-moduleImports = T.unlines
-  [ "import Data.GI.Base.ShortPrelude"
-  , "import qualified Data.GI.Base.ShortPrelude as SP"
-  , "import qualified Data.GI.Base.Overloading as O"
-  , "import qualified Prelude as P"
-  , ""
-  , "import qualified Data.GI.Base.Attributes as GI.Attributes"
-  , "import qualified Data.GI.Base.ManagedPtr as B.ManagedPtr"
-  , "import qualified Data.GI.Base.GClosure as B.GClosure"
-  , "import qualified Data.GI.Base.GError as B.GError"
-  , "import qualified Data.GI.Base.GVariant as B.GVariant"
-  , "import qualified Data.GI.Base.GValue as B.GValue"
-  , "import qualified Data.GI.Base.GParamSpec as B.GParamSpec"
-  , "import qualified Data.GI.Base.CallStack as B.CallStack"
-  , "import qualified Data.GI.Base.Properties as B.Properties"
-  , "import qualified Data.GI.Base.Signals as B.Signals"
-  , "import qualified Control.Monad.IO.Class as MIO"
-  , "import qualified Data.Text as T"
-  , "import qualified Data.ByteString.Char8 as B"
-  , "import qualified Data.Map as Map"
-  , "import qualified Foreign.Ptr as FP"
-  , "import qualified GHC.OverloadedLabels as OL"
-  ]
-
 commonCImports :: Text
 commonCImports = T.unlines
   [ "#include <string.h>"
-  , "#include <gtk/gtk.h>"
   , "#include <caml/mlvalues.h>"
   , "#include <caml/alloc.h>"
   , "#include <caml/memory.h>"
   , "#include <caml/callback.h>"
   , "#include <caml/fail.h>"
+  , "#include \"gio_includes.h\""
+  , "#include \"gtk_includes.h\""
   , "#include \"wrappers.h\""
-  ]
-
-gtkCImports :: Text
-gtkCImports = T.unlines
-  [ "#include \"ml_glib.h\""
+  , "#include \"ml_glib.h\""
   , "#include \"ml_gobject.h\""
-  , "#include \"ml_gdk.h\""
-  , "#include \"ml_gdkpixbuf.h\""
-  , "#include \"ml_pango.h\""
-  , "#include \"ml_gtk.h\""
-  , "#include \"ml_gtktext.h\""
   ]
 
 -- | Like `dotModulePath`, but add a "GI." prefix.
@@ -1090,26 +1056,23 @@ addCFile file = modify (file :)
 -- `writeModuleTree`.
 writeModuleInfo :: Bool -> Maybe FilePath -> ModuleInfo -> WithCFiles ()
 writeModuleInfo verbose dirPrefix minfo = do
-  let
-    _submodulePaths   = map modulePath (M.elems (submodules minfo))
-    -- We reexport any submodules.
-    _submoduleExports = map dotWithPrefix _submodulePaths
-    _pkgRoot = ModulePath (take 1 (modulePathToList $ modulePath minfo))
-    nspace            = head $ take 1 (modulePathToList $ modulePath minfo)
-    fname             = modulePathToFilePath dirPrefix (modulePath minfo) ".ml"
-    dirname           = takeDirectory fname
-    code              = codeToText (moduleCode minfo)
-    _pragmas          = languagePragmas (Set.toList $ modulePragmas minfo)
-    _optionsGHC       = ghcOptions (Set.toList $ moduleGHCOpts minfo)
-    _prelude          = modulePrelude (sectionDocs minfo)
-                                      (dotWithPrefix $ modulePath minfo)
-                                      (F.toList (moduleExports minfo))
-                                      _submoduleExports
-    _imports = if ImplicitPrelude `Set.member` moduleFlags minfo
-      then ""
-      else moduleImports
-    _deps   = importDeps _pkgRoot (Set.toList $ qualifiedImports minfo)
-    haddock = moduleHaddock (M.lookup ToplevelSection (sectionDocs minfo))
+  let _submodulePaths   = map modulePath (M.elems (submodules minfo))
+      -- We reexport any submodules.
+      _submoduleExports = map dotWithPrefix _submodulePaths
+      _pkgRoot = ModulePath (take 1 (modulePathToList $ modulePath minfo))
+      nspace            = head $ take 1 (modulePathToList $ modulePath minfo)
+      fname = modulePathToFilePath dirPrefix (modulePath minfo) ".ml"
+      dirname           = takeDirectory fname
+      code              = codeToText (moduleCode minfo)
+      _pragmas          = languagePragmas (Set.toList $ modulePragmas minfo)
+      _optionsGHC       = ghcOptions (Set.toList $ moduleGHCOpts minfo)
+      _prelude          = modulePrelude (sectionDocs minfo)
+                                        (dotWithPrefix $ modulePath minfo)
+                                        (F.toList (moduleExports minfo))
+                                        _submoduleExports
+
+      _deps   = importDeps _pkgRoot (Set.toList $ qualifiedImports minfo)
+      haddock = moduleHaddock (M.lookup ToplevelSection (sectionDocs minfo))
 
   when verbose $ liftIO $ putStrLn
     ((T.unpack . dotWithPrefix . modulePath) minfo ++ " -> " ++ fname)
@@ -1122,21 +1085,20 @@ writeModuleInfo verbose dirPrefix minfo = do
     fname
     (T.unlines [haddock, code])
   unless (isCodeEmpty $ hCode minfo) $ do
-    let hPrefix    = fromMaybe "" dirPrefix </> "include"
-        hName      = T.unpack $ moduleName $ modulePath minfo
-        hStubsFile = hPrefix </> ("GI" <> T.unpack nspace <> hName <> ".h")
+    let
+      hPrefix    = fromMaybe "" dirPrefix </> "include"
+      hName      = T.unpack $ moduleName $ modulePath minfo
+      hStubsFile = hPrefix </> ("GI" <> T.unpack nspace <> hName <> ".h")
     liftIO $ do
       createDirectoryIfMissing True hPrefix
-      utf8WriteFile hStubsFile (T.unlines [genHStubs minfo])
+      utf8WriteFile hStubsFile (T.unlines [commonCImports, genHStubs minfo])
 
   unless (isCodeEmpty $ cCode minfo) $ do
     let cStubsFile = modulePathToFilePath dirPrefix (modulePath minfo) ".c"
-        deps'      = filter (/= "Widget") (Set.toList $ cDeps minfo)
+        deps' = filter (/= "Widget") (Set.toList $ cDeps minfo)
         deps = T.unlines $ fmap (\d -> "#include \"GI" <> d <> ".h\"") deps'
-        cImports   = if nspace == "Gtk" then commonCImports <> gtkCImports else commonCImports
     addCFile cStubsFile
-    liftIO
-      $ utf8WriteFile cStubsFile (T.unlines [cImports, deps, genCStubs minfo])
+    liftIO $ utf8WriteFile cStubsFile (T.unlines [deps, genCStubs minfo])
 
   unless (isCodeEmpty $ gCode minfo) $ do
     let gFileModulePath = modulePath minfo
@@ -1162,8 +1124,9 @@ genDuneFile outputDir cFiles = do
       libName      = T.pack (takeBaseName outputDir)
 
   let libs = T.pack <$> case libName of
-        "Gtk" -> ["GIGdk", "GIPango", "GIGdkPixbuf", "GIAtk"]
-        _     -> []
+        "Gtk" ->
+          ["GIGObject", "GIGio", "GIGdk", "GIPango", "GIGdkPixbuf", "GIAtk"]
+        _ -> []
 
   let commonPart =
         [ "(library"

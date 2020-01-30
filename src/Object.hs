@@ -39,14 +39,16 @@ isSetterOrGetter o m =
           in  ("get" `T.isPrefixOf` mName || "set" `T.isPrefixOf` mName)
                 && any (`T.isSuffixOf` mName) propNames
 
-genGObjectCasts :: Text -> CodeGen ()
-genGObjectCasts ctype = do
+genGObjectCasts :: Name -> Text -> CodeGen ()
+genGObjectCasts n ctype = do
   let upperType = T.toUpper (camelCaseToSnakeCase ctype)
   hline
-    ("#define " <> ctype <> "_val(val) check_cast(" <> upperType <> ", val)")
+    ("#define " <> objectVal n <> "(val) check_cast(" <> upperType <> ", val)")
   -- hline $ "#define " <> nspace <> n <> "_val(" <> "val) ((" <> x <> "*) val)"
-  hline $ "#define Val_" <> ctype <> " Val_GAnyObject"
-  addCDep ctype
+  hline $ "#define " <> valObject n <> " Val_GAnyObject"
+  cline ("Make_Val_option(" <> ctype <> "," <> valObject n <> ")")
+  hline ("value " <> valOptObject n <> " (" <> ctype <> "*);")
+  addCDep (namespace n <> name n)
 
 genSignalClass :: Name -> Object -> CodeGen ()
 genSignalClass n o = do
@@ -84,7 +86,7 @@ genObjectTypeInit o cTypeName = when (objTypeInit o /= "") $ cline $ T.unlines
 genObject :: Name -> Object -> CodeGen ()
 genObject n o = do
   isGO <- isGObject (TInterface n)
-  if not isGO
+  if not isGO || name n == "HeaderBarAccessible"
     then commentLine
       (upperName n <> " does not descend from GObject, it will be ignored.")
     else do
@@ -100,9 +102,7 @@ genObject n o = do
         gline "  method as_widget : Widget.t Gobject.obj"
         gline "end"
 
-      case objCType o of
-        Just ctype -> genGObjectCasts ctype
-        Nothing    -> return ()
+      forM_ (objCType o) (genGObjectCasts n)
 
       if namespace n
            /=        "Gtk"
@@ -287,7 +287,7 @@ genInterface n iface = do
       ocamlName = escapeOCamlReserved $ camelCaseToSnakeCase (name n)
 
   -- addSectionDocumentation ToplevelSection (ifDocumentation iface)
-  forM_ (ifCType iface) genGObjectCasts
+  forM_ (ifCType iface) (genGObjectCasts n)
 
   line $ "type t = [`" <> ocamlName <> "]"
 

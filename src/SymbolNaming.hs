@@ -21,6 +21,12 @@ module SymbolNaming
   , flagsVal
   , optFlagsVal
   , valEnum
+  , interfaceVal
+  , objectVal
+  , valInterface
+  , valObject
+  , valOptInterface
+  , valOptObject
   )
 where
 
@@ -224,13 +230,13 @@ signalOCamlName :: Text -> Text
 signalOCamlName = hyphensToUnderscores
 
 mlGiPrefix :: Name -> Text -> Text
-mlGiPrefix nm t = "ml_gi" <> T.toLower (namespace nm) <> "_" <> t
+mlGiPrefix n t = "ml_gi" <> T.toLower (namespace n) <> "_" <> t
 
 cGIPrefix :: Text
 cGIPrefix = "GI_"
 
 enumVal :: Name -> Text
-enumVal (Name ns n) = cGIPrefix <> ns <> n <> "_val"
+enumVal (Name ns nm) = cGIPrefix <> ns <> nm <> "_val"
 
 flagsVal :: Name -> Text
 flagsVal n = "Flags_" <> enumVal n
@@ -239,4 +245,22 @@ optFlagsVal :: Name -> Text
 optFlagsVal n = "Opt" <> flagsVal n
 
 valEnum :: Name -> Text
-valEnum (Name ns n) = cGIPrefix <> "Val_" <> ns <> n
+valEnum (Name ns nm) = cGIPrefix <> "Val_" <> ns <> nm
+
+interfaceVal :: Name -> Text
+interfaceVal (Name ns nm) = ns <> nm <> "_val"
+
+valInterface :: Name -> Text
+valInterface (Name ns nm) = "Val_" <> ns <> nm
+
+objectVal :: Name -> Text
+objectVal = interfaceVal
+
+valObject :: Name -> Text
+valObject = valInterface
+
+valOptInterface :: Name -> Text
+valOptInterface n = "Opt" <> valInterface n
+
+valOptObject :: Name -> Text
+valOptObject = valOptInterface
