@@ -30,6 +30,9 @@ import           Signal                         ( genSignal
                                                 , genGSignal
                                                 )
 import           SymbolNaming
+import           Files                          ( excludeFiles
+                                                , genFiles
+                                                )
 
 isSetterOrGetter :: Object -> Method -> Bool
 isSetterOrGetter o m =
@@ -86,7 +89,7 @@ genObjectTypeInit o cTypeName = when (objTypeInit o /= "") $ cline $ T.unlines
 genObject :: Name -> Object -> CodeGen ()
 genObject n o = do
   isGO <- isGObject (TInterface n)
-  if not isGO || name n == "HeaderBarAccessible"
+  if not isGO || n `elem` excludeFiles
     then commentLine
       (upperName n <> " does not descend from GObject, it will be ignored.")
     else do
@@ -104,35 +107,8 @@ genObject n o = do
 
       forM_ (objCType o) (genGObjectCasts n)
 
-      if namespace n
-           /=        "Gtk"
-           ||        name n
-           `notElem` [ "Bin"
-                     , "Button"
-                     , "CheckButton"
-                     , "ToggleButton"
-                     , "RadioButton"
-                     , "Misc"
-                     , "Label"
-                     , "Entry"
-                     , "ActionBar"
-                     , "MenuShell"
-                     , "RadioMenuItem"
-                     , "CheckMenuItem"
-                     , "Menu"
-                     , "MenuItem"
-                     , "Adjustment"
-                     , "Alignment"
-                     , "AppChooserButton"
-                     , "ComboBox"
-              --  , "AccelMap"
-              --  , "Layout"
-              --  , "Container"
-              --  , "Window"
-              --  , "Image"
-              --  , "Range"
-                     ]
-        then commentLine "Ignored: I'm generating only button and range"
+      if namespace n /= "Gtk" || n `notElem` genFiles
+        then commentLine "Ignored: This file has been ignored by the settings in Files.hs"
         else genObject' n o ocamlName
  where
   genModuleType parents ocamlName = case parents of
