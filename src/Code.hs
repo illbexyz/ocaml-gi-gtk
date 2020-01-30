@@ -1033,6 +1033,8 @@ commonCImports = T.unlines
   , "#include <caml/callback.h>"
   , "#include <caml/fail.h>"
   , "#include \"gio_includes.h\""
+  , "#include \"gdkpixbuf_includes.h\""
+  , "#include \"pango_includes.h\""
   , "#include \"gtk_includes.h\""
   , "#include \"wrappers.h\""
   , "#include \"ml_glib.h\""
