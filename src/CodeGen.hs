@@ -49,9 +49,6 @@ import           Object                         ( genObject
 import           Struct                         ( extractCallbacksInStruct
                                                 , fixAPIStructs
                                                 , ignoreStruct
-                                                , genZeroStruct
-                                                , genZeroUnion
-                                                , genWrappedPtr
                                                 )
 import           Code
 import           Callable                       ( genCCallableWrapper
@@ -84,29 +81,7 @@ genFunction n (Function symbol fnMovedTo callable) =
         <> " *)"
         )
       )
-      (do
-        genCCallableWrapper n symbol callable
-        export (NamedSubsection MethodSection $ lowerName n) (lowerName n)
-      )
-
-genBoxedObject :: Name -> Text -> CodeGen ()
-genBoxedObject n typeInit = do
-  let name'       = upperName n
-      get_type_fn = "c_" <> typeInit
-
-  group $ do
-    line
-      $  "foreign import ccall \""
-      <> typeInit
-      <> "\" "
-      <> get_type_fn
-      <> " :: "
-    indent $ line "IO GType"
-  group $ do
-    line $ "instance BoxedObject " <> name' <> " where"
-    indent $ line $ "boxedType _ = " <> get_type_fn
-
-  line $ "instance BoxedObject " <> name' <> " where"
+      (genCCallableWrapper n symbol callable)
 
 -- | Generate wrapper for structures.
 genStruct :: Name -> Struct -> CodeGen ()
@@ -176,14 +151,9 @@ genUnion n u = do
 
   addSectionDocumentation ToplevelSection (unionDocumentation u)
 
-  if unionIsBoxed u
-    then genBoxedObject n (fromJust $ unionTypeInit u)
-    else genWrappedPtr n (unionAllocationInfo u) (unionSize u)
-
-  exportDecl (name' <> "(..)")
-
-  -- Generate a builder for a structure filled with zeroes.
-  genZeroUnion n u
+  -- if unionIsBoxed u
+  --   then genBoxedObject n (fromJust $ unionTypeInit u)
+  --   else genWrappedPtr n (unionAllocationInfo u) (unionSize u)
 
   -- Generate code for fields.
   -- genStructOrUnionFields n (unionFields u)

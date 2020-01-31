@@ -13,7 +13,6 @@ module Code
   , listModuleTree
   , codeToText
   , transitiveModuleDeps
-  , minBaseVersion
   , BaseVersion(..)
   , showBaseVersion
   , registerNSDependency
@@ -37,19 +36,9 @@ module Code
   , gblank
   , group
   , ggroup
-  , cppIf
-  , CPPGuard(..)
   , submodule
-  , setLanguagePragmas
-  , addLanguagePragma
-  , setGHCOptions
-  , setModuleFlags
-  , setModuleMinBase
   , getFreshTypeVariable
   , resetTypeVariableScope
-  , exportModule
-  , exportDecl
-  , export
   , HaddockSection(..)
   , NamedSection(..)
   , addSectionFormattedDocs
@@ -124,10 +113,6 @@ import           Util                           ( tshow
                                                 , utf8WriteFile
                                                 )
 
--- | Set of CPP conditionals understood by the code generator.
-data CPPConditional = CPPIf Text -- ^ #if Foo
-  deriving (Eq, Show, Ord)
-
 -- | The generated `Code` is a sequence of `CodeToken`s.
 newtype Code = Code (Seq.Seq CodeToken)
   deriving (Sem.Semigroup, Monoid, Eq, Show, Ord)
@@ -151,8 +136,6 @@ data CodeToken
     | Group Code          -- ^ A grouped set of lines
     | IncreaseIndent      -- ^ Increase the indentation for the rest
                           -- of the lines in the group.
-    | CPPBlock CPPConditional Code -- ^ A block of code guarded by the
-                                   -- given CPP conditional
     deriving (Eq, Ord, Show)
 
 type Deps = Set.Set Text
@@ -182,8 +165,6 @@ type SymbolName = Text
 data Export = Export {
       exportType    :: ExportType       -- ^ Which kind of export.
     , exportSymbol  :: SymbolName       -- ^ Actual symbol to export.
-    , exportGuards  :: [CPPConditional] -- ^ Protect the export by the
-                                        -- given CPP export guards.
     } deriving (Show, Eq, Ord)
 
 -- | Possible types of exports.
@@ -207,14 +188,7 @@ data ModuleInfo = ModuleInfo {
     , cDeps      :: Deps -- ^ Set of dependencies for this module (c-side)   
     , moduleExports :: Seq.Seq Export -- ^ Exports for the module.
     , qualifiedImports :: Set.Set ModulePath -- ^ Qualified (source) imports.
-    , modulePragmas :: Set.Set Text -- ^ Set of language pragmas for the module.
-    , moduleGHCOpts :: Set.Set Text -- ^ GHC options for compiling the module.
-    , moduleFlags   :: Set.Set ModuleFlag -- ^ Flags for the module.
     , sectionDocs   :: M.Map HaddockSection Text -- ^ Documentation
-                                     -- for the different sections in
-                                     -- the module.
-    , moduleMinBase :: BaseVersion -- ^ Minimal version of base the
-                                   -- module will work on.
     }
 
 -- | Flags for module code generation.
@@ -245,11 +219,7 @@ emptyModule m = ModuleInfo { modulePath       = m
                            , cDeps            = Set.empty
                            , moduleExports    = Seq.empty
                            , qualifiedImports = Set.empty
-                           , modulePragmas    = Set.empty
-                           , moduleGHCOpts    = Set.empty
-                           , moduleFlags      = Set.empty
                            , sectionDocs      = M.empty
-                           , moduleMinBase    = Base47
                            }
 
 -- | Information for the code generator.
@@ -268,9 +238,7 @@ data CGError = CGErrorNotImplemented Text
 
 -- | Temporaty state for the code generator.
 data CGState = CGState {
-  cgsCPPConditionals :: [CPPConditional] -- ^ Active CPP conditionals,
-                                         -- outermost condition first.
-  , cgsNextAvailableTyvar :: NamedTyvar -- ^ Next unused type
+  cgsNextAvailableTyvar :: NamedTyvar -- ^ Next unused type
                                         -- variable.
   }
 
@@ -282,9 +250,7 @@ data NamedTyvar = SingleCharTyvar Char
 
 -- | Clean slate for `CGState`.
 emptyCGState :: CGState
-emptyCGState = CGState { cgsCPPConditionals    = []
-                       , cgsNextAvailableTyvar = SingleCharTyvar 'b'
-                       }
+emptyCGState = CGState { cgsNextAvailableTyvar = SingleCharTyvar 'b' }
 
 -- | The base type for the code generator monad.
 type BaseCodeGen excType a
@@ -327,7 +293,6 @@ cleanInfo info = info { moduleCode       = emptyCode
                       , moduleExports    = Seq.empty
                       , qualifiedImports = Set.empty
                       , sectionDocs      = M.empty
-                      , moduleMinBase    = Base47
                       }
 
 -- | Run the given code generator using the state and config of an
@@ -372,29 +337,21 @@ mergeInfoState oldState newState =
           M.unionWith mergeInfo (submodules oldState) (submodules newState)
       newExports = moduleExports oldState <> moduleExports newState
       newImports = qualifiedImports oldState <> qualifiedImports newState
-      newPragmas = Set.union (modulePragmas oldState) (modulePragmas newState)
-      newGHCOpts = Set.union (moduleGHCOpts oldState) (moduleGHCOpts newState)
-      newFlags   = Set.union (moduleFlags oldState) (moduleFlags newState)
       newCCode   = cCode oldState <> cCode newState
       newHCode   = hCode oldState <> hCode newState
       newGCode   = gCode oldState <> gCode newState
       newBoot    = bootCode oldState <> bootCode newState
       newDocs    = sectionDocs oldState <> sectionDocs newState
-      newMinBase = max (moduleMinBase oldState) (moduleMinBase newState)
   in  oldState { moduleDeps       = newDeps
                , cDeps            = newCDeps
                , submodules       = newSubmodules
                , moduleExports    = newExports
                , qualifiedImports = newImports
-               , modulePragmas    = newPragmas
-               , moduleGHCOpts    = newGHCOpts
-               , moduleFlags      = newFlags
                , bootCode         = newBoot
                , cCode            = newCCode
                , hCode            = newHCode
                , gCode            = newGCode
                , sectionDocs      = newDocs
-               , moduleMinBase    = newMinBase
                }
 
 -- | Merge the infos, including code too.
@@ -558,12 +515,6 @@ qualifiedModuleName (ModulePath [ns, "Structs", s]) = ns <> "." <> s
 qualifiedModuleName (ModulePath [ns, "Unions", u]) = ns <> "." <> u
 qualifiedModuleName mp = dotModulePath mp
 
--- | Return the minimal base version supported by the module and all
--- its submodules.
-minBaseVersion :: ModuleInfo -> BaseVersion
-minBaseVersion minfo = maximum
-  (moduleMinBase minfo : map minBaseVersion (M.elems $ submodules minfo))
-
 -- | Give a friendly textual description of the error for presenting
 -- to the user.
 describeCGError :: CGError -> Text
@@ -700,26 +651,6 @@ group = group' tellCode blank
 ggroup :: BaseCodeGen e a -> BaseCodeGen e a
 ggroup = group' tellGCode gblank
 
--- | Guard a block of code with @#if@.
-cppIfBlock :: Text -> BaseCodeGen e a -> BaseCodeGen e a
-cppIfBlock cond cg = do
-  (x, code) <- recurseWithState addConditional cg
-  tellCode (CPPBlock (CPPIf cond) code)
-  blank
-  return x
- where
-  addConditional :: CGState -> CGState
-  addConditional cgs =
-    cgs { cgsCPPConditionals = CPPIf cond : cgsCPPConditionals cgs }
-
--- | Possible features to test via CPP.
-data CPPGuard = CPPOverloading -- ^ Enable overloading
-
--- | Guard a code block with CPP code, such that it is included only
--- if the specified feature is enabled.
-cppIf :: CPPGuard -> BaseCodeGen e a -> BaseCodeGen e a
-cppIf CPPOverloading = cppIfBlock "defined(ENABLE_OVERLOADING)"
-
 -- | Write the given code into the .c file for the current module.
 cBoot :: BaseCodeGen e a -> BaseCodeGen e a
 cBoot cg = do
@@ -727,59 +658,10 @@ cBoot cg = do
   modify' (\(cgs, s) -> (cgs, s { cCode = cCode s <> code }))
   return x
 
--- | Add a export to the current module.
-exportPartial :: ([CPPConditional] -> Export) -> CodeGen ()
-exportPartial partial = modify' $ \(cgs, s) ->
-  ( cgs
-  , let e = partial $ cgsCPPConditionals cgs
-    in  s { moduleExports = moduleExports s |> e }
-  )
-
--- | Reexport a whole module.
-exportModule :: SymbolName -> CodeGen ()
-exportModule m = exportPartial (Export ExportModule m)
-
--- | Add a type declaration-related export.
-exportDecl :: SymbolName -> CodeGen ()
-exportDecl d = exportPartial (Export ExportTypeDecl d)
-
--- | Export a symbol in the given haddock subsection.
-export :: HaddockSection -> SymbolName -> CodeGen ()
-export s n = exportPartial (Export (ExportSymbol s) n)
-
--- | Set the language pragmas for the current module.
-setLanguagePragmas :: [Text] -> CodeGen ()
-setLanguagePragmas ps =
-  modify' $ \(cgs, s) -> (cgs, s { modulePragmas = Set.fromList ps })
-
--- | Add a language pragma for the current module.
-addLanguagePragma :: Text -> CodeGen ()
-addLanguagePragma p = modify'
-  $ \(cgs, s) -> (cgs, s { modulePragmas = Set.insert p (modulePragmas s) })
-
--- | Set the GHC options for compiling this module (in a OPTIONS_GHC pragma).
-setGHCOptions :: [Text] -> CodeGen ()
-setGHCOptions opts =
-  modify' $ \(cgs, s) -> (cgs, s { moduleGHCOpts = Set.fromList opts })
-
--- | Set the given flags for the module.
-setModuleFlags :: [ModuleFlag] -> CodeGen ()
-setModuleFlags flags =
-  modify' $ \(cgs, s) -> (cgs, s { moduleFlags = Set.fromList flags })
-
--- | Set the minimum base version supported by the current module.
-setModuleMinBase :: BaseVersion -> CodeGen ()
-setModuleMinBase v =
-  modify' $ \(cgs, s) -> (cgs, s { moduleMinBase = max v (moduleMinBase s) })
-
 -- | Add documentation for a given section.
 addSectionFormattedDocs :: HaddockSection -> Text -> CodeGen ()
 addSectionFormattedDocs section docs = modify' $ \(cgs, s) ->
   (cgs, s { sectionDocs = M.insertWith (<>) section docs (sectionDocs s) })
-
--- | Format a CPP conditional.
-cppCondFormat :: CPPConditional -> (Text, Text)
-cppCondFormat (CPPIf c) = ("#if " <> c <> "\n", "#endif\n")
 
 -- | Return a text representation of the `Code`.
 codeToText :: Code -> Text
@@ -793,12 +675,6 @@ codeToText (Code seq) = LT.toStrict . B.toLazyText $ genCode 0 (viewl seq)
     genCode (n + 1) (viewl seq) <> genCode n (viewl rest)
   genCode n (Group (Code seq) :< rest) =
     genCode n (viewl seq) <> genCode n (viewl rest)
-  genCode n (CPPBlock cond (Code seq) :< rest) =
-    let (condBegin, condEnd) = cppCondFormat cond
-    in  B.fromText condBegin
-          <> genCode n (viewl seq)
-          <> B.fromText condEnd
-          <> genCode n (viewl rest)
   genCode n (IncreaseIndent :< rest) = genCode (n + 1) (viewl rest)
 
 -- | Pad a line to the given number of leading spaces, and add a
@@ -809,47 +685,6 @@ paddedLine n s = T.replicate (n * 4) " " <> s <> "\n"
 -- | Put a (padded) comma at the end of the text.
 comma :: Text -> Text
 comma s = padTo 40 s <> ","
-
--- | Format the given export symbol.
-formatExport :: (Export -> Text) -> Export -> Text
-formatExport formatName export = go (exportGuards export)
- where
-  go :: [CPPConditional] -> Text
-  go []       = (paddedLine 1 . comma . formatName) export
-  go (c : cs) = let (begin, end) = cppCondFormat c in begin <> go cs <> end
-
--- | Format the list of exported modules.
-formatExportedModules :: [Export] -> Maybe Text
-formatExportedModules [] = Nothing
-formatExportedModules exports =
-  Just
-    . T.concat
-    . map (formatExport (("module " <>) . exportSymbol))
-    . filter ((== ExportModule) . exportType)
-    $ exports
-
--- | Format the toplevel exported symbols.
-formatToplevel :: [Export] -> Maybe Text
-formatToplevel [] = Nothing
-formatToplevel exports =
-  Just
-    . T.concat
-    . map (formatExport exportSymbol)
-    . filter ((== ExportSymbol ToplevelSection) . exportType)
-    $ exports
-
--- | Format the type declarations section.
-formatTypeDecls :: [Export] -> Maybe Text
-formatTypeDecls exports =
-  let exportedTypes = filter ((== ExportTypeDecl) . exportType) exports
-  in  if exportedTypes == []
-        then Nothing
-        else
-          Just
-          . T.unlines
-          $ [ "-- * Exported types"
-            , T.concat . map (formatExport exportSymbol) $ exportedTypes
-            ]
 
 -- | A subsection name, with an optional anchor name.
 data Subsection = Subsection { subsectionTitle  :: Text
@@ -881,78 +716,6 @@ mainSectionName SignalSection   = "Signals"
 mainSectionName EnumSection     = "Enumerations"
 mainSectionName FlagSection     = "Flags"
 
--- | Format a given section made of subsections.
-formatSection :: NamedSection -> [(Subsection, Export)] -> Maybe Text
-formatSection section exports = if null exports
-  then Nothing
-  else
-    Just
-    . T.unlines
-    $ [ " -- * " <> mainSectionName section
-      , (T.unlines . map formatSubsection . M.toList) exportedSubsections
-      ]
-
- where
-  exportedSubsections :: M.Map Subsection (Set.Set Export)
-  exportedSubsections = foldr extract M.empty exports
-
-  extract
-    :: (Subsection, Export)
-    -> M.Map Subsection (Set.Set Export)
-    -> M.Map Subsection (Set.Set Export)
-  extract (subsec, m) secs =
-    M.insertWith Set.union subsec (Set.singleton m) secs
-
-  formatSubsection :: (Subsection, Set.Set Export) -> Text
-  formatSubsection (subsec, symbols) = T.unlines
-    [ "-- ** " <> case subsectionAnchor subsec of
-      Just anchor -> subsectionTitle subsec <> " #" <> anchor <> "#"
-      Nothing     -> subsectionTitle subsec
-    , case subsectionDoc subsec of
-      Just text -> formatHaddockComment text
-      Nothing   -> ""
-    , (T.concat . map (formatExport exportSymbol) . Set.toList) symbols
-    ]
-
--- | Format the list of exports into grouped sections.
-formatSubsectionExports :: M.Map HaddockSection Text -> [Export] -> [Maybe Text]
-formatSubsectionExports docs exports = map (uncurry formatSection)
-                                           (M.toAscList collectedExports)
- where
-  collectedExports :: M.Map NamedSection [(Subsection, Export)]
-  collectedExports = foldl classifyExport M.empty exports
-
-  classifyExport
-    :: M.Map NamedSection [(Subsection, Export)]
-    -> Export
-    -> M.Map NamedSection [(Subsection, Export)]
-  classifyExport m export = case exportType export of
-    ExportSymbol hs@(NamedSubsection ms n) ->
-      let subsec = subsecWithPrefix ms n (M.lookup hs docs)
-      in  M.insertWith (++) ms [(subsec, export)] m
-    _ -> m
-
--- | Format the given export list. This is just the inside of the
--- parenthesis.
-formatExportList :: M.Map HaddockSection Text -> [Export] -> Text
-formatExportList docs exports =
-  T.unlines
-    . catMaybes
-    $ formatExportedModules exports
-    : formatToplevel exports
-    : formatTypeDecls exports
-    : formatSubsectionExports docs exports
-
--- | Write down the list of language pragmas.
-languagePragmas :: [Text] -> Text
-languagePragmas [] = ""
-languagePragmas ps = "{-# LANGUAGE " <> T.intercalate ", " ps <> " #-}\n"
-
--- | Write down the list of GHC options.
-ghcOptions :: [Text] -> Text
-ghcOptions []   = ""
-ghcOptions opts = "{-# OPTIONS_GHC " <> T.intercalate ", " opts <> " #-}\n"
-
 -- | Standard fields for every module.
 standardFields :: Text
 standardFields = T.unlines
@@ -975,36 +738,6 @@ formatHaddockComment doc =
         (first : rest) ->
           ("(* " <> first <> " *)") : map (\x -> "(* " <> x <> " *)") rest
   in  T.unlines lines
-
--- | Generic module prelude. We reexport all of the submodules.
-modulePrelude :: M.Map HaddockSection Text -> Text -> [Export] -> [Text] -> Text
-modulePrelude _ name [] [] = "module " <> name <> " () where\n"
-modulePrelude docs name exports [] =
-  "module "
-    <> name
-    <> "\n    ( "
-    <> formatExportList docs exports
-    <> "    ) where\n"
-modulePrelude docs name [] reexportedModules =
-  "module "
-    <> name
-    <> "\n    ( "
-    <> formatExportList
-         docs
-         (map (\m -> Export ExportModule m []) reexportedModules)
-    <> "    ) where\n\n"
-    <> T.unlines (map ("import " <>) reexportedModules)
-modulePrelude docs name exports reexportedModules =
-  "module "
-    <> name
-    <> "\n    ( "
-    <> formatExportList
-         docs
-         (map (\m -> Export ExportModule m []) reexportedModules)
-    <> "\n"
-    <> formatExportList docs exports
-    <> "    ) where\n\n"
-    <> T.unlines (map ("import " <>) reexportedModules)
 
 -- | Code for loading the needed dependencies. One needs to give the
 -- prefix for the namespace being currently generated, modules with
@@ -1058,22 +791,15 @@ addCFile file = modify (file :)
 -- `writeModuleTree`.
 writeModuleInfo :: Bool -> Maybe FilePath -> ModuleInfo -> WithCFiles ()
 writeModuleInfo verbose dirPrefix minfo = do
-  let _submodulePaths   = map modulePath (M.elems (submodules minfo))
+  let _submodulePaths = map modulePath (M.elems (submodules minfo))
       -- We reexport any submodules.
       _submoduleExports = map dotWithPrefix _submodulePaths
       _pkgRoot = ModulePath (take 1 (modulePathToList $ modulePath minfo))
-      nspace            = head $ take 1 (modulePathToList $ modulePath minfo)
+      nspace = head $ take 1 (modulePathToList $ modulePath minfo)
       fname = modulePathToFilePath dirPrefix (modulePath minfo) ".ml"
-      dirname           = takeDirectory fname
-      code              = codeToText (moduleCode minfo)
-      _pragmas          = languagePragmas (Set.toList $ modulePragmas minfo)
-      _optionsGHC       = ghcOptions (Set.toList $ moduleGHCOpts minfo)
-      _prelude          = modulePrelude (sectionDocs minfo)
-                                        (dotWithPrefix $ modulePath minfo)
-                                        (F.toList (moduleExports minfo))
-                                        _submoduleExports
-
-      _deps   = importDeps _pkgRoot (Set.toList $ qualifiedImports minfo)
+      dirname = takeDirectory fname
+      code = codeToText (moduleCode minfo)
+      _deps = importDeps _pkgRoot (Set.toList $ qualifiedImports minfo)
       haddock = moduleHaddock (M.lookup ToplevelSection (sectionDocs minfo))
 
   when verbose $ liftIO $ putStrLn
@@ -1087,10 +813,9 @@ writeModuleInfo verbose dirPrefix minfo = do
     fname
     (T.unlines [haddock, code])
   unless (isCodeEmpty $ hCode minfo) $ do
-    let
-      hPrefix    = fromMaybe "" dirPrefix </> "include"
-      hName      = T.unpack $ moduleName $ modulePath minfo
-      hStubsFile = hPrefix </> ("GI" <> T.unpack nspace <> hName <> ".h")
+    let hPrefix    = fromMaybe "" dirPrefix </> "include"
+        hName      = T.unpack $ moduleName $ modulePath minfo
+        hStubsFile = hPrefix </> ("GI" <> T.unpack nspace <> hName <> ".h")
     liftIO $ do
       createDirectoryIfMissing True hPrefix
       utf8WriteFile hStubsFile (T.unlines [commonCImports, genHStubs minfo])

@@ -41,7 +41,6 @@ import           Type                           ( Type(TInterface) )
 import           Code                           ( CodeGen
                                                 , group
                                                 , line
-                                                , exportDecl
                                                 , qualified
                                                 , getAPI
                                                 )

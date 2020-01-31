@@ -37,7 +37,6 @@ writePattern name (SimpleSynonym value t) =
   line $ "pattern " <> ucFirst name <> " = " <> value <> " :: " <> t
 writePattern name (ExplicitSynonym view expression value t) = do
   -- Supported only on ghc >= 7.10
-  setModuleMinBase Base48
   line
     $  "pattern "
     <> ucFirst name
@@ -60,7 +59,6 @@ writePattern name (ExplicitSynonym view expression value t) = do
 
 genConstant :: Name -> Constant -> CodeGen ()
 genConstant (Name _ name) c = group $ do
-  setLanguagePragmas ["PatternSynonyms", "ScopedTypeVariables", "ViewPatterns"]
   deprecatedPragma name (constantDeprecated c)
 
   handleCGExc
@@ -70,7 +68,6 @@ genConstant (Name _ name) c = group $ do
     (do
       writeDocumentation DocBeforeSymbol (constantDocumentation c)
       assignValue name (constantType c) (constantValue c)
-      export ToplevelSection ("pattern " <> ucFirst name)
     )
 
 -- | Assign to the given name the given constant value, in a way that
