@@ -13,8 +13,6 @@ module Code
   , listModuleTree
   , codeToText
   , transitiveModuleDeps
-  , BaseVersion(..)
-  , showBaseVersion
   , registerNSDependency
   , qualified
   , getDeps
@@ -195,16 +193,6 @@ data ModuleInfo = ModuleInfo {
 data ModuleFlag = ImplicitPrelude  -- ^ Use the standard prelude,
                                    -- instead of the haskell-gi-base short one.
                   deriving (Show, Eq, Ord)
-
--- | Minimal version of base supported by a given module.
-data BaseVersion = Base47  -- ^ 4.7.0
-                 | Base48  -- ^ 4.8.0
-                   deriving (Show, Eq, Ord)
-
--- | A `Text` representation of the given base version bound.
-showBaseVersion :: BaseVersion -> Text
-showBaseVersion Base47 = "4.7"
-showBaseVersion Base48 = "4.8"
 
 -- | Generate the empty module.
 emptyModule :: ModulePath -> ModuleInfo
