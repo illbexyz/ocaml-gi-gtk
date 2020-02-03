@@ -125,7 +125,7 @@ haskellType (TGClosure _) = do
 haskellType (TInterface (Name "GObject" "Value")) =
   return $ TextCon "Gobject.g_value"
 haskellType t@(TInterface n) = do
-  let ocamlName = camelCaseToSnakeCase $ name n
+  let ocamlName = ocamlIdentifier n
       tname     = lowerName n
   api <- getAPI t
   case api of
@@ -217,7 +217,7 @@ outParamOcamlType t@TParamSpec                            = haskellType t
 outParamOcamlType t@(TGClosure  _                       ) = haskellType t
 outParamOcamlType t@(TInterface (Name "GObject" "Value")) = haskellType t
 outParamOcamlType t@(TInterface n                       ) = do
-  let ocamlName = camelCaseToSnakeCase $ name n
+  let ocamlName = ocamlIdentifier n
       tname     = lowerName n
   api <- getAPI t
   case api of

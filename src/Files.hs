@@ -42,8 +42,6 @@ genFiles = S.fromList
     , Name "Gtk" "Notebook"
     , Name "Gtk" "Action"
     , Name "Gtk" "IconView"
-    , Name "Gtk" "Style"
-    , Name "Gtk" "Toolbar"
     -- , Name "Gtk" "ThemingEngine"
     -- , Name "Gtk" "HSV"
     -- , Name "Gtk" "ToolItem"
