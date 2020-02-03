@@ -878,7 +878,7 @@ genDuneFile libName outputDir cFiles = do
 
   let libs = T.pack <$> case libName of
         "Gtk" ->
-          ["GIGObject", "GIGio", "GIGdk", "GIPango", "GIGdkPixbuf", "GIAtk", "GIcairo"]
+          ["GIGObject", "GIGio", "GIGLib", "GIGdk", "GIPango", "GIGdkPixbuf", "GIAtk", "GIcairo"]
         "Gdk" -> ["GIGio"]
         _     -> []
 
