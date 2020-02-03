@@ -20,7 +20,7 @@ import           Foreign.Storable               ( sizeOf )
 
 import           API
 import           Code
-import           SymbolNaming
+import           Naming
 import           Util                           ( tshow )
 
 data EnumOrFlag = Enum

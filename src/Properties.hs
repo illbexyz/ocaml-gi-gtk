@@ -23,15 +23,11 @@ import           Inheritance                    ( fullObjectPropertyList
                                                 , fullInterfacePropertyList
                                                 , instanceTree
                                                 )
-import           SymbolNaming                   ( lowerName
-                                                , upperName
-                                                , hyphensToCamelCase
-                                                , qualifiedSymbol
-                                                , hyphensToUnderscores
-                                                , camelCaseToSnakeCase
-                                                )
-import           Type
+import           Naming
+import           QualifiedNaming                ( qualifiedSymbol )
+import           TypeRep
 import           Util
+import           Debug.Trace
 
 genPropertySetter :: Text -> Name -> Property -> CodeGen ()
 genPropertySetter setter classe _prop =
@@ -57,11 +53,11 @@ genPropertyGetter getter classe _prop =
 
 genPropertyOCaml :: Name -> Property -> ExcCodeGen ()
 genPropertyOCaml classe prop = do
-  let pName          = propName prop
-      uScoresName    = hyphensToUnderscores pName
-      ocamlClassName = camelCaseToSnakeCase $ lowerName classe
-      classType      = typeShow $ polyMore $ con0 ("`" <> ocamlClassName)
-      isNullable     = fromMaybe False $ propReadNullable prop
+  currNS <- currentNS
+  let pName       = propName prop
+      uScoresName = escapeOCamlReserved $ hyphensToUnderscores pName
+      classType   = typeShow currNS $ RowCon More $ PolyCon $ NameCon classe
+      isNullable  = fromMaybe False $ propReadNullable prop
   -- TODO: uncomment next line
   -- writeHaddock DocBeforeSymbol (getterDoc n prop) 
   ocamlConverter <- ocamlDataConv isNullable (propType prop)
@@ -109,8 +105,9 @@ genInterfaceProperties n iface = do
 -- generate a fully qualified accesor name, otherwise just return
 -- "undefined". accessor is "get", "set" or "construct"
 accessorOrUndefined :: Bool -> Name -> Text -> CodeGen Text
-accessorOrUndefined available owner cName =
-  if not available then return "undefined" else qualifiedSymbol cName owner
+accessorOrUndefined available owner cName = if not available
+  then return "undefined"
+  else escapeOCamlReserved <$> qualifiedSymbol cName owner
 
 -- | The name of the type encoding the information for the property of
 -- the object.
@@ -124,7 +121,6 @@ infoType owner prop =
 
 genOneProperty :: Name -> Property -> ExcCodeGen ()
 genOneProperty owner prop = do
-  -- traceM $ "Prop: " <> show prop
   let name       = upperName owner
       cName      = (hyphensToCamelCase . propName) prop
       docSection = NamedSubsection PropertySection (lcFirst cName)
@@ -165,6 +161,7 @@ genOneProperty owner prop = do
 
   getter <- accessorOrUndefined readable owner cName
   setter <- accessorOrUndefined writable owner cName
+
   -- constructor <- accessorOrUndefined (writable || constructOnly)
   --                owner cName
   -- clear <- accessorOrUndefined (isNullable && writable &&
@@ -193,7 +190,7 @@ genMakeParams className props = do
   let constructors = filter isConstructor props
   if not $ null constructors
     then do
-      let constructorNames = map propName constructors
+      let constructorNames = map (escapeOCamlReserved . propName) constructors
           underlinedConstrNames = map hyphensToUnderscores constructorNames
           optionalArgs = "?" <> T.intercalate " ?" underlinedConstrNames
       blank

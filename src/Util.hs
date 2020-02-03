@@ -1,5 +1,6 @@
 module Util
-  ( prime
+  ( noLast
+  , prime
   , parenthesize
   , padTo
   , withComment
@@ -33,6 +34,9 @@ import qualified Data.ByteString               as B
 import           Data.Text                      ( Text )
 import qualified Data.Text                     as T
 import qualified Data.Text.Encoding            as TE
+
+noLast :: [a] -> [a]
+noLast xs = take (length xs - 1) xs
 
 padTo :: Int -> Text -> Text
 padTo n s = s <> T.replicate (n - T.length s) " "

@@ -34,12 +34,16 @@ import           Foreign.C.Types                ( CInt
                                                 )
 import           Foreign.Storable               ( sizeOf )
 
-import           API
+import           Data.GI.GIR.BasicTypes         ( BasicType(..)
+                                                , Name(..)
+                                                )
 
-import           Type
+import           API
 import           Code
 import           GObject
-import           SymbolNaming
+import           Naming
+import           QualifiedNaming                ( escapedArgName )
+import           TypeRep
 import           Util
 
 import           Debug.Trace
@@ -53,13 +57,8 @@ data ExposeClosures = WithClosures
 
 getModuleType :: Name -> CodeGen Text
 getModuleType n = do
-  currMod <- currentModule
-  currNs  <- currentNS
-  let currModuleName = last $ T.splitOn "." currMod
-  return $ case (currNs == namespace n, currModuleName == name n) of
-    (True , True ) -> "t"
-    (True , False) -> name n <> ".t"
-    (False, _    ) -> "GI" <> namespace n <> "." <> name n <> ".t"
+  currNs <- currentNS
+  return $ nsOCamlType currNs n
 
 enumResolver :: Name -> CodeGen Text
 enumResolver n = do
@@ -69,69 +68,62 @@ enumResolver n = do
     else "GI" <> namespace n <> "." <> "Enums"
 
 ocamlBasicType :: BasicType -> TypeRep
-ocamlBasicType TPtr     = ptr $ con0 "()"
-ocamlBasicType TBoolean = con0 "bool"
+ocamlBasicType TPtr     = TextCon "()" -- TODO: check this
+ocamlBasicType TBoolean = TextCon "bool"
 -- For all the platforms that we support (and those supported by glib)
 -- we have gint == gint32. Encoding this assumption in the types saves
 -- conversions.
 ocamlBasicType TInt     = case sizeOf (0 :: CInt) of
-  4 -> con0 "int"
+  4 -> TextCon "int"
   n -> error ("Unsupported `gint' length: " ++ show n)
 ocamlBasicType TUInt = case sizeOf (0 :: CUInt) of
-  4 -> con0 "int"
+  4 -> TextCon "int"
   n -> error ("Unsupported `guint' length: " ++ show n)
-ocamlBasicType TLong     = con0 "int"
-ocamlBasicType TULong    = con0 "int"
-ocamlBasicType TInt8     = con0 "int"
-ocamlBasicType TUInt8    = con0 "int"
-ocamlBasicType TInt16    = con0 "int"
-ocamlBasicType TUInt16   = con0 "int"
-ocamlBasicType TInt32    = con0 "int"
-ocamlBasicType TUInt32   = con0 "int"
-ocamlBasicType TInt64    = con0 "int"
-ocamlBasicType TUInt64   = con0 "int"
-ocamlBasicType TGType    = con0 "GType"
-ocamlBasicType TUTF8     = con0 "string"
-ocamlBasicType TFloat    = con0 "float"
-ocamlBasicType TDouble   = con0 "float"
-ocamlBasicType TUniChar  = con0 "char"
-ocamlBasicType TFileName = con0 "string"
-ocamlBasicType TIntPtr   = undefined
-ocamlBasicType TUIntPtr  = undefined
+ocamlBasicType TLong     = TextCon "int"
+ocamlBasicType TULong    = TextCon "int"
+ocamlBasicType TInt8     = TextCon "int"
+ocamlBasicType TUInt8    = TextCon "int"
+ocamlBasicType TInt16    = TextCon "int"
+ocamlBasicType TUInt16   = TextCon "int"
+ocamlBasicType TInt32    = TextCon "int"
+ocamlBasicType TUInt32   = TextCon "int"
+ocamlBasicType TInt64    = TextCon "int"
+ocamlBasicType TUInt64   = TextCon "int"
+ocamlBasicType TGType    = TextCon "GType"
+ocamlBasicType TUTF8     = TextCon "string"
+ocamlBasicType TFloat    = TextCon "float"
+ocamlBasicType TDouble   = TextCon "float"
+ocamlBasicType TUniChar  = TextCon "char"
+ocamlBasicType TFileName = TextCon "string"
+ocamlBasicType TIntPtr   = TextCon "error"
+ocamlBasicType TUIntPtr  = TextCon "error"
+-- ocamlBasicType TIntPtr   = error "(ocamlBasicType) can't handle TIntPtr"
+-- ocamlBasicType TUIntPtr  = error "(ocamlBasicType) can't handle TUIntPtr"
 
 -- | This translates GI types to the types used for generated OCaml code.
 haskellType :: Type -> CodeGen TypeRep
-haskellType (TBasicType bt) = return $ ocamlBasicType bt
-haskellType (TCArray _ _ _ (TBasicType TUInt8)) =
-  return $ "ByteString" `con` []
-haskellType (TCArray _ _ _ a) = do
-  inner <- haskellType a
-  return $ "[]" `con` [inner]
-haskellType (TGArray a) = do
-  inner <- haskellType a
-  return $ "[]" `con` [inner]
-haskellType (TPtrArray a) = do
-  inner <- haskellType a
-  return $ "[]" `con` [inner]
-haskellType (TByteArray) = return $ "ByteString" `con` []
-haskellType (TGList a  ) = do
-  inner <- haskellType a
-  return $ "[]" `con` [inner]
-haskellType (TGSList a) = do
-  inner <- haskellType a
-  return $ "[]" `con` [inner]
-haskellType (TGHash a b) = do
-  innerA <- haskellType a
-  innerB <- haskellType b
-  return $ "Map.Map" `con` [innerA, innerB]
-haskellType TError        = return $ "GError" `con` []
-haskellType TVariant      = return $ "GVariant" `con` []
-haskellType TParamSpec    = return $ "GParamSpec" `con` []
+haskellType (TBasicType bt                    ) = return $ ocamlBasicType bt
+haskellType (TCArray _ _ _ (TBasicType TUInt8)) = return $ TextCon "ByteString"
+haskellType (TCArray _ _ _ a                  ) = ListCon <$> haskellType a
+haskellType (TGArray   a                      ) = ListCon <$> haskellType a
+haskellType (TPtrArray a                      ) = ListCon <$> haskellType a
+haskellType TByteArray                          = return $ TextCon "ByteString"
+haskellType (TGList  a )                        = ListCon <$> haskellType a
+haskellType (TGSList a )                        = ListCon <$> haskellType a
+haskellType (TGHash a b)                        = do
+  currNS <- currentNS
+  innerA <- typeShow currNS <$> haskellType a
+  innerB <- typeShow currNS <$> haskellType b
+  return $ TextCon $ "(" <> innerA <> ", " <> innerB <> ") Hashtbl.t"
+haskellType TError        = return $ TextCon "GError"
+haskellType TVariant      = return $ TextCon "GVariant"
+haskellType TParamSpec    = return $ TextCon "GParamSpec"
 haskellType (TGClosure _) = do
   tyvar <- getFreshTypeVariable
-  return $ "GClosure" `con` [con0 tyvar]
+  -- error "(haskellType) can't handle TGClosure"
+  return $ TextCon "error"
 haskellType (TInterface (Name "GObject" "Value")) =
-  return $ "Gobject.g_value" `con` []
+  return $ TextCon "Gobject.g_value"
 haskellType t@(TInterface n) = do
   let ocamlName = camelCaseToSnakeCase $ name n
       tname     = lowerName n
@@ -139,32 +131,30 @@ haskellType t@(TInterface n) = do
   case api of
     APIFlags _f -> do
       flagsRes <- enumResolver n
-      return $ list $ (flagsRes <> "." <> ocamlName) `con` []
+      return $ ListCon $ TextCon $ (flagsRes <> "." <> ocamlName)
     APIEnum _e -> do
       enumRes <- enumResolver n
-      return $ (enumRes <> "." <> ocamlName) `con` []
+      return $ TextCon $ enumRes <> "." <> ocamlName
     APIObject    _o -> handleObj ocamlName
     APIInterface _i -> handleObj ocamlName
-    APIStruct    _s -> do
-      moduleType <- getModuleType n
-      return $ moduleType `con` []
-    APIConst    _c -> return $ "const" `con` []
-    APIFunction _f -> return $ "function" `con` []
-    APICallback _c -> return $ "callback" `con` []
-    APIUnion    _u -> return $ "union" `con` []
+    APIStruct    _s -> TextCon <$> getModuleType n
+    APIConst     _c -> return $ TextCon "const"
+    APIFunction  _f -> return $ TextCon "function"
+    APICallback  _c -> return $ TextCon "callback"
+    APIUnion     _u -> return $ TextCon "union"
  where
   handleObj ocamlName = do
     freshVar <- getFreshTypeVariable
     currMod  <- currentModule
     currNS   <- currentNS
-    let currModuleName = last $ T.splitOn "." currMod
-        typeVarCon     = typevar freshVar
-        ocamlName      = camelCaseToSnakeCase $ name n
-        typeRep = case (currNS == namespace n, currModuleName == name n) of
-          (True , True ) -> classCon ocamlName
-          (True , False) -> classCon $ name n <> "G." <> ocamlName
-          (False, _    ) -> ("`" <> ocamlName) `con` []
-    return $ obj $ typeVarCon $ polyMore typeRep
+    -- let currModuleName = last $ T.splitOn "." currMod
+        -- ocamlName      = camelCaseToSnakeCase $ name n
+        -- typeRep = case (currNS == namespace n, currModuleName == name n) of
+          -- (True , _) -> TextCon $ "`" <> ocamlName
+          -- (True , True ) -> TextCon $ "`" <> ocamlName
+          -- (True , False) -> TextCon $ name n <> "G." <> ocamlName
+          -- (False, _) -> TextCon $ "`" <> ocamlName
+    return $ ObjCon $ TypeVarCon freshVar $ RowCon More $ PolyCon $ NameCon n
 
 -- | Whether the callable has closure arguments (i.e. "user_data"
 -- style arguments).
@@ -213,37 +203,20 @@ typeAllocInfo t = do
 -- | This translates GI types to the types used for generated OCaml code.
 outParamOcamlType :: Type -> ExcCodeGen TypeRep
 outParamOcamlType (TBasicType bt) = return $ ocamlBasicType bt
-outParamOcamlType (TCArray _ _ _ (TBasicType TUInt8)) =
-  return $ "ByteString" `con` []
-outParamOcamlType (TCArray _ _ _ a) = do
-  inner <- outParamOcamlType a
-  return $ "[]" `con` [inner]
-outParamOcamlType (TGArray a) = do
-  inner <- outParamOcamlType a
-  return $ "[]" `con` [inner]
-outParamOcamlType (TPtrArray a) = do
-  inner <- outParamOcamlType a
-  return $ "[]" `con` [inner]
-outParamOcamlType (TByteArray) = return $ "ByteString" `con` []
-outParamOcamlType (TGList a  ) = do
-  inner <- outParamOcamlType a
-  return $ "[]" `con` [inner]
-outParamOcamlType (TGSList a) = do
-  inner <- outParamOcamlType a
-  return $ "[]" `con` [inner]
-outParamOcamlType (TGHash a b) = do
-  innerA <- outParamOcamlType a
-  innerB <- outParamOcamlType b
-  return $ "Map.Map" `con` [innerA, innerB]
-outParamOcamlType TError        = return $ "GError" `con` []
-outParamOcamlType TVariant      = return $ "GVariant" `con` []
-outParamOcamlType TParamSpec    = return $ "GParamSpec" `con` []
-outParamOcamlType (TGClosure _) = do
-  tyvar <- getFreshTypeVariable
-  return $ "GClosure" `con` [con0 tyvar]
-outParamOcamlType (TInterface (Name "GObject" "Value")) =
-  return $ "Gobject.g_value" `con` []
-outParamOcamlType t@(TInterface n) = do
+outParamOcamlType t@(TCArray _ _ _ (TBasicType TUInt8))   = haskellType t
+outParamOcamlType t@(TCArray _ _ _ a                  )   = haskellType t
+outParamOcamlType t@(TGArray   a                      )   = haskellType t
+outParamOcamlType t@(TPtrArray a                      )   = haskellType t
+outParamOcamlType t@TByteArray                            = haskellType t
+outParamOcamlType t@(TGList  a )                          = haskellType t
+outParamOcamlType t@(TGSList a )                          = haskellType t
+outParamOcamlType t@(TGHash a b)                          = haskellType t
+outParamOcamlType t@TError                                = haskellType t
+outParamOcamlType t@TVariant                              = haskellType t
+outParamOcamlType t@TParamSpec                            = haskellType t
+outParamOcamlType t@(TGClosure  _                       ) = haskellType t
+outParamOcamlType t@(TInterface (Name "GObject" "Value")) = haskellType t
+outParamOcamlType t@(TInterface n                       ) = do
   let ocamlName = camelCaseToSnakeCase $ name n
       tname     = lowerName n
   api <- getAPI t
@@ -252,21 +225,14 @@ outParamOcamlType t@(TInterface n) = do
     APIEnum      _ -> handleEnum ocamlName
     APIInterface _ -> handleObj n
     APIObject    _ -> handleObj n
-    _              -> return $ con0 "error"
+    _ -> notImplementedError "(outParamOcamlType) can't handle this type"
  where
   handleEnum ocamlName = do
     enumRes <- enumResolver n
-    return $ (enumRes <> "." <> ocamlName) `con` []
+    return $ TextCon $ enumRes <> "." <> ocamlName
   handleObj n = do
-    freshVar       <- getFreshTypeVariable
-    currNs         <- currentNS
-    namespacedType <- getModuleType n
-    let typeVarCon = typevar freshVar
-        variant    = polyLess $ namespacedType `con` []
-        object     = if namespace n == currNs -- TODO: remove if we can construct a class from another lib
-          then obj variant
-          else obj $ typeVarCon variant
-    return object
+    freshVar <- getFreshTypeVariable
+    return $ ObjCon $ TypeVarCon freshVar $ RowCon Less $ PolyCon $ NameCon n
 
 cType :: Type -> ExcCodeGen Text
 cType (TBasicType t) = case t of

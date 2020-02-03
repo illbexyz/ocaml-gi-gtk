@@ -14,6 +14,8 @@ excludeFiles :: Set Name
 excludeFiles = S.fromList
     [ Name "Gtk"   "HeaderBarAccessible"
     , Name "Pango" "Engine"
+    , Name "Pango" "EngineShape"
+    , Name "Pango" "EngineLang"
     , Name "Pango" "FontsetSimple"
     ]
 
@@ -37,10 +39,17 @@ genFiles = S.fromList
     , Name "Gtk" "Alignment"
     , Name "Gtk" "AppChooserButton"
     , Name "Gtk" "ComboBox"
---  , Name "Gtk" "AccelMap"
---  , Name "Gtk" "Layout"
---  , Name "Gtk" "Container"
---  , Name "Gtk" "Window"
---  , Name "Gtk" "Image"
---  , Name "Gtk" "Range"
+    , Name "Gtk" "Notebook"
+    , Name "Gtk" "Action"
+    , Name "Gtk" "IconView"
+    -- , Name "Gtk" "ThemingEngine"
+    -- , Name "Gtk" "HSV"
+    -- , Name "Gtk" "ToolItem"
+    -- , Name "Gtk" "Clipboard"
+    --  , Name "Gtk" "AccelMap"
+    --  , Name "Gtk" "Layout"
+    --  , Name "Gtk" "Container"
+    --  , Name "Gtk" "Window"
+    --  , Name "Gtk" "Image"
+    --  , Name "Gtk" "Range"
     ]

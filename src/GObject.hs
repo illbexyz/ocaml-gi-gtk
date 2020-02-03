@@ -9,7 +9,6 @@ import           Control.Applicative            ( (<$>) )
 
 import           API
 import           Code
-import           Type
 
 -- Returns whether the given type is a descendant of the given parent.
 typeDoParentSearch :: Name -> Type -> CodeGen Bool

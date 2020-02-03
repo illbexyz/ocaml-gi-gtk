@@ -46,7 +46,7 @@ import           GtkDoc                         ( GtkDoc(..)
                                                 , parseGtkDoc
                                                 )
 import           Overrides                      ( onlineDocsMap )
-import           SymbolNaming                   ( lowerSymbol )
+import           Naming                         ( lowerSymbol )
 import           Util                           ( mapNth )
 
 -- | Where is the documentation located with respect to the relevant

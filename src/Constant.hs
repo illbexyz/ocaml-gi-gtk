@@ -13,7 +13,7 @@ import           Haddock                        ( deprecatedPragma
                                                 , writeDocumentation
                                                 , RelativeDocPosition(..)
                                                 )
-import           Type
+import           TypeRep
 import           Util                           ( tshow
                                                 , ucFirst
                                                 )
@@ -74,15 +74,18 @@ genConstant (Name _ name) c = group $ do
 -- can be assigned to the corresponding Haskell type.
 assignValue :: Text -> Type -> Text -> ExcCodeGen ()
 assignValue name t@(TBasicType TPtr) value = do
-  ht <- typeShow <$> haskellType t
+  currNS <- currentNS
+  ht     <- typeShow currNS <$> haskellType t
   writePattern name (ExplicitSynonym "ptrToIntPtr" "intPtrToPtr" value ht)
 assignValue name t@(TBasicType b) value = do
-  ht <- typeShow <$> haskellType t
-  hv <- showBasicType b value
+  currNS <- currentNS
+  ht     <- typeShow currNS <$> haskellType t
+  hv     <- showBasicType b value
   writePattern name (SimpleSynonym hv ht)
 assignValue name t@(TInterface _) value = do
-  ht  <- typeShow <$> haskellType t
-  api <- findAPI t
+  currNS <- currentNS
+  ht     <- typeShow currNS <$> haskellType t
+  api    <- findAPI t
   case api of
     Just (APIEnum _) ->
       writePattern name (ExplicitSynonym "fromEnum" "toEnum" value ht)

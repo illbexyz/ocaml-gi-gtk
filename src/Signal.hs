@@ -32,8 +32,9 @@ import           Callable                       ( fixupCallerAllocates
                                                 )
 import           Code
 import           Conversions
-import           SymbolNaming
-import           Type
+import           Naming
+import           QualifiedNaming                ( signalHaskellName )
+import           TypeRep
 import           Util                           ( parenthesize
                                                 , withComment
                                                 , tshow
@@ -66,6 +67,7 @@ genOCamlCallbackPrototype
   -> Documentation
   -> ExcCodeGen ()
 genOCamlCallbackPrototype subsec cb _htype classe expose _doc = do
+  currNS <- currentNS
     -- let name' = case expose of
     --               WithClosures -> callbackHTypeWithClosures htype
     --               WithoutClosures -> htype
@@ -78,7 +80,7 @@ genOCamlCallbackPrototype subsec cb _htype classe expose _doc = do
 
   -- ret <- hOutType cb hOutArgs
   let ocamlClassName = camelCaseToSnakeCase classe
-      classType      = typeShow $ poly $ con0 ("`" <> ocamlClassName)
+      classType      = typeShow currNS $ TextCon $ "`" <> ocamlClassName
 
   marshaller <- ocamlMarshaller hInArgs subsec classe
 

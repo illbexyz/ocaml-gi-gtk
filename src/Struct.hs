@@ -27,13 +27,9 @@ import           Haddock                        ( addSectionDocumentation
                                                   ( DocBeforeSymbol
                                                   )
                                                 )
-import           SymbolNaming                   ( upperName
-                                                , lowerName
-                                                , underscoresToCamelCase
-                                                , qualifiedSymbol
-                                                )
+import           Naming
+import           QualifiedNaming                ( qualifiedSymbol )
 
-import           Type
 import           Util
 
 -- TODO: ignore private structs

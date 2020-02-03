@@ -56,14 +56,9 @@ import           Callable                       ( genCCallableWrapper
                                                 )
 import           Inheritance                    ( instanceTree )
 import           Signal                         ( genSignal )
-import           SymbolNaming                   ( upperName
-                                                , submoduleLocation
-                                                , lowerName
-                                                , camelCaseToSnakeCase
-                                                , hyphensToUnderscores
-                                                , escapeOCamlReserved
+import           Naming
+import           QualifiedNaming                   ( submoduleLocation
                                                 )
-import           Type
 import           Debug.Trace
 
 
@@ -90,8 +85,7 @@ genStruct n s = unless (ignoreStruct n s) $ do
   -- writeHaddock DocBeforeSymbol "Memory-managed wrapper type."
 
   -- addSectionDocumentation ToplevelSection (structDocumentation s)
-
-  line "type t"
+  addType n Nothing
 
   hline
     $  "#define "

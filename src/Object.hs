@@ -23,13 +23,13 @@ import           Code
 import           GObject
 import           Inheritance                    ( instanceTree )
 import           Method                         ( genMethod )
+import           Naming
 import           Properties                     ( genObjectProperties
                                                 , genInterfaceProperties
                                                 )
 import           Signal                         ( genSignal
                                                 , genGSignal
                                                 )
-import           SymbolNaming
 import           Files                          ( excludeFiles
                                                 , genFiles
                                                 )
@@ -90,37 +90,21 @@ genObject :: Name -> Object -> CodeGen ()
 genObject n o = do
   isGO <- isGObject (TInterface n)
   if not isGO || n `elem` excludeFiles
-    then commentLine
-      (upperName n <> " does not descend from GObject, it will be ignored.")
+    then return ()
     else do
       let objectName = name n
           ocamlName  = escapeOCamlReserved $ camelCaseToSnakeCase objectName
 
       parents <- instanceTree n
 
-      genModuleType parents ocamlName
-
-      when (objectName == "Widget") $ do
-        gline "class type widget_o = object"
-        gline "  method as_widget : Widget.t Gobject.obj"
-        gline "end"
+      case parents of
+        [] -> addType n Nothing
+        _  -> addType n (Just $ head parents)
 
       forM_ (objCType o) (genGObjectCasts n)
-
       if namespace n /= "Gtk" || n `notElem` genFiles
-        then commentLine "Ignored: This file has been ignored by the settings in Files.hs"
+        then return ()
         else genObject' n o ocamlName
- where
-  genModuleType parents ocamlName = case parents of
-    [] -> line $ "type t = [`" <> ocamlName <> "]"
-    _  -> do
-      let parent = head parents
-          parentType =
-            case (name parent == "Object", namespace parent == "Gtk") of
-              (True, _   ) -> "`giu"
-              (_   , True) -> "" <> name parent <> ".t"
-              _            -> "`" <> camelCaseToSnakeCase (name parent)
-      line $ "type t = [" <> parentType <> " | `" <> ocamlName <> "]"
 
 genObject' :: Name -> Object -> Text -> CodeGen ()
 genObject' n o ocamlName = do
@@ -141,11 +125,6 @@ genObject' n o ocamlName = do
   gline $ "open " <> objectName
   gblank
 
-  gline $ "class type " <> ocamlName <> "_o = object"
-  gline $ "  method as_" <> ocamlName <> " : t obj"
-  gline "end"
-  gblank
-
   let namespacedParentName = case name parent of
         "Container" -> "['a] GContainer.container_impl"
         "Widget"    -> "['a] GObj.widget_impl"
@@ -153,7 +132,12 @@ genObject' n o ocamlName = do
         _           -> name parent <> "G." <> ocamlParentName <> "_skel"
   gline $ "class " <> ocamlName <> "_skel obj = object (self)"
   gline $ "  inherit " <> namespacedParentName <> " obj"
-  gline $ "  method as_" <> ocamlName <> " = (obj :> t obj)"
+  gline
+    $  "  method as_"
+    <> ocamlName
+    <> " = (obj :> "
+    <> nsOCamlType (namespace n) n
+    <> " obj)"
 
   line "open Gobject"
   line "open Data"
@@ -185,7 +169,8 @@ genObject' n o ocamlName = do
   group
     $  line
     $  "let cast w : "
-    <> "t obj = try_cast w \""
+    <> nsOCamlType (namespace n) n
+    <> " obj = try_cast w \""
     <> nspace
     <> objectName
     <> "\""
@@ -193,7 +178,8 @@ genObject' n o ocamlName = do
   group
     $  line
     $  "let create pl : "
-    <> "t obj = GtkObject.make \""
+    <> nsOCamlType (namespace n) n
+    <> " obj = GtkObject.make \""
     <> nspace
     <> objectName
     <> "\" pl"
@@ -261,12 +247,10 @@ genInterface :: Name -> Interface -> CodeGen ()
 genInterface n iface = do
   let name'     = upperName n
       ocamlName = escapeOCamlReserved $ camelCaseToSnakeCase (name n)
-
   -- addSectionDocumentation ToplevelSection (ifDocumentation iface)
   forM_ (ifCType iface) (genGObjectCasts n)
 
-  line $ "type t = [`" <> ocamlName <> "]"
-
+  addType n Nothing
   -- when (namespace n == "Gtk") $ do
   --   line "open Gobject"
   --   line "open Data"

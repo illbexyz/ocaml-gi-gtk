@@ -30,9 +30,8 @@ import           ModulePath                     ( ModulePath
                                                 , dotModulePath
                                                 , (/.)
                                                 )
-import           SymbolNaming                   ( submoduleLocation
-                                                , lowerName
-                                                , upperName
+import           Naming
+import           QualifiedNaming                ( submoduleLocation
                                                 , signalHaskellName
                                                 )
 import           Util                           ( ucFirst )

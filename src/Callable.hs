@@ -34,8 +34,11 @@ import           Haddock                        ( writeHaddock
                                                 )
 import           Code
 import           Conversions
-import           SymbolNaming
-import           Type
+import           Naming
+import           QualifiedNaming                ( escapedArgName
+                                                , signalHaskellName
+                                                )
+import           TypeRep
 import           Util
 
 import           Text.Show.Pretty               ( ppShow )
@@ -45,10 +48,11 @@ import           Text.Show.Pretty               ( ppShow )
 -- of the corresponding Haskell identifier.
 genOCamlExternal :: Name -> Text -> Callable -> ExcCodeGen ()
 genOCamlExternal mn cSymbol callable = do
-  line $ "external " <> camelCaseToSnakeCase (lowerName mn) <> " : "
+  currNS <- currentNS
+  line $ "external " <> ocamlIdentifier mn <> " : "
   indent $ do
     argTypes <- callableOCamlTypes callable
-    let argTypesStr       = map typeShow argTypes
+    let argTypesStr       = map (typeShow currNS) argTypes
         (inArgs, outArgs) = splitAt (length argTypesStr - 1) argTypesStr
         outArg            = head outArgs
 
@@ -58,7 +62,7 @@ genOCamlExternal mn cSymbol callable = do
     line outArg
 
     let fn       = mlGiPrefix mn cSymbol
-    let nativeFn = if length (args callable) > 5 then fn <> "_bc" else ""
+    let nativeFn = if length inArgs > 5 then fn <> "_bc" else ""
     -- TODO: Handle exceptions in some way
     -- when (callableThrows callable) $
     --        line $ padTo 40 "Ptr (Ptr GError) -> " <> "-- error"
@@ -81,7 +85,8 @@ foreignArgConverter i a = do
 
 genMlMacro :: Name -> Text -> Callable -> ExcCodeGen ()
 genMlMacro mn cSymbol callable = do
-  let nArgs   = length $ args callable
+  let inArgs  = callableHInArgs' callable
+      nArgs   = length $ args callable
       outArgs = callableHOutArgs callable
 
   when (any (\a -> direction a == DirectionInout) (args callable))
@@ -89,8 +94,7 @@ genMlMacro mn cSymbol callable = do
 
   if (not . null) outArgs
     then do
-      let inArgs     = callableHInArgs' callable
-          numOutArgs = T.pack $ show $ length outArgs
+      let numOutArgs = T.pack $ show $ length outArgs
           numInArgs  = T.pack $ show $ length inArgs
           macroName  = "ML_" <> numInArgs <> "in_" <> numOutArgs <> "out ("
       outCTypes    <- mapM (cType . argType) outArgs
@@ -127,7 +131,7 @@ genMlMacro mn cSymbol callable = do
             ([T.toLower $ namespace mn, cSymbol] ++ argsTypes ++ [retTypeName])
       cline $ macroName <> macroArgs <> ")"
 
-  when (length (args callable) > 5) $ do
+  when (length inArgs > 5) $ do
     let numArgs = T.pack $ show $ length $ args callable
     cline $ "ML_bc" <> numArgs <> " (" <> mlGiPrefix mn cSymbol <> ")"
 
@@ -311,21 +315,22 @@ callableOCamlTypes c = do
   inArgs  <- mapM argToTyperep $ callableHInArgs' c
   outArgs <- mapM argToTyperep $ callableHOutArgs c
   retType <- case returnType c of
-    Nothing -> return $ con0 "unit"
+    Nothing -> return $ TextCon "unit"
     Just t  -> outParamOcamlType t
 
-  let optionalRetType = if returnMayBeNull c then option retType else retType
+  let optionalRetType =
+        if returnMayBeNull c then OptionCon retType else retType
 
   let outArgs' = case outArgs of
         [] -> optionalRetType
-        _  -> tuple $ optionalRetType : outArgs
+        _  -> TupleCon $ optionalRetType : outArgs
 
   return $ inArgs ++ [outArgs']
 
  where
   argToTyperep a = do
     ocamlType <- haskellType $ argType a
-    return $ if mayBeNull a then option ocamlType else ocamlType
+    return $ if mayBeNull a then OptionCon ocamlType else ocamlType
 
 -- | Invoke the given C function, taking care of errors.
 invokeCFunction :: Callable -> ForeignSymbol -> [Text] -> CodeGen ()

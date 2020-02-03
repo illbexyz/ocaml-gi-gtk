@@ -51,6 +51,8 @@ module API
   , Enumeration(..)
   , Flags(..)
   , Union(..)
+  , BasicType(..)
+  , Type(..)
   )
 where
 
@@ -89,7 +91,9 @@ import           Data.GI.GIR.Arg                ( Arg(..)
                                                 , Direction(..)
                                                 , Scope(..)
                                                 )
-import           Data.GI.GIR.BasicTypes         ( Alias
+import           Data.GI.GIR.BasicTypes         ( BasicType(..)
+                                                , Type(..)
+                                                , Alias
                                                 , Name(..)
                                                 , Transfer(..)
                                                 )
@@ -161,8 +165,6 @@ import           Data.GI.CodeGen.LibGIRepository
                                                 , girLoadGType
                                                 )
 import           Data.GI.CodeGen.GType          ( gtypeIsBoxed )
-
-import           Type                           ( Type )
 
 data GIRInfo = GIRInfo {
       girPCPackages      :: [Text],

@@ -49,6 +49,7 @@ module Code
   , currentModule
   , currentNS
   , addCDep
+  , addType
   )
 where
 
@@ -93,6 +94,7 @@ import           Data.GI.CodeGen.ProjectInfo    ( authors
 
 import           API                            ( API
                                                 , Name(..)
+                                                , Type(..)
                                                 )
 import {-# SOURCE #-} CtoHaskellMap             ( cToHaskellMap
                                                 , Hyperlink
@@ -104,12 +106,14 @@ import           ModulePath                     ( ModulePath(..)
                                                 , modulePathNS
                                                 , moduleName
                                                 )
-import           Type                           ( Type(..) )
+import           Naming                         ( ocamlIdentifier )
+import           TopologicalSort                ( getOrderedTypes )
 import           Util                           ( tshow
                                                 , terror
                                                 , padTo
                                                 , utf8WriteFile
                                                 )
+import           Debug.Trace
 
 -- | The generated `Code` is a sequence of `CodeToken`s.
 newtype Code = Code (Seq.Seq CodeToken)
@@ -180,6 +184,7 @@ data ModuleInfo = ModuleInfo {
     , gCode      :: Code       -- ^ OOP OCaml code
     , cCode      :: Code       -- ^ .c stubs' code
     , hCode      :: Code       -- ^ .h stubs' code
+    , types      :: Set.Set (Name, Maybe Name)
     , submodules :: M.Map Text ModuleInfo -- ^ Indexed by the relative
                                           -- module name.
     , moduleDeps :: Deps -- ^ Set of dependencies for this module.
@@ -202,6 +207,7 @@ emptyModule m = ModuleInfo { modulePath       = m
                            , cCode            = emptyCode
                            , hCode            = emptyCode
                            , gCode            = emptyCode
+                           , types            = Set.empty
                            , submodules       = M.empty
                            , moduleDeps       = Set.empty
                            , cDeps            = Set.empty
@@ -277,6 +283,7 @@ cleanInfo info = info { moduleCode       = emptyCode
                       , cCode            = emptyCode
                       , hCode            = emptyCode
                       , gCode            = emptyCode
+                      , types            = Set.empty
                       , bootCode         = emptyCode
                       , moduleExports    = Seq.empty
                       , qualifiedImports = Set.empty
@@ -329,6 +336,7 @@ mergeInfoState oldState newState =
       newHCode   = hCode oldState <> hCode newState
       newGCode   = gCode oldState <> gCode newState
       newBoot    = bootCode oldState <> bootCode newState
+      newTypes   = Set.union (types oldState) (types newState)
       newDocs    = sectionDocs oldState <> sectionDocs newState
   in  oldState { moduleDeps       = newDeps
                , cDeps            = newCDeps
@@ -369,11 +377,8 @@ submodule' modName cg = do
   (_, oldInfo) <- get
   let info = emptyModule (modulePath oldInfo /. modName)
   case runCodeGen cg cfg (emptyCGState, info) of
-    Left e -> throwError e
-    Right (_, smInfo) ->
-      if isCodeEmpty (moduleCode smInfo) && M.null (submodules smInfo)
-        then return ()
-        else modify' (addSubmodule modName smInfo)
+    Left  e           -> throwError e
+    Right (_, smInfo) -> modify' (addSubmodule modName smInfo)
 
 -- | Run the given CodeGen in order to generate a submodule (specified
 -- an an ordered list) of the current module.
@@ -646,6 +651,33 @@ cBoot cg = do
   modify' (\(cgs, s) -> (cgs, s { cCode = cCode s <> code }))
   return x
 
+addType :: Name -> Maybe Name -> CodeGen ()
+addType n parentName = modify'
+  (\(cgs, s) -> (cgs, s { types = Set.insert (n, parentName) (types s) }))
+
+typeLines :: [(Text, Maybe Text)] -> Text
+typeLines s = T.unlines $ uncurry textToOCamlType <$> s
+ where
+  typeDeclText :: Text -> Text
+  typeDeclText t = "type " <> t <> " = "
+
+  textToOCamlType :: Text -> Maybe Text -> Text
+  textToOCamlType t Nothing = typeDeclText t <> "[`" <> t <> "]"
+  textToOCamlType t (Just "object_") =
+    typeDeclText t <> "[`giu | `" <> t <> "]"
+  textToOCamlType t (Just parentName) =
+    typeDeclText t <> "[" <> parentName <> " | `" <> t <> "]"
+
+typeAs :: [Name] -> Text
+typeAs names = T.unlines $ cosooo <$> names
+ where
+  cosooo n = T.unlines
+    [ "class type " <> ocamlId <> "_o = object"
+    , "  method as_" <> ocamlId <> " : " <> ocamlId <> " Gobject.obj"
+    , "end"
+    ]
+    where ocamlId = ocamlIdentifier n
+
 -- | Add documentation for a given section.
 addSectionFormattedDocs :: HaddockSection -> Text -> CodeGen ()
 addSectionFormattedDocs section docs = modify' $ \(cgs, s) ->
@@ -768,16 +800,21 @@ dotWithPrefix :: ModulePath -> Text
 dotWithPrefix mp = dotModulePath mp
 
 type CFiles = [FilePath]
+type OCamlTypes = Set.Set (Name, Maybe Name)
 
-type WithCFiles = StateT CFiles IO
+type GenOutput = StateT (CFiles, OCamlTypes) IO
 
-addCFile :: FilePath -> WithCFiles ()
-addCFile file = modify (file :)
+addCFile :: FilePath -> GenOutput ()
+addCFile file = modify (\(cFiles, ocamlTypes) -> (file : cFiles, ocamlTypes))
+
+addOutTypes :: Set.Set (Name, Maybe Name) -> GenOutput ()
+addOutTypes types =
+  modify (\(cFiles, ocamlTypes) -> (cFiles, Set.union types ocamlTypes))
 
 -- | Write to disk the code for a module, under the given base
 -- directory. Does not write submodules recursively, for that use
 -- `writeModuleTree`.
-writeModuleInfo :: Bool -> Maybe FilePath -> ModuleInfo -> WithCFiles ()
+writeModuleInfo :: Bool -> Maybe FilePath -> ModuleInfo -> GenOutput ()
 writeModuleInfo verbose dirPrefix minfo = do
   let _submodulePaths = map modulePath (M.elems (submodules minfo))
       -- We reexport any submodules.
@@ -820,6 +857,7 @@ writeModuleInfo verbose dirPrefix minfo = do
     let gModuleFile = modulePathToFilePath dirPrefix gFileModulePath "G.ml"
     liftIO $ utf8WriteFile gModuleFile (T.unlines [genGModule minfo])
 
+  unless (Set.null (types minfo)) $ addOutTypes $ types minfo
 
 -- | Generate the .c file for the given module.
 genHStubs :: ModuleInfo -> Text
@@ -841,7 +879,8 @@ genDuneFile outputDir cFiles = do
   let libs = T.pack <$> case libName of
         "Gtk" ->
           ["GIGObject", "GIGio", "GIGdk", "GIPango", "GIGdkPixbuf", "GIAtk"]
-        _ -> []
+        "Gdk" -> ["GIGio"]
+        _     -> []
 
   let commonPart =
         [ "(library"
@@ -878,7 +917,7 @@ modulePathToFilePath dirPrefix (ModulePath mp) ext =
 
 -- | Write down the code for a module and its submodules to disk under
 -- the given base directory. It returns the list of written modules.
-writeModuleTree' :: Bool -> Maybe FilePath -> ModuleInfo -> WithCFiles [Text]
+writeModuleTree' :: Bool -> Maybe FilePath -> ModuleInfo -> GenOutput [Text]
 writeModuleTree' verbose dirPrefix minfo = do
   submodulePaths <- concat
     <$> forM (M.elems (submodules minfo)) (writeModuleTree' verbose dirPrefix)
@@ -888,9 +927,12 @@ writeModuleTree' verbose dirPrefix minfo = do
 writeModuleTree
   :: Bool -> Maybe FilePath -> ModuleInfo -> IO ([Text], [FilePath])
 writeModuleTree verbose dirPrefix minfo = do
-  (modules, cFiles) <- runStateT (writeModuleTree' verbose dirPrefix minfo) []
+  (modules, (cFiles, ocamlTypes)) <- runStateT
+    (writeModuleTree' verbose dirPrefix minfo)
+    ([], Set.empty)
   let
     prefix'     = fromMaybe "" dirPrefix
+    libName     = reverse $ takeWhile (/= '/') (reverse prefix')
     modules'    = filter (\m -> length (T.splitOn "." m) > 2) modules -- Es: Gtk.Enums h
     modulePaths = Set.fromList $ map
       ((prefix' </>) . takeDirectory . T.unpack . T.replace "." "/")
@@ -900,7 +942,6 @@ writeModuleTree verbose dirPrefix minfo = do
     cFilesMap = foldl (\map (key, file) -> M.insertWith (++) key [file] map)
                       M.empty
                       dirFileTuple
-
   forM_
     modulePaths
     (\path -> do
@@ -908,6 +949,14 @@ writeModuleTree verbose dirPrefix minfo = do
       let cFilenames = fromMaybe [] (M.lookup path cFilesMap)
       genDuneFile path cFilenames
     )
+
+  unless (Set.null ocamlTypes) $ do
+    let typesFile   = prefix' </> libName </> "Types.ml"
+        sortedTypes = getOrderedTypes ocamlTypes
+        typesText   = typeLines sortedTypes
+        typesAs     = typeAs $ fst <$> Set.toList ocamlTypes
+
+    liftIO $ utf8WriteFile typesFile (T.unlines [typesText, typesAs])
 
   return (modules, Set.toList modulePaths)
 
