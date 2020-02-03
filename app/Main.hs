@@ -47,6 +47,12 @@ pangoLib = Library { name          = "Pango"
                    , overridesFile = Just "overrides/Pango.overrides"
                    }
 
+cairoLib :: Library
+cairoLib = Library { name          = "cairo"
+                   , version       = "1.0"
+                   , overridesFile = Just "overrides/cairo.overrides"
+                   }
+
 glibLib :: Library
 glibLib = Library { name          = "GLib"
                   , version       = "2.0"
@@ -65,6 +71,7 @@ parseArg "gtk"       = return gtkLib
 parseArg "gdk"       = return gdkLib
 parseArg "gdkpixbuf" = return gdkPixbufLib
 parseArg "pango"     = return pangoLib
+parseArg "cairo"     = return cairoLib
 parseArg "glib"      = return glibLib
 parseArg "gobject"   = return gobjectLib
 parseArg "gio"       = return gioLib
@@ -82,7 +89,7 @@ main = do
 printUsage :: IO ()
 printUsage =
     putStrLn
-        "Usage: ocaml-gi-gtk [-h] [-v] [atk, gdk, gdkpixbuf, pango, gtk, gio, glib, gobject]"
+        "Usage: ocaml-gi-gtk [-h] [-v] [atk, gdk, gdkpixbuf, pango, cairo, gtk, gio, glib, gobject]"
 
 printVersion :: IO ()
 printVersion = putStrLn "ocaml-gi-gtk 0.1"

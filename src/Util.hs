@@ -16,6 +16,7 @@ module Util
   , mapNth
   , copyDirectory
   , removeDirectoryContents
+  , upFirst
   )
 where
 
@@ -144,3 +145,9 @@ copyDirectory src dst = do
   doesFileOrDirectoryExist x = orM [doesDirectoryExist x, doesFileExist x]
   orM xs = or <$> sequence xs
   whenM s r = s >>= flip when r
+
+upFirst :: String -> String
+upFirst s = zipWith inner s [0 .. length s - 1]
+ where
+  inner c 0 = toUpper c
+  inner c _ = c

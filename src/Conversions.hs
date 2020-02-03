@@ -495,7 +495,7 @@ cToOCamlValue False (Just (TInterface n)) = do
       return $ valInterface n
     APIObject o -> do
       addCDep (namespace n <> name n)
-      return $ "Val_" <> objTypeName o
+      return $ valObject n
     APIStruct _s -> cToOCamlValueErr "APIStruct"
     APIUnion  _u -> cToOCamlValueErr "APIUnion"
 cToOCamlValue True (Just (TInterface n)) = do

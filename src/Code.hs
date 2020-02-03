@@ -112,6 +112,7 @@ import           Util                           ( tshow
                                                 , terror
                                                 , padTo
                                                 , utf8WriteFile
+                                                , upFirst
                                                 )
 import           Debug.Trace
 
@@ -820,7 +821,7 @@ writeModuleInfo verbose dirPrefix minfo = do
       -- We reexport any submodules.
       _submoduleExports = map dotWithPrefix _submodulePaths
       _pkgRoot = ModulePath (take 1 (modulePathToList $ modulePath minfo))
-      nspace = head $ take 1 (modulePathToList $ modulePath minfo)
+      nspace = T.pack $ getLibName dirPrefix
       fname = modulePathToFilePath dirPrefix (modulePath minfo) ".ml"
       dirname = takeDirectory fname
       code = codeToText (moduleCode minfo)
@@ -871,14 +872,13 @@ genCStubs minfo = codeToText (cCode minfo)
 genGModule :: ModuleInfo -> Text
 genGModule minfo = codeToText (gCode minfo)
 
-genDuneFile :: FilePath -> [Text] -> IO ()
-genDuneFile outputDir cFiles = do
+genDuneFile :: Text -> FilePath -> [Text] -> IO ()
+genDuneFile libName outputDir cFiles = do
   let duneFilepath = joinPath [outputDir, "dune"]
-      libName      = T.pack (takeBaseName outputDir)
 
   let libs = T.pack <$> case libName of
         "Gtk" ->
-          ["GIGObject", "GIGio", "GIGdk", "GIPango", "GIGdkPixbuf", "GIAtk"]
+          ["GIGObject", "GIGio", "GIGdk", "GIPango", "GIGdkPixbuf", "GIAtk", "GIcairo"]
         "Gdk" -> ["GIGio"]
         _     -> []
 
@@ -915,6 +915,10 @@ modulePathToFilePath dirPrefix (ModulePath mp) ext =
   -- joinPath (fromMaybe "" dirPrefix : "Bindings" : map T.unpack mp) ++ ext
   joinPath (fromMaybe "" dirPrefix : map T.unpack mp) ++ ext
 
+getLibName :: Maybe FilePath -> String
+getLibName (Just path) = reverse $ takeWhile (/= '/') (reverse path)
+getLibName Nothing     = ""
+
 -- | Write down the code for a module and its submodules to disk under
 -- the given base directory. It returns the list of written modules.
 writeModuleTree' :: Bool -> Maybe FilePath -> ModuleInfo -> GenOutput [Text]
@@ -932,7 +936,7 @@ writeModuleTree verbose dirPrefix minfo = do
     ([], Set.empty)
   let
     prefix'     = fromMaybe "" dirPrefix
-    libName     = reverse $ takeWhile (/= '/') (reverse prefix')
+    libName     = getLibName dirPrefix
     modules'    = filter (\m -> length (T.splitOn "." m) > 2) modules -- Es: Gtk.Enums h
     modulePaths = Set.fromList $ map
       ((prefix' </>) . takeDirectory . T.unpack . T.replace "." "/")
@@ -947,11 +951,11 @@ writeModuleTree verbose dirPrefix minfo = do
     (\path -> do
       createDirectoryIfMissing True path
       let cFilenames = fromMaybe [] (M.lookup path cFilesMap)
-      genDuneFile path cFilenames
+      genDuneFile (T.pack libName) path cFilenames
     )
 
   unless (Set.null ocamlTypes) $ do
-    let typesFile   = prefix' </> libName </> "Types.ml"
+    let typesFile   = prefix' </> upFirst libName </> "Types.ml"
         sortedTypes = getOrderedTypes ocamlTypes
         typesText   = typeLines sortedTypes
         typesAs     = typeAs $ fst <$> Set.toList ocamlTypes

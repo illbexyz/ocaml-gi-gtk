@@ -57,8 +57,7 @@ import           Callable                       ( genCCallableWrapper
 import           Inheritance                    ( instanceTree )
 import           Signal                         ( genSignal )
 import           Naming
-import           QualifiedNaming                   ( submoduleLocation
-                                                )
+import           QualifiedNaming                ( submoduleLocation )
 import           Debug.Trace
 
 
@@ -82,17 +81,21 @@ genFunction n (Function symbol fnMovedTo callable) =
 genStruct :: Name -> Struct -> CodeGen ()
 genStruct n s = unless (ignoreStruct n s) $ do
   let name' = upperName n
+      cType = structCType s
   -- writeHaddock DocBeforeSymbol "Memory-managed wrapper type."
 
   -- addSectionDocumentation ToplevelSection (structDocumentation s)
   addType n Nothing
 
-  hline
-    $  "#define "
-    <> (namespace n <> name n)
-    <> "_val(val) (("
-    <> (namespace n <> name n)
-    <> "*) MLPointer_val(val))"
+  case cType of
+    Nothing -> return ()
+    Just cType ->
+      hline
+        $  "#define "
+        <> (namespace n <> name n)
+        <> "_val(val) (("
+        <> cType
+        <> "*) MLPointer_val(val))"
 
   -- if structIsBoxed s
   --   then traceShowM $ "Struct " <> show n <> " is boxed"
