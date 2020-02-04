@@ -13,10 +13,7 @@ import           Data.Text                      ( Text )
 import qualified Data.Text                     as T
 
 import           API                            ( Name(..) )
-import           Naming                         ( nsOCamlType
-                                                , nsOCamlClass
-                                                , ocamlIdentifier
-                                                )
+import           Naming                         ( nsOCamlType )
 
 data PolyDirection = Less | More
   deriving (Show, Eq)
@@ -73,8 +70,8 @@ getVars (OptionCon t     ) = getVars t
 getVars (ObjCon    t     ) = getVars t
 getVars (RowCon Less t   ) = getVars t
 getVars (RowCon More t   ) = getVars t
+getVars (PolyCon  t      ) = getVars t
 getVars (NameCon  n      ) = []
-getVars (PolyCon  t      ) = []
 getVars (TextCon  text   ) = []
 getVars (TupleCon treps  ) = concatMap getVars treps
 

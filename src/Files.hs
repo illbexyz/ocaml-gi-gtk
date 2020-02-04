@@ -4,7 +4,6 @@ module Files
     )
 where
 
-import           Data.Text                      ( Text )
 import           Data.Set                       ( Set )
 import qualified Data.Set                      as S
 
@@ -42,7 +41,10 @@ genFiles = S.fromList
     , Name "Gtk" "Notebook"
     , Name "Gtk" "Action"
     , Name "Gtk" "IconView"
-    -- , Name "Gtk" "ThemingEngine"
+    , Name "Gtk" "Clipboard"
+    , Name "Gtk" "RcStyle"
+    , Name "Gtk" "ThemingEngine"
+    -- , Name "Gtk" "Application"
     -- , Name "Gtk" "HSV"
     -- , Name "Gtk" "ToolItem"
     -- , Name "Gtk" "Clipboard"

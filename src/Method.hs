@@ -5,9 +5,8 @@ where
 
 import           Data.Text                      ( Text )
 import qualified Data.Text                     as T
-import           Control.Monad                  ( when
-                                                , forM
-                                                )
+import           Data.Maybe                     ( mapMaybe )
+import           Control.Monad                  ( when )
 
 import           API                            ( Arg(..)
                                                 , Callable(..)
@@ -28,59 +27,69 @@ import           Code                           ( CodeGen
                                                 )
 import           GObject                        ( isGObject )
 import           Naming
+import           QualifiedNaming                ( nsOCamlClass )
 import           TypeRep
 import           Util                           ( noLast )
 
 
 data MethodInArg = BasicIn Text Text
                  | ClassType Bool Text Name
+                 | NonGtkClassType Bool Text Text
   deriving (Show)
 
 data MethodOutArg = BasicOut Text
                   | Class Bool Name
+                  | NonGtkClass Bool Text Text
   deriving (Show)
 
 type MethodArgs = (MethodInArg, [MethodInArg], MethodOutArg)
 
+typeRepsToMethodArgs :: [TypeRep] -> CodeGen (Maybe MethodArgs)
+typeRepsToMethodArgs []                    = return Nothing
+typeRepsToMethodArgs xs@(h : typeRepsTail) = do
+  currNS  <- currentNS
+  headArg <- methodInTypeShow currNS h
+  inArgs' <- mapM (methodInTypeShow currNS) (noLast typeRepsTail)
+  let inArgs = case headArg of
+        ClassType _ _ _           -> inArgs'
+        t@(BasicIn _ _          ) -> t : inArgs'
+        t@(NonGtkClassType _ _ _) -> t : inArgs'
+  let retTypeRep = last xs
+  retArg <- methodOutTypeShow currNS retTypeRep
+  return $ Just (headArg, inArgs, retArg)
+
 methodInTypeShow :: Text -> TypeRep -> CodeGen MethodInArg
-methodInTypeShow currNS (OptionCon (ObjCon (TypeVarCon tvar (RowCon More (PolyCon (NameCon n@(Name "Gtk" _)))))))
+methodInTypeShow _currNS (OptionCon (ObjCon (TypeVarCon tvar (RowCon More (PolyCon (NameCon n@(Name "Gtk" _)))))))
   = return $ ClassType True tvar n
-methodInTypeShow currNS (ObjCon (TypeVarCon tvar (RowCon More (PolyCon (NameCon n@(Name "Gtk" _))))))
+methodInTypeShow currNS t@(OptionCon (ObjCon (TypeVarCon tvar (RowCon More (PolyCon (NameCon _))))))
+  = return $ NonGtkClassType True tvar $ methodTypeShow currNS t
+methodInTypeShow _currNS (ObjCon (TypeVarCon tvar (RowCon More (PolyCon (NameCon n@(Name "Gtk" _))))))
   = return $ ClassType False tvar n
+methodInTypeShow currNS t@(ObjCon (TypeVarCon tvar (RowCon More (PolyCon (NameCon _)))))
+  = return $ NonGtkClassType False tvar $ methodTypeShow currNS t
 methodInTypeShow currNS t = do
   tvar <- getFreshTypeVariable
   return $ BasicIn tvar $ methodTypeShow currNS t
 
 methodOutTypeShow :: Text -> TypeRep -> CodeGen MethodOutArg
-methodOutTypeShow currNS (OptionCon (ObjCon (TypeVarCon tvar (RowCon Less (PolyCon (NameCon n@(Name "Gtk" _)))))))
+methodOutTypeShow _currNS (OptionCon (ObjCon (TypeVarCon _tvar (RowCon Less (PolyCon (NameCon n@(Name "Gtk" _)))))))
   = return $ Class True n
-methodOutTypeShow currNS (ObjCon (TypeVarCon tvar (RowCon Less (PolyCon (NameCon n@(Name "Gtk" _))))))
+methodOutTypeShow currNS t@(OptionCon (ObjCon (TypeVarCon tvar (RowCon Less (PolyCon (NameCon _))))))
+  = return $ NonGtkClass True tvar (methodTypeShow currNS t)
+methodOutTypeShow _currNS (ObjCon (TypeVarCon _tvar (RowCon Less (PolyCon (NameCon n@(Name "Gtk" _))))))
   = return $ Class False n
-methodOutTypeShow currNS t = do
-  tvar <- getFreshTypeVariable
-  return $ BasicOut $ methodTypeShow currNS t
-
-containsClassTypes :: [MethodInArg] -> Bool
-containsClassTypes []   = False
-containsClassTypes args = True `elem` map inner args
- where
-  inner (BasicIn _ _    ) = False
-  inner (ClassType _ _ _) = True
-
-returnsClass :: [MethodOutArg] -> Bool
-returnsClass []   = False
-returnsClass args = isClass (last args)
- where
-  isClass (Class _ _) = True
-  isClass _           = False
+methodOutTypeShow currNS t@(ObjCon (TypeVarCon tvar (RowCon Less (PolyCon (NameCon _)))))
+  = return $ NonGtkClass False tvar (methodTypeShow currNS t)
+methodOutTypeShow currNS t = return $ BasicOut $ methodTypeShow currNS t
 
 addOption :: Bool -> Text -> Text
 addOption False t = t
 addOption True  t = t <> " option"
 
 showMethodInArg :: MethodInArg -> CodeGen Text
-showMethodInArg (BasicIn _ t              ) = return t
-showMethodInArg (ClassType isOption tvar n) = do
+showMethodInArg (BasicIn _ t                      ) = return t
+showMethodInArg (NonGtkClassType _isOption _tvar t) = return t
+showMethodInArg (ClassType       isOption  tvar  n) = do
   currNS <- currentNS
   return
     $  addOption isOption
@@ -91,22 +100,28 @@ showMethodInArg (ClassType isOption tvar n) = do
     <> ")"
 
 showMethodOutArg :: MethodOutArg -> CodeGen Text
-showMethodOutArg (BasicOut t      ) = return t
-showMethodOutArg (Class isOption n) = do
-  currNS <- currentNS
-  return $ addOption isOption $ nsOCamlClass currNS n
+showMethodOutArg (BasicOut t                   ) = return t
+showMethodOutArg (NonGtkClass _isOption _tvar t) = return t
+showMethodOutArg (Class isOption n             ) = do
+  ocamlClass <- nsOCamlClass n
+  return $ addOption isOption ocamlClass
 
-extractClassVars :: [MethodInArg] -> [Text]
-extractClassVars = concatMap inner
- where
-  inner (ClassType _ var _) = [var]
-  inner (BasicIn var _    ) = []
+tVarClassType :: MethodInArg -> Maybe Text
+tVarClassType (ClassType       _ var _) = Just var
+tVarClassType (NonGtkClassType _ var _) = Just var
+tVarClassType (BasicIn _var _         ) = Nothing
+
+extractClassVars :: MethodArgs -> [Text]
+extractClassVars (_, inArgs, NonGtkClass _ tvar _) =
+  mapMaybe tVarClassType inArgs ++ [tvar]
+extractClassVars (_, inArgs, _) = mapMaybe tVarClassType inArgs
 
 extractVars :: [MethodInArg] -> [Text]
 extractVars = concatMap inner
  where
-  inner (ClassType _ var _) = [var]
-  inner (BasicIn var _    ) = [var]
+  inner (ClassType       _ var _) = [var]
+  inner (NonGtkClassType _ var _) = [var]
+  inner (BasicIn var _          ) = [var]
 
 -- | When parsing the GIR file we add the implicit object argument to
 -- methods of an object.  Since we are prepending an argument we need
@@ -123,9 +138,8 @@ fixMethodArgs c = c { args = args'', returnType = returnType' }
   fixLengthArg arg = arg { argType = fixCArrayLength (argType arg) }
 
   fixCArrayLength :: Type -> Type
-  fixCArrayLength (TCArray zt fixed length t) = if length > -1
-    then TCArray zt fixed (length + 1) t
-    else TCArray zt fixed length t
+  fixCArrayLength (TCArray zt fixed len t) =
+    if len > -1 then TCArray zt fixed (len + 1) t else TCArray zt fixed len t
 
   fixCArrayLength t = t
 
@@ -156,7 +170,6 @@ fixConstructorReturnType returnsGObject cn c = c { returnType = returnType' }
 genMethod :: Name -> Method -> ExcCodeGen ()
 genMethod cn Method { methodName = mn, methodSymbol = sym, methodCallable = c, methodType = t }
   = when (t /= Constructor) $ do
-    currNS <- currentNS
     let mName = escapeOCamlReserved $ name mn
     -- export (NamedSubsection MethodSection $ lowerName mn) (lowerName mn')
     returnsGObject <- maybe (return False) isGObject (returnType c)
@@ -175,34 +188,27 @@ genMethod cn Method { methodName = mn, methodSymbol = sym, methodCallable = c, m
     mbMethodArgs <- typeRepsToMethodArgs typeReps
 
     case mbMethodArgs of
-      Nothing                       -> return ()
-      Just args@(_, inArgs, outArg) -> do
-        let tVars     = methodTVars typeReps
+      Nothing    -> return ()
+      Just mArgs -> do
+        let tVars     = extractClassVars mArgs
             tVarsText = case tVars of
               []   -> ""
               vars -> T.intercalate " " (("'" <>) <$> vars) <> "."
 
-        methodSig  <- methodSignature tVarsText args
-        methodBody <- methodBody tVars mName args
+        mSig  <- methodSignature tVarsText mArgs
+        mBody <- methodBody tVars mName mArgs
 
-        gline $ "  method " <> mName <> methodSig <> " = "
-        gline $ "    " <> bodyPrefix args <> methodBody
+        gline $ "  method " <> mName <> mSig <> " = "
+        gline $ "    " <> bodyPrefix mArgs <> mBody
         gline ""
 
  where
-  methodTVars :: [TypeRep] -> [Text]
-  methodTVars []             = []
-  methodTVars (_ : typeReps) = concatMap getVars typeReps
-
   methodSignature :: Text -> MethodArgs -> CodeGen Text
-  methodSignature argVars (headArg, inArgs, outArg) = do
-    inArgsShow  <- mapM showMethodInArg inArgs
-    outShow     <- showMethodOutArg outArg
-    headArgShow <- case headArg of
-      ClassType _ _ _ -> return ""
-      _               -> (<> " -> ") <$> showMethodInArg headArg
+  methodSignature argVars (_, inArgs, outArg) = do
+    inArgsShow <- mapM showMethodInArg inArgs
+    outShow    <- showMethodOutArg outArg
     let argsShow = inArgsShow ++ [outShow]
-    return $ " : " <> argVars <> headArgShow <> T.intercalate " -> " argsShow
+    return $ " : " <> argVars <> T.intercalate " -> " argsShow
 
   bodyPrefix :: MethodArgs -> Text
   bodyPrefix (_, inArgs, _) = do
@@ -213,18 +219,13 @@ genMethod cn Method { methodName = mn, methodSymbol = sym, methodCallable = c, m
 
   methodBody :: [Text] -> Text -> MethodArgs -> CodeGen Text
   methodBody _ mName mArgs@(_, _, Class False n) = do
-    currNS <- currentNS
-    return
-      $  "new "
-      <> nsOCamlClass currNS n
-      <> " ("
-      <> boundMethod mName mArgs
-      <> ")"
+    ocamlClass <- nsOCamlClass n
+    return $ "new " <> ocamlClass <> " (" <> boundMethod mName mArgs <> ")"
   methodBody _ mName mArgs@(_, _, Class True n) = do
-    currNS <- currentNS
+    ocamlClass <- nsOCamlClass n
     return
       $  "Option.map (new "
-      <> nsOCamlClass currNS n
+      <> ocamlClass
       <> ") ("
       <> boundMethod mName mArgs
       <> ")"
@@ -242,14 +243,5 @@ genMethod cn Method { methodName = mn, methodSymbol = sym, methodCallable = c, m
     mapInArg _ (ClassType False tvar n) = tvar <> "#as_" <> ocamlIdentifier n
     mapInArg _ (ClassType True tvar n) =
       "(Option.map (fun z -> z#as_" <> ocamlIdentifier n <> ") " <> tvar <> ")"
-    mapInArg _ (BasicIn tvar _) = tvar
-
-  typeRepsToMethodArgs :: [TypeRep] -> CodeGen (Maybe MethodArgs)
-  typeRepsToMethodArgs []                    = return Nothing
-  typeRepsToMethodArgs xs@(h : typeRepsTail) = do
-    currNS      <- currentNS
-    headArg     <- methodInTypeShow currNS h
-    inTypeTexts <- mapM (methodInTypeShow currNS) (noLast typeRepsTail)
-    let retTypeRep = last xs
-    retTypeText <- methodOutTypeShow currNS retTypeRep
-    return $ Just (headArg, inTypeTexts, retTypeText)
+    mapInArg _ (BasicIn tvar _          ) = tvar
+    mapInArg _ (NonGtkClassType _ tvar _) = tvar
