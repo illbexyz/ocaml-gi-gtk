@@ -57,7 +57,7 @@ genSignalClass n o = do
   let objectName = name n
       ocamlName  = camelCaseToSnakeCase objectName
 
-  gline $ "class " <> ocamlName <> "_signals obj = object (self)"
+  gline $ "and " <> ocamlName <> "_signals obj = object (self)"
 
   parents <- instanceTree n
 
@@ -218,7 +218,7 @@ genObject' n o ocamlName = do
 
   genSignalClass n o
 
-  gline $ "class " <> ocamlName <> " obj = object (self)"
+  gline $ "and " <> ocamlName <> " obj = object (self)"
   gline $ "  inherit " <> ocamlName <> "_skel obj"
   unless (null $ objSignals o)
     $  group

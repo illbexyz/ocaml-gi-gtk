@@ -420,7 +420,7 @@ config = hConfig <$> ask
 currentModule :: CodeGen Text
 currentModule = do
   (_, s) <- get
-  return $ dotWithPrefix $ modulePath s
+  return $ last $ T.splitOn "." $ dotWithPrefix $ modulePath s
 
 currentNS :: CodeGen Text
 currentNS = do
@@ -878,7 +878,15 @@ genDuneFile libName outputDir cFiles = do
 
   let libs = T.pack <$> case libName of
         "Gtk" ->
-          ["GIGObject", "GIGio", "GIGLib", "GIGdk", "GIPango", "GIGdkPixbuf", "GIAtk", "GIcairo"]
+          [ "GIGObject"
+          , "GIGio"
+          , "GIGLib"
+          , "GIGdk"
+          , "GIPango"
+          , "GIGdkPixbuf"
+          , "GIAtk"
+          , "GIcairo"
+          ]
         "Gdk" -> ["GIGio"]
         _     -> []
 

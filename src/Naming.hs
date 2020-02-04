@@ -13,7 +13,6 @@ module Naming
   , ocamlIdentifier
   , nsOCamlIdentifier
   , nsOCamlType
-  , nsOCamlClass
   , signalOCamlName
   , mlGiPrefix
   , enumVal
@@ -26,6 +25,8 @@ module Naming
   , valObject
   , valOptInterface
   , valOptObject
+  , valStruct
+  , structVal
   )
 where
 
@@ -158,14 +159,6 @@ nsOCamlType currNs n@(Name ns _) | currNs == ns = "Types." <> ocamlIdentifier n
 nsOCamlType currNs n@(Name ns nm) =
   "GI" <> ns <> ".Types." <> ocamlIdentifier n
 
-nsOCamlClass :: Text -> Name -> Text
-nsOCamlClass currNs (Name "Gtk" "Widget") = "GObj.widget"
-nsOCamlClass currNs (Name "Gdk" "Window") = "GWindow.window"
-nsOCamlClass currNs n@(Name ns _) | currNs == ns =
-  name n <> "G." <> ocamlIdentifier n
-nsOCamlClass currNs n@(Name ns _) =
-  "GI" <> ns <> "." <> name n <> "G." <> ocamlIdentifier n
-
 signalOCamlName :: Text -> Text
 signalOCamlName = escapeOCamlReserved . hyphensToUnderscores
 
@@ -204,3 +197,9 @@ valOptInterface n = "Opt" <> valInterface n
 
 valOptObject :: Name -> Text
 valOptObject = valOptInterface
+
+structVal :: Name -> Text
+structVal = interfaceVal
+
+valStruct :: Name -> Text
+valStruct = valInterface

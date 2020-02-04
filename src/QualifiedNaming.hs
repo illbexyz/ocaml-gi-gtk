@@ -4,20 +4,20 @@ module QualifiedNaming
   , qualifiedSymbol
   , signalHaskellName
   , escapedArgName
+  , nsOCamlClass
   )
 where
 
 import           Data.Monoid                    ( (<>) )
 import           Data.Text                      ( Text )
 import qualified Data.Text                     as T
-import qualified Data.Char                     as C
 
 import           API
 import           Code                           ( CodeGen
-                                                , group
-                                                , line
                                                 , qualified
                                                 , getAPI
+                                                , currentNS
+                                                , currentModule
                                                 )
 import           ModulePath                     ( ModulePath
                                                 , (/.)
@@ -26,7 +26,6 @@ import           ModulePath                     ( ModulePath
 import           Naming
 import           Util                           ( lcFirst
                                                 , ucFirst
-                                                , modifyQualified
                                                 )
 
 -- | Return the name for the signal in Haskell CamelCase conventions.
@@ -70,3 +69,14 @@ escapedArgName arg
   = argCName arg
   | otherwise
   = escapeOCamlReserved . lcFirst . underscoresToCamelCase . argCName $ arg
+
+nsOCamlClass :: Name -> CodeGen Text
+nsOCamlClass (  Name "Gtk" "Widget") = return "GObj.widget"
+nsOCamlClass (  Name "Gdk" "Window") = return "GWindow.window"
+nsOCamlClass n@(Name ns    nm      ) = do
+  currNs  <- currentNS
+  currMod <- currentModule
+  return $ case (currNs == ns, currMod == nm) of
+    (True , True ) -> ocamlIdentifier n
+    (True , False) -> name n <> "G." <> ocamlIdentifier n
+    (False, _    ) -> "GI" <> ns <> "." <> name n <> "G." <> ocamlIdentifier n
