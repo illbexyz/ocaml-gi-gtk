@@ -63,6 +63,9 @@ genOCamlExternal mn cSymbol callable = do
 
     let fn       = mlGiPrefix mn cSymbol
     let nativeFn = if length inArgs > 5 then fn <> "_bc" else ""
+
+    when (callableThrows callable) $ notImplementedError
+      "Methods throwing exceptions are not implemented yet"
     -- TODO: Handle exceptions in some way
     -- when (callableThrows callable) $
     --        line $ padTo 40 "Ptr (Ptr GError) -> " <> "-- error"
