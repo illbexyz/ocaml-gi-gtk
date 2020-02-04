@@ -1,26 +1,3 @@
-=== Escaping ===
-
-    File "Gtk/PageSetup.ml", line 31, characters 4-14:
-    31 |     Enums.unit -> 
-            ^^^^^^^^^^
-    Error: Unbound type constructor Enums.unit
-    Hint: Did you mean unit_?
-
-
-    Hint: Did you mean GIPango?
-    File "Gtk/PrintOperation.ml", line 50, characters 27-37:
-    50 |         {name="unit"; conv=Enums.unit}
-                                    ^^^^^^^^^^
-    Error: Unbound value Enums.unit
-    Hint: Did you mean unit_?
-
-
-    File "Gtk/PrintSettings.ml", line 97, characters 4-14:
-    97 |     Enums.unit -> 
-            ^^^^^^^^^^
-    Error: Unbound type constructor Enums.unit
-    Hint: Did you mean unit_?
-
 === New in same file ===
 
     File "Gtk/ClipboardG.ml", line 52, characters 15-35:
@@ -83,15 +60,6 @@
     28 | let make_params = EmblemedIcon.make_params
                           ^^^^^^^^^^^^^^^^^^^^^^^^
     Error: Unbound module EmblemedIcon
-
-
-
-
-
-
-
-
-
 
 
 File "Gtk/StyleContextG.ml", line 111, characters 64-87:
