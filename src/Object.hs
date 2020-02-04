@@ -42,11 +42,10 @@ isSetterOrGetter o m =
           in  ("get" `T.isPrefixOf` mName || "set" `T.isPrefixOf` mName)
                 && any (`T.isSuffixOf` mName) propNames
 
-genGObjectCasts :: Name -> Text -> CodeGen ()
-genGObjectCasts n ctype = do
-  let upperType = T.toUpper (camelCaseToSnakeCase ctype)
+genGObjectCasts :: Name -> Text -> Text -> CodeGen ()
+genGObjectCasts n ctype checkMacro = do
   hline
-    ("#define " <> objectVal n <> "(val) check_cast(" <> upperType <> ", val)")
+    ("#define " <> objectVal n <> "(val) check_cast(" <> checkMacro <> ", val)")
   -- hline $ "#define " <> nspace <> n <> "_val(" <> "val) ((" <> x <> "*) val)"
   hline $ "#define " <> valObject n <> " Val_GAnyObject"
   cline ("Make_Val_option(" <> ctype <> "," <> valObject n <> ")")
@@ -83,6 +82,14 @@ genObjectTypeInit o cTypeName = when (objTypeInit o /= "") $ cline $ T.unlines
   , "}"
   ]
 
+getObjCheckMacro :: Object -> Text
+getObjCheckMacro o = T.toUpper $ fst $ T.breakOn "_get_type" (objTypeInit o)
+
+getIfCheckMacro :: Interface -> Maybe Text
+getIfCheckMacro i = do
+  typeInit <- ifTypeInit i
+  return $ T.toUpper $ fst $ T.breakOn "_get_type" typeInit
+
 -- | Wrap a given Object. We enforce that every Object that we wrap is a
 -- GObject. This is the case for everything except the ParamSpec* set
 -- of objects, we deal with these separately.
@@ -101,7 +108,9 @@ genObject n o = do
         [] -> addType n Nothing
         _  -> addType n (Just $ head parents)
 
-      forM_ (objCType o) (genGObjectCasts n)
+      forM_ (objCType o)
+        $ \ctype -> genGObjectCasts n ctype (getObjCheckMacro o)
+
       if namespace n /= "Gtk" || n `notElem` genFiles
         then return ()
         else genObject' n o ocamlName
@@ -248,9 +257,13 @@ genInterface n iface = do
   let name'     = upperName n
       ocamlName = escapeOCamlReserved $ camelCaseToSnakeCase (name n)
   -- addSectionDocumentation ToplevelSection (ifDocumentation iface)
-  forM_ (ifCType iface) (genGObjectCasts n)
+  case (ifCType iface, getIfCheckMacro iface) of
+    (Just ctype, Just checkMacro) -> genGObjectCasts n ctype checkMacro
+    _                             -> return ()
 
   addType n Nothing
+
+
   -- when (namespace n == "Gtk") $ do
   --   line "open Gobject"
   --   line "open Data"
