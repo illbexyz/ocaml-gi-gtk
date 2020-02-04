@@ -77,25 +77,35 @@ genFunction n (Function symbol fnMovedTo callable) =
       )
       (genCCallableWrapper n symbol callable)
 
+-- TODO: A struct ovverride type
+genStructCasts :: Name -> Struct -> CodeGen ()
+genStructCasts n s = do
+  let mbCType = structCType s
+  forM_ mbCType $ \cType -> case cType of
+    "GdkAtom" ->
+      hline
+        $  "#define "
+        <> structVal n
+        <> "(val) ((GdkAtom) MLPointer_val(val))"
+    _ ->
+      hline
+        $  "#define "
+        <> structVal n
+        <> "(val) (("
+        <> cType
+        <> "*) MLPointer_val(val))"
+      -- TODO: Val_
+
 -- | Generate wrapper for structures.
 genStruct :: Name -> Struct -> CodeGen ()
 genStruct n s = unless (ignoreStruct n s) $ do
   let name' = upperName n
-      cType = structCType s
   -- writeHaddock DocBeforeSymbol "Memory-managed wrapper type."
 
   -- addSectionDocumentation ToplevelSection (structDocumentation s)
   addType n Nothing
 
-  case cType of
-    Nothing -> return ()
-    Just cType ->
-      hline
-        $  "#define "
-        <> (namespace n <> name n)
-        <> "_val(val) (("
-        <> cType
-        <> "*) MLPointer_val(val))"
+  genStructCasts n s
 
   -- if structIsBoxed s
   --   then traceShowM $ "Struct " <> show n <> " is boxed"
