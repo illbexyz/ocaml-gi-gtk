@@ -403,19 +403,18 @@ ocamlValueToC (TInterface n  )        = do
     APIFlags _f -> do
       addCDep $ namespace n <> "Enums"
       return $ flagsVal n
-    APIInterface Interface { ifCType = Just ctype } -> converter ctype
-    APIInterface _ -> notImplementedError
+    APIInterface Interface { ifCType = Just _ } -> converter
+    APIInterface _                              -> notImplementedError
       "(ocamlValueToC) Can't convert a APIInterface with no ctype"
-    APIObject Object { objCType = Just ctype } -> converter ctype
-    APIObject _ -> notImplementedError
+    APIObject Object { objCType = Just _ } -> converter
+    APIObject _                            -> notImplementedError
       "(ocamlValueToC) Can't convert a APIObject with no ctype"
-    APIStruct Struct { structCType = Just ctype } -> converter ctype
-    APIStruct _ -> notImplementedError
+    APIStruct Struct { structCType = Just _ } -> converter
+    APIStruct _                               -> notImplementedError
       "(ocamlValueToC) Can't convert a APIStruct with no ctype"
     APIUnion _u -> ocamlValueToCErr "APIUnion"
  where
-  converter typename = do
-    currNS <- currentNS
+  converter = do
     addCDep (namespace n <> name n)
     return $ interfaceVal n
 
@@ -485,12 +484,14 @@ cToOCamlValue True (Just (TGClosure _m)) = cToOCamlValueErr "TGClosure"
 cToOCamlValue False (Just (TInterface n)) = do
   api <- findAPIByName n
   case api of
-    APIConst     _c    -> cToOCamlValueErr "APIConst"
-    APIFunction  _f    -> cToOCamlValueErr "APIFunction"
-    APICallback  _c    -> cToOCamlValueErr "APICallback"
-    APIEnum      _enum -> return $ valEnum n
-    APIFlags     _f    -> cToOCamlValueErr "APIFlags"
-    APIInterface _i    -> do
+    APIConst    _c    -> cToOCamlValueErr "APIConst"
+    APIFunction _f    -> cToOCamlValueErr "APIFunction"
+    APICallback _c    -> cToOCamlValueErr "APICallback"
+    APIEnum     _enum -> do
+      addCDep $ namespace n <> "Enums"
+      return $ valEnum n
+    APIFlags     _f -> cToOCamlValueErr "APIFlags"
+    APIInterface _i -> do
       addCDep (namespace n <> name n)
       return $ valInterface n
     APIObject o -> do

@@ -60,9 +60,10 @@ genFiles = S.fromList
     , Name "Gtk" "Image"
     , Name "Gtk" "Range"
     , Name "Gtk" "Layout"
+    , Name "Gtk" "ToolItem"
+    , Name "Gtk" "SizeGroup"
     -- , Name "Gtk" "TreeModelFilter"
     -- , Name "Gtk" "CssProvider"
     -- , Name "Gtk" "StyleContext"
-    -- , Name "Gtk" "ToolItem"
     --  , Name "Gtk" "Container"
     ]
