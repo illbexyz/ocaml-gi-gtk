@@ -1,3 +1,4 @@
 - Constructor methods
 - There are some nullable properties, but they are not documented inside the GIR (ex: primary-icon-pixbuf of GtkEntry)
 - Fix every Entry.ml error
+- marshal_ret in signals

@@ -149,14 +149,31 @@ genStruct n s = unless (ignoreStruct n s) $ do
 
   return ()
 
+-- TODO: A struct ovverride type
+genUnionCasts :: Name -> Union -> CodeGen ()
+genUnionCasts n u = do
+  let mbCType = unionCType u
+  forM_ mbCType $ \cType ->
+    hline
+      $  "#define "
+      <> structVal n
+      <> "(val) (("
+      <> cType
+      <> "*) MLPointer_val(val))"
+      -- TODO: Val_
+
 -- | Generated wrapper for unions.
 genUnion :: Name -> Union -> CodeGen ()
 genUnion n u = do
-  let name' = upperName n
+  -- let name' = upperName n
 
-  writeHaddock DocBeforeSymbol "Memory-managed wrapper type."
+  -- writeHaddock DocBeforeSymbol "Memory-managed wrapper type."
 
-  addSectionDocumentation ToplevelSection (unionDocumentation u)
+  -- addSectionDocumentation ToplevelSection (unionDocumentation u)
+
+  addType n Nothing
+
+  genUnionCasts n u
 
   -- if unionIsBoxed u
   --   then genBoxedObject n (fromJust $ unionTypeInit u)
@@ -166,28 +183,28 @@ genUnion n u = do
   -- genStructOrUnionFields n (unionFields u)
 
   -- Methods
-  _methods <- forM (unionMethods u) $ \f -> do
-    let mn = methodName f
-    isFunction <- symbolFromFunction (methodSymbol f)
-    if not isFunction
-      then handleCGExc
-        (\e ->
-          line
-              (  "(* Could not generate method "
-              <> name'
-              <> "::"
-              <> name mn
-              <> " *)\n"
-              <> "(* Error was : "
-              <> describeCGError e
-              <> " *)"
-              )
-            >> return Nothing
-        )
-        (genMethod n f >> return (Just (n, f)))
-      else return Nothing
+  -- _methods <- forM (unionMethods u) $ \f -> do
+  --   let mn = methodName f
+  --   isFunction <- symbolFromFunction (methodSymbol f)
+  --   if not isFunction
+  --     then handleCGExc
+  --       (\e ->
+  --         line
+  --             (  "(* Could not generate method "
+  --             <> name'
+  --             <> "::"
+  --             <> name mn
+  --             <> " *)\n"
+  --             <> "(* Error was : "
+  --             <> describeCGError e
+  --             <> " *)"
+  --             )
+  --           >> return Nothing
+  --       )
+  --       (genMethod n f >> return (Just (n, f)))
+  --     else return Nothing
 
-  return ()
+  -- return ()
 
 -- Some type libraries include spurious interface/struct methods,
 -- where a method Mod.Foo::func also appears as an ordinary function
@@ -220,7 +237,7 @@ genAPI n  (APIEnum      e ) = genEnum n e
 genAPI n  (APIFlags     f ) = genFlags n f
 genAPI _n (APICallback  _c) = return ()
 genAPI n  (APIStruct    s ) = genStruct n s
-genAPI _n (APIUnion     _u) = return ()
+genAPI n  (APIUnion     u ) = genUnion n u
 genAPI n  (APIObject    o ) = genObject n o
 genAPI n  (APIInterface i ) = genInterface n i
 

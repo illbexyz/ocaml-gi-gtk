@@ -114,23 +114,24 @@ convertNullable aname c = do
 
 -- | Write some simple debug message when signal generation fails, and
 -- generate a placeholder SignalInfo instance.
-processSignalError :: Signal -> Name -> CGError -> CodeGen ()
-processSignalError signal owner err = do
+processSignalError :: Bool -> Signal -> Name -> CGError -> CodeGen ()
+processSignalError isG signal owner err = do
   let qualifiedSignalName = upperName owner <> "::" <> sigName signal
       -- sn = (ucFirst . signalHaskellName . sigName) signal
-  line $ T.concat
-    [ "(* Could not generate signal "
-    , qualifiedSignalName
-    , " *)\n"
-    , "(* Error was : "
-    , describeCGError err
-    , " *)"
-    ]
+      errText             = T.concat
+        [ "(* Could not generate signal "
+        , qualifiedSignalName
+        , " *)\n"
+        , "(* Error was : "
+        , describeCGError err
+        , " *)"
+        ]
+  if isG then gline errText else line errText
 
 -- | Generate a wrapper for a signal.
 genSignal :: Signal -> Name -> CodeGen ()
 genSignal s@Signal { sigName = sn, sigCallable = cb } on =
-  handleCGExc (processSignalError s on) $ do
+  handleCGExc (processSignalError False s on) $ do
     let classe              = lowerName on
         sn'                 = signalOCamlName sn
         signalConnectorName = classe <> ucFirst sn'
@@ -152,7 +153,9 @@ genSignal s@Signal { sigName = sn, sigCallable = cb } on =
   --     genCallbackWrapper (lcFirst sn') cb cbType True
 
 genGSignal :: Signal -> Name -> CodeGen ()
-genGSignal Signal { sigName = sn, sigCallable = _ } on = do
+genGSignal s@Signal { sigName = sn, sigCallable = _ } on = do
   let sn' = signalOCamlName sn
       on' = ucFirst $ lowerName on
-  gline $ "  method " <> sn' <> " = self#connect " <> on' <> ".S." <> sn'
+  handleCGExc (processSignalError True s on) $ do
+    _ <- argsTypeRep (args (sigCallable s))
+    gline $ "  method " <> sn' <> " = self#connect " <> on' <> ".S." <> sn'

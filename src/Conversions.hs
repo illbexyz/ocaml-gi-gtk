@@ -343,7 +343,9 @@ ocamlDataConv isNullable (TInterface n  )        = do
       --       return $ "(unsafe_pointer : GdkEvent." <> eventType <> ".t data_conv)"
       --     else ocamlDataConvErr "APIStruct"
       --   Nothing -> ocamlDataConvErr "APIStruct"
-    APIUnion _u -> ocamlDataConvErr "APIUnion"
+    APIUnion _u -> do
+      moduleT <- getModuleType n
+      return $ "(unsafe_pointer : " <> moduleT <> " data_conv)"
  where
   handleObject = do
     convType <- getModuleType n
