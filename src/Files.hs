@@ -62,6 +62,7 @@ genFiles = S.fromList
     , Name "Gtk" "Layout"
     , Name "Gtk" "ToolItem"
     , Name "Gtk" "SizeGroup"
+    , Name "Gtk" "ComboBoxText"
     -- , Name "Gtk" "TreeModelFilter"
     -- , Name "Gtk" "CssProvider"
     -- , Name "Gtk" "StyleContext"

@@ -6,7 +6,9 @@ where
 import           Data.Text                      ( Text )
 import qualified Data.Text                     as T
 import           Data.Maybe                     ( mapMaybe )
-import           Control.Monad                  ( when )
+import           Control.Monad                  ( when
+                                                , forM
+                                                )
 
 import           API                            ( Arg(..)
                                                 , Callable(..)
@@ -15,6 +17,8 @@ import           API                            ( Arg(..)
                                                 , Method(..)
                                                 , MethodType(..)
                                                 , Type(..)
+                                                , API(..)
+                                                , Object(..)
                                                 )
 import           Callable                       ( genCCallableWrapper
                                                 , callableOCamlTypes
@@ -24,8 +28,10 @@ import           Code                           ( CodeGen
                                                 , gline
                                                 , getFreshTypeVariable
                                                 , currentNS
+                                                , findAPIByName
                                                 )
 import           GObject                        ( isGObject )
+import           Inheritance                    ( instanceTree )
 import           Naming
 import           QualifiedNaming                ( nsOCamlClass )
 import           TypeRep
@@ -167,10 +173,24 @@ fixConstructorReturnType returnsGObject cn c = c { returnType = returnType' }
  where
   returnType' = if returnsGObject then Just (TInterface cn) else returnType c
 
+isMethodInParents :: Name -> Method -> CodeGen Bool
+isMethodInParents cn Method { methodName = mn } = do
+  parents          <- instanceTree cn
+  parentsHasMethod <- forM parents $ \parentName -> do
+    api <- findAPIByName parentName
+    return $ case api of
+      APIObject o -> mn `elem` (methodName <$> objMethods o)
+      _           -> False
+  return $ True `elem` parentsHasMethod
+
 genMethod :: Name -> Method -> ExcCodeGen ()
-genMethod cn Method { methodName = mn, methodSymbol = sym, methodCallable = c, methodType = t }
+genMethod cn m@Method { methodName = mn, methodSymbol = sym, methodCallable = c, methodType = t }
   = when (t /= Constructor) $ do
-    let mName = escapeOCamlReserved $ name mn
+    alreadyDefMethod <- isMethodInParents cn m
+    let mName     = escapeOCamlReserved (name mn)
+        mDeclName = if alreadyDefMethod
+          then escapeOCamlReserved (name mn) <> "_" <> ocamlIdentifier cn
+          else mName
     -- export (NamedSubsection MethodSection $ lowerName mn) (lowerName mn')
     returnsGObject <- maybe (return False) isGObject (returnType c)
 
@@ -198,7 +218,7 @@ genMethod cn Method { methodName = mn, methodSymbol = sym, methodCallable = c, m
         mSig  <- methodSignature tVarsText mArgs
         mBody <- methodBody tVars mName mArgs
 
-        gline $ "  method " <> mName <> mSig <> " = "
+        gline $ "  method " <> mDeclName <> mSig <> " = "
         gline $ "    " <> bodyPrefix mArgs <> mBody
         gline ""
 

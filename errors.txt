@@ -16,53 +16,6 @@
                                         ^^^^^^^^^^^^^^^
     Error: Unbound value TextTag.S.event
 
-=== Method Overriding ===
-
-    File "Gtk/ComboBoxTextG.ml", line 34, characters 2-60:
-    34 | ..method remove : int -> unit = 
-    35 |     ComboBoxText.remove obj.
-    Error: The method remove has type int -> unit but is expected to have type
-            GObj.widget -> unit
-          Type int is not compatible with type
-            GObj.widget =
-              < app_paintable : bool; as_widget : Gtk.widget obj;
-                can_default : bool; can_focus : bool; coerce : GObj.widget;
-                composite_child : bool; destroy : unit -> unit;
-                drag : GObj.drag_ops; events : GdkEnums.event_mask list;
-                expand : bool; focus_on_click : bool; get_oid : int;
-                halign : GtkEnums.align; has_default : bool; has_focus : 
-                bool; has_tooltip : bool; height_request : int; hexpand : 
-                bool; hexpand_set : bool; is_focus : bool; margin : int;
-                margin_bottom : int; margin_end : int; margin_left : int;
-                margin_right : int; margin_start : int; margin_top : int;
-                misc : GObj.misc_ops; name : string; no_show_all : bool;
-                opacity : float; parent : Gtk.container obj option;
-                receives_default : bool; scale_factor : int; sensitive : 
-                bool; set_app_paintable : bool -> unit;
-                set_can_default : bool -> unit; set_can_focus : bool -> unit;
-                set_events : GdkEnums.event_mask list -> unit;
-                set_expand : bool -> unit; set_focus_on_click : bool -> unit;
-                set_halign : GtkEnums.align -> unit;
-                set_has_default : bool -> unit; set_has_focus : bool -> unit;
-                set_has_tooltip : bool -> unit;
-                set_height_request : int -> unit; set_hexpand : bool -> unit;
-                set_hexpand_set : bool -> unit; set_is_focus : bool -> unit;
-                set_margin : int -> unit; set_margin_bottom : int -> unit;
-                set_margin_end : int -> unit; set_margin_left : int -> unit;
-                set_margin_right : int -> unit; set_margin_start : int -> unit;
-                set_margin_top : int -> unit; set_name : string -> unit;
-                set_no_show_all : bool -> unit; set_opacity : float -> unit;
-                set_parent : Gtk.container obj option -> unit;
-                set_receives_default : bool -> unit;
-                set_sensitive : bool -> unit; set_style : Gtk.style -> unit;
-                set_tooltip_markup : string -> unit;
-                set_tooltip_text : string -> unit;
-                set_valign : GtkEnums.align -> unit; set_vexpand : bool -> unit;
-                set_vexpand_set : bool -> unit; set_visible : bool -> unit;
-                set_width_request : int -> unit; style : Gtk.style;
-                tooltip_markup : string; tooltip_text : string;
-                valign : GtkEnums.align; vexpand : bool; vexpand_set : bool;
-                visible : bool; width_request : int > 
 
 === Interfaces ===
 
