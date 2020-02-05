@@ -10,13 +10,9 @@ import qualified Data.Text                     as T
 import           Control.Monad                  ( forM_
                                                 , when
                                                 , unless
-                                                , filterM
-                                                , forM
                                                 )
 
 import           Data.GI.GIR.BasicTypes         ( Type(TInterface) )
-import           Data.Maybe                     ( fromMaybe )
-import           Data.List                      ( nub )
 
 import           API
 import           Code

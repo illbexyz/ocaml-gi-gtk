@@ -11,7 +11,8 @@ import           API                            ( Name(..) )
 
 excludeFiles :: Set Name
 excludeFiles = S.fromList
-    [ Name "Gtk"   "HeaderBarAccessible"
+    [ Name "Gtk"   "HeaderBarAccessible"  -- Bug: The GIR Parser doesn't return its CType (bug in the parser)
+    , Name "Gtk"   "EntryIconAccessible"  -- Bug: The GIR Parser doesn't return its CType (bug in the parser)
     , Name "Pango" "Engine"
     , Name "Pango" "EngineShape"
     , Name "Pango" "EngineLang"
@@ -67,7 +68,14 @@ genFiles = S.fromList
     , Name "Gtk" "ScrolledWindow"
     , Name "Gtk" "PlacesSidebar"
     , Name "Gtk" "CssProvider"
-    -- , Name "Gtk" "TreeModelFilter"
+    , Name "Gtk" "EntryIconAccessible"
+    , Name "Gtk" "CellRenderer"
+    , Name "Gtk" "Box"
+    , Name "Gtk" "PrintOperation"                   -- Escaping in Enums.
+    , Name "Gtk" "TreeModelFilter"                  -- Already defined method
+    , Name "Gtk" "CellRendererSpinner"              -- Already defined method
+    , Name "Gtk" "CellRendererText"                 -- Already defined method
+    , Name "Gtk" "ToolPalette"                      -- Already defined method
     -- , Name "Gtk" "StyleContext"
     --  , Name "Gtk" "Container"
     ]

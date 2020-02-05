@@ -405,20 +405,22 @@ ocamlValueToC (TInterface n  )        = do
     APIFlags _f -> do
       addCDep $ namespace n <> "Enums"
       return $ flagsVal n
-    APIInterface Interface { ifCType = Just _ } -> converter
-    APIInterface _                              -> notImplementedError
+    APIInterface Interface { ifCType = Just _ } -> apiConverter
+    APIInterface _                              -> notImplementedError  -- TODO: probably we don't need the ctype anymore
       "(ocamlValueToC) Can't convert a APIInterface with no ctype"
-    APIObject Object { objCType = Just _ } -> converter
+    APIObject Object { objCType = Just _ } -> apiConverter
     APIObject _                            -> notImplementedError
       "(ocamlValueToC) Can't convert a APIObject with no ctype"
-    APIStruct Struct { structCType = Just _ } -> converter
+    APIStruct Struct { structCType = Just _ } -> apiConverter
     APIStruct _                               -> notImplementedError
       "(ocamlValueToC) Can't convert a APIStruct with no ctype"
     APIUnion _u -> ocamlValueToCErr "APIUnion"
  where
-  converter = do
-    addCDep (namespace n <> name n)
-    return $ interfaceVal n
+  apiConverter = case n of
+    Name "GObject" "Value" -> return "GValue_val"
+    _                      -> do
+      addCDep (namespace n <> name n)
+      return $ interfaceVal n
 
 ocamlValueToCErr :: Text -> ExcCodeGen Text
 ocamlValueToCErr = conversionError "ocamlValueToC"
@@ -496,7 +498,7 @@ cToOCamlValue False (Just (TInterface n)) = do
     APIInterface _i -> do
       addCDep (namespace n <> name n)
       return $ valInterface n
-    APIObject o -> do
+    APIObject _o -> do
       addCDep (namespace n <> name n)
       return $ valObject n
     APIStruct _s -> cToOCamlValueErr "APIStruct"
