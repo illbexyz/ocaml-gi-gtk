@@ -352,7 +352,7 @@ ocamlDataConv isNullable (TInterface n  )        = do
     return $ objConverter isNullable convType
   enumFlagConv n = do
     enumRes <- enumResolver n
-    return $ enumRes <> "." <> camelCaseToSnakeCase (name n)
+    return $ enumRes <> "." <> ocamlIdentifier n
 
 ocamlDataConvErr :: Text -> ExcCodeGen Text
 ocamlDataConvErr = conversionError "ocamlDataConv"
