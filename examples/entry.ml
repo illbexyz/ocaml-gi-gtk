@@ -11,7 +11,7 @@
 open Printf
 
 let enter_callback entry =
-  printf "Entry contents: %s\n" entry#text;
+  printf "Entry contents: %s\n" entry#get_text;
   flush stdout
 
 let entry_toggle_editable button entry =

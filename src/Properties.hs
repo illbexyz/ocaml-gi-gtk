@@ -27,7 +27,6 @@ import           Naming
 import           QualifiedNaming                ( qualifiedSymbol )
 import           TypeRep
 import           Util
-import           Debug.Trace
 
 genPropertySetter :: Text -> Name -> Property -> CodeGen ()
 genPropertySetter setter classe _prop =
@@ -43,7 +42,7 @@ genPropertySetter setter classe _prop =
 genPropertyGetter :: Text -> Name -> Property -> CodeGen ()
 genPropertyGetter getter classe _prop =
   gline
-    $  "  method "
+    $  "  method get_"
     <> getter
     <> " = Gobject.get "
     <> name classe
@@ -214,10 +213,15 @@ genMakeParams className props = do
       parents <- instanceTree className
       unless (null parents) $ do
         let parent = head parents
-        if name parent `elem` ["Object", "Widget", "Container"]
-          then line "let make_params ~cont pl = cont pl"
-          else line $ "let make_params = " <> name parent <> ".make_params"
+        line $ case parent of
+          Name "GObject" "Object"    -> emptyMake
+          Name "Gtk"     "Widget"    -> emptyMake
+          Name "Gtk"     "Container" -> emptyMake
+          Name "Gtk"     _           -> inheritedMake parent
+          Name _         _           -> emptyMake
  where
+  emptyMake = "let make_params ~cont pl = cont pl"
+  inheritedMake parent = "let make_params = " <> name parent <> ".make_params"
   isConstructor prop =
     PropertyConstructOnly
       `elem` propFlags prop

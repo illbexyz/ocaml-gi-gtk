@@ -54,21 +54,32 @@ genGObjectCasts n ctype checkMacro = do
 
 genSignalClass :: Name -> Object -> CodeGen ()
 genSignalClass n o = do
-  let objectName = name n
-      ocamlName  = camelCaseToSnakeCase objectName
+  parents <- instanceTree n
+
+  let parent          = head parents
+      objectName      = name n
+      ocamlName       = camelCaseToSnakeCase objectName
+      ocamlParentName = camelCaseToSnakeCase $ name parent
 
   gline $ "and " <> ocamlName <> "_signals obj = object (self)"
 
-  parents <- instanceTree n
 
-  case name $ head parents of
-    "Container" -> gline "  inherit GContainer.container_signals_impl obj"
-    "Widget"    -> gline "  inherit GObj.widget_signals_impl obj"
-    "Object"    -> gline "  inherit [_] GObj.gobject_signals obj"
-    parent      -> do
-      let ocamlParentName = camelCaseToSnakeCase parent
-      gline
-        ("  inherit " <> parent <> "G." <> ocamlParentName <> "_signals obj")
+  let parentSignal = case head parents of
+        Name "Gtk" "Container" -> "GContainer.container_signals_impl"
+        Name "Gtk" "Widget"    -> "GObj.widget_signals_impl"
+        Name "Gtk" nm          -> nm <> "G." <> ocamlParentName <> "_signals"
+        Name _     _           -> "[_] GObj.gobject_signals"
+
+  -- case name $ head parents of
+  --   "Container" -> gline "  inherit GContainer.container_signals_impl obj"
+  --   "Widget"    -> gline "  inherit GObj.widget_signals_impl obj"
+  --   "Object"    -> gline "  inherit [_] GObj.gobject_signals obj"
+  --   parent      -> do
+  --     let ocamlParentName = camelCaseToSnakeCase parent
+  --     gline
+  --       ("  inherit " <> parent <> "G." <> ocamlParentName <> "_signals obj")
+
+  gline $ "  inherit " <> parentSignal <> " obj"
 
   forM_ (objSignals o) $ \s -> genGSignal s n
   gline "end"
@@ -134,13 +145,19 @@ genObject' n o ocamlName = do
   gline $ "open " <> objectName
   gblank
 
-  let namespacedParentName = case name parent of
-        "Container" -> "['a] GContainer.container_impl"
-        "Widget"    -> "['a] GObj.widget_impl"
-        "Object"    -> "GObj.gtkobj"
-        _           -> name parent <> "G." <> ocamlParentName <> "_skel"
+  let parentClass = case parent of
+        Name "Gtk" "Container" -> "['a] GContainer.container_impl"
+        Name "Gtk" "Widget"    -> "['a] GObj.widget_impl"
+        Name "Gtk" nm          -> nm <> "G." <> ocamlParentName <> "_skel"
+        Name _     _           -> "GObj.gtkobj"
+
+  -- let namespacedParentName = case name parent of
+  --       "Container" -> "['a] GContainer.container_impl"
+  --       "Widget"    -> "['a] GObj.widget_impl"
+  --       "Object"    -> "GObj.gtkobj"
+  --       _           -> name parent <> "G." <> ocamlParentName <> "_skel"
   gline $ "class " <> ocamlName <> "_skel obj = object (self)"
-  gline $ "  inherit " <> namespacedParentName <> " obj"
+  gline $ "  inherit " <> parentClass <> " obj"
   gline
     $  "  method as_"
     <> ocamlName
