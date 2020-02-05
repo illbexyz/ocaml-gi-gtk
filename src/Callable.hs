@@ -12,32 +12,26 @@ module Callable
   )
 where
 
-import           Control.Monad                  ( forM
-                                                , forM_
+import           Control.Monad                  ( forM_
                                                 , when
                                                 , zipWithM
                                                 )
-import           Data.Bool                      ( bool )
-import           Data.List                      ( nub )
-import           Data.Maybe                     ( isJust )
 import           Data.Monoid                    ( (<>) )
 import           Data.Tuple                     ( swap )
 import qualified Data.Map                      as Map
 import qualified Data.Text                     as T
 import           Data.Text                      ( Text )
 
+-- import           Haddock                        ( writeHaddock
+--                                                 , RelativeDocPosition(..)
+--                                                 , writeArgDocumentation
+--                                                 , writeReturnDocumentation
+--                                                 )
 import           API
-import           Haddock                        ( writeHaddock
-                                                , RelativeDocPosition(..)
-                                                , writeArgDocumentation
-                                                , writeReturnDocumentation
-                                                )
 import           Code
 import           Conversions
 import           Naming
-import           QualifiedNaming                ( escapedArgName
-                                                , signalHaskellName
-                                                )
+import           QualifiedNaming                ( escapedArgName )
 import           TypeRep
 import           Util
 
@@ -315,8 +309,11 @@ callableHOutArgs callable =
 
 callableOCamlTypes :: Callable -> ExcCodeGen [TypeRep]
 callableOCamlTypes c = do
-  inArgs  <- mapM argToTyperep $ callableHInArgs' c
+  inArgs' <- mapM argToTyperep $ callableHInArgs' c
   outArgs <- mapM argToTyperep $ callableHOutArgs c
+  let inArgs = case inArgs' ++ outArgs of
+        [] -> [TextCon "unit"]
+        _  -> inArgs'
   retType <- case returnType c of
     Nothing -> return $ TextCon "unit"
     Just t  -> outParamOcamlType t

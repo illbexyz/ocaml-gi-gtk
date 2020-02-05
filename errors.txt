@@ -1,10 +1,20 @@
 === Missing signal ===
 
+    File "Gtk/CssProviderG.ml", line 29, characters 38-65:
+    29 |   method parsing_error = self#connect CssProvider.S.parsing_error
+                                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    Error: Unbound value CssProvider.S.parsing_error
+
     Hint: Did you mean GIGio?
     File "Gtk/PlacesSidebarG.ml", line 52, characters 46-83:
     52 |   method drag_action_requested = self#connect PlacesSidebar.S.drag_action_requested
                                                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
     Error: Unbound value PlacesSidebar.S.drag_action_requested
+
+    File "Gtk/TextTagG.ml", line 170, characters 30-45:
+    170 |   method event = self#connect TextTag.S.event
+                                        ^^^^^^^^^^^^^^^
+    Error: Unbound value TextTag.S.event
 
 === Method Overriding ===
 
@@ -54,66 +64,7 @@
                 valign : GtkEnums.align; vexpand : bool; vexpand_set : bool;
                 visible : bool; width_request : int > 
 
-=== Unknown ===
-
-    File "Gtk/AccelMap.ml", line 54, characters 4-27:
-    54 |     [< Types.accel_map] obj
-            ^^^^^^^^^^^^^^^^^^^^^^^
-    Error: External identifiers must be functions
-
-
-    File "Gtk/IconTheme.ml", line 150, characters 4-28:
-    150 |     [< Types.icon_theme] obj
-              ^^^^^^^^^^^^^^^^^^^^^^^^
-    Error: External identifiers must be functions
-
-
-    File "Gtk/CssProvider.ml", line 56, characters 4-30:
-    56 |     [< Types.css_provider] obj
-            ^^^^^^^^^^^^^^^^^^^^^^^^^^
-    Error: External identifiers must be functions
-          but an expression was expected of type float
-
-
-    File "Gtk/RecentManager.ml", line 79, characters 4-32:
-    79 |     [< Types.recent_manager] obj
-            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-    Error: External identifiers must be functions
-
-
-    File "Gtk/Settings.ml", line 229, characters 4-33:
-    229 |     [< Types.settings] obj option
-              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-    Error: External identifiers must be functions
-
-
-    File "Gtk/StyleContextG.ml", line 111, characters 64-87:
-    111 |   StyleContext.make_params [] ~cont:(fun p -> new style_context (StyleContext.create p))
-                                                                          ^^^^^^^^^^^^^^^^^^^^^^^
-    Error: This expression has type Types.style_context obj
-          but an expression was expected of type
-            ([> `giu | `screen | `style_context ] as 'a) obj
-          Type Types.style_context = [ `giu | `style_context ]
-          is not compatible with type [> `giu | `screen | `style_context ] as 'a 
-          The second variant type does not allow tag(s) `screen
-
-
-    File "Gtk/TextTagG.ml", line 170, characters 30-45:
-    170 |   method event = self#connect TextTag.S.event
-                                        ^^^^^^^^^^^^^^^
-    Error: Unbound value TextTag.S.event
-
-
-    File "Gtk/TooltipG.ml", line 50, characters 53-71:
-    50 |   Tooltip.make_params [] ~cont:(fun p -> new tooltip (Tooltip.create p))
-                                                              ^^^^^^^^^^^^^^^^^^
-    Error: This expression has type Types.tooltip obj
-          but an expression was expected of type
-            ([> `display | `giu | `tooltip ] as 'a) obj
-          Type Types.tooltip = [ `giu | `tooltip ] is not compatible with type
-            [> `display | `giu | `tooltip ] as 'a 
-          The second variant type does not allow tag(s) `display
-
+=== Interfaces ===
 
     File "Gtk/TreeModelFilterG.ml", line 18, characters 21-42:
     18 |   method get_model : TreeModelG.tree_model = 
