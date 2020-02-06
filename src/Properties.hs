@@ -8,6 +8,7 @@ import           Control.Applicative            ( (<$>) )
 import           Control.Monad                  ( forM_
                                                 , when
                                                 , unless
+                                                , forM
                                                 )
 import           Data.Maybe                     ( fromMaybe )
 import           Data.Monoid                    ( (<>) )
@@ -28,11 +29,29 @@ import           QualifiedNaming                ( qualifiedSymbol )
 import           TypeRep
 import           Util
 
+isPropertyInParents :: Name -> Text -> CodeGen Bool
+isPropertyInParents cn pName = do
+  parents        <- instanceTree cn
+  parentsHasProp <- forM parents $ \parentName -> do
+    api <- findAPIByName parentName
+    return $ case api of
+      APIObject o -> do
+        let parentPropNames   = (propName <$> objProperties o)
+            parentMethodNames = (name . methodName <$> objMethods o)
+            parentNames       = parentPropNames ++ parentMethodNames
+        pName `elem` parentNames
+      _ -> False
+  return $ True `elem` parentsHasProp
+
 genPropertySetter :: Text -> Name -> Property -> CodeGen ()
-genPropertySetter setter classe _prop =
+genPropertySetter setter classe prop = do
+  alreadyDefProp <- isPropertyInParents classe ("set_" <> propName prop)
+  let setterDecl = if alreadyDefProp
+        then setter <> "_" <> ocamlIdentifier classe
+        else setter
   gline
     $  "  method set_"
-    <> setter
+    <> setterDecl
     <> " = Gobject.set "
     <> name classe
     <> ".P."
@@ -40,10 +59,14 @@ genPropertySetter setter classe _prop =
     <> " obj"
 
 genPropertyGetter :: Text -> Name -> Property -> CodeGen ()
-genPropertyGetter getter classe _prop =
+genPropertyGetter getter classe prop = do
+  alreadyDefProp <- isPropertyInParents classe ("get_" <> propName prop)
+  let getterDecl = if alreadyDefProp
+        then getter <> "_" <> ocamlIdentifier classe
+        else getter
   gline
     $  "  method get_"
-    <> getter
+    <> getterDecl
     <> " = Gobject.get "
     <> name classe
     <> ".P."
@@ -214,13 +237,13 @@ genMakeParams className props = do
       unless (null parents) $ do
         let parent = head parents
         line $ case parent of
-          Name "GObject" "Object"    -> emptyMake
-          Name "Gtk"     "Widget"    -> emptyMake
-          Name "Gtk"     "Container" -> emptyMake
-          Name "Gtk"     _           -> inheritedMake parent
-          Name _         _           -> emptyMake
+          Name "GObject" "Object" -> emptyMake
+          Name "Gtk"     "Widget" -> emptyMake
+          -- Name "Gtk"     "Container" -> emptyMake
+          Name "Gtk"     _        -> inheritedMake parent
+          Name _         _        -> emptyMake
  where
-  emptyMake = "let make_params ~cont pl = cont pl"
+  emptyMake = "let make_params ~cont pl () = cont pl"
   inheritedMake parent = "let make_params = " <> name parent <> ".make_params"
   isConstructor prop =
     PropertyConstructOnly

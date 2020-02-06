@@ -19,6 +19,7 @@ import           API                            ( Arg(..)
                                                 , Type(..)
                                                 , API(..)
                                                 , Object(..)
+                                                , Property(..)
                                                 )
 import           Callable                       ( genCCallableWrapper
                                                 , callableOCamlTypes
@@ -173,24 +174,27 @@ fixConstructorReturnType returnsGObject cn c = c { returnType = returnType' }
  where
   returnType' = if returnsGObject then Just (TInterface cn) else returnType c
 
-isMethodInParents :: Name -> Method -> CodeGen Bool
-isMethodInParents cn Method { methodName = mn } = do
-  parents          <- instanceTree cn
-  parentsHasMethod <- forM parents $ \parentName -> do
+isMethodInParents :: Name -> Text -> CodeGen Bool
+isMethodInParents cn mName = do
+  let mName' = snd $ T.breakOnEnd "get_" $ snd $ T.breakOnEnd "set_" mName
+  parents        <- instanceTree cn
+  parentsHasProp <- forM parents $ \parentName -> do
     api <- findAPIByName parentName
     return $ case api of
-      APIObject o -> mn `elem` (methodName <$> objMethods o)
-      _           -> False
-  return $ True `elem` parentsHasMethod
+      APIObject o -> do
+        let parentPropNames   = propName <$> objProperties o
+            parentMethodNames = name . methodName <$> objMethods o
+        mName `elem` parentMethodNames || mName' `elem` parentPropNames
+      _ -> False
+  return $ True `elem` parentsHasProp
 
 genMethod :: Name -> Method -> ExcCodeGen ()
 genMethod cn m@Method { methodName = mn, methodSymbol = sym, methodCallable = c, methodType = t }
   = when (t /= Constructor) $ do
-    alreadyDefMethod <- isMethodInParents cn m
-    let mName     = escapeOCamlReserved (name mn)
-        mDeclName = if alreadyDefMethod
-          then escapeOCamlReserved (name mn) <> "_" <> ocamlIdentifier cn
-          else mName
+    alreadyDefMethod <- isMethodInParents cn (name $ methodName m)
+    let mName = escapeOCamlReserved (name mn)
+        mDeclName =
+          if alreadyDefMethod then mName <> "_" <> ocamlIdentifier cn else mName
     -- export (NamedSubsection MethodSection $ lowerName mn) (lowerName mn')
     returnsGObject <- maybe (return False) isGObject (returnType c)
 

@@ -11,8 +11,19 @@ import           API                            ( Name(..) )
 
 excludeFiles :: Set Name
 excludeFiles = S.fromList
-    [ Name "Gtk"   "HeaderBarAccessible"  -- Bug: The GIR Parser doesn't return its CType (bug in the parser)
+    [ Name "Gtk"   "HeaderBarAccessible"  -- Its type isn't included in <gtk/gtk-a11y.h>
     , Name "Gtk"   "EntryIconAccessible"  -- Bug: The GIR Parser doesn't return its CType (bug in the parser)
+    , Name "Gtk"   "TreeModelFilter"      -- Need to generate interface
+    -- Dependency cycle
+    , Name "Gtk"   "TextBuffer"
+    , Name "Gtk"   "TextMark"
+    , Name "Gtk"   "TreeSelection"
+    , Name "Gtk"   "TreeView"
+    -- Depend on the files from the cycle
+    , Name "Gtk"   "TextView"
+    --
+    -- , Name "Gtk"   "StyleContext"
+    -- Pango
     , Name "Pango" "Engine"
     , Name "Pango" "EngineShape"
     , Name "Pango" "EngineLang"
@@ -55,7 +66,7 @@ genFiles = S.fromList
     , Name "Gtk" "IconTheme"
     , Name "Gtk" "Settings"
     , Name "Gtk" "RecentManager"
-    , Name "Gtk" "Tooltip"
+    -- , Name "Gtk" "Tooltip"        -- Gtk-CRITICAL **: 21:32:35.797: _gtk_style_provider_private_get_settings: assertion 'GTK_IS_STYLE_PROVIDER_PRIVATE (provider)' failed
     , Name "Gtk" "TreeModel"
     , Name "Gtk" "HSV"
     , Name "Gtk" "Image"
@@ -69,13 +80,15 @@ genFiles = S.fromList
     , Name "Gtk" "PlacesSidebar"
     , Name "Gtk" "CssProvider"
     , Name "Gtk" "EntryIconAccessible"
-    , Name "Gtk" "CellRenderer"
     , Name "Gtk" "Box"
-    , Name "Gtk" "PrintOperation"                   -- Escaping in Enums.
-    , Name "Gtk" "TreeModelFilter"                  -- Already defined method
-    , Name "Gtk" "CellRendererSpinner"              -- Already defined method
-    , Name "Gtk" "CellRendererText"                 -- Already defined method
-    , Name "Gtk" "ToolPalette"                      -- Already defined method
+    , Name "Gtk" "TreeModel"
+    , Name "Gtk" "ToolItemGroup"
+    , Name "Gtk" "PrintOperation"
+    , Name "Gtk" "CellRenderer"
+    -- , Name "Gtk" "CellRendererSpinner"
+    -- , Name "Gtk" "CellRendererText"
+    , Name "Gtk" "ToolPalette"
+    , Name "Gtk" "TreeModelFilter"
     -- , Name "Gtk" "StyleContext"
     --  , Name "Gtk" "Container"
     ]

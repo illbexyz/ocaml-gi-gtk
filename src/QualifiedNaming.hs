@@ -72,7 +72,7 @@ escapedArgName arg
 
 nsOCamlClass :: Name -> CodeGen Text
 nsOCamlClass (  Name "Gtk" "Widget") = return "GObj.widget"
-nsOCamlClass (  Name "Gdk" "Window") = return "GWindow.window"
+-- nsOCamlClass (  Name "Gdk" "Window") = return "GWindow.window"
 nsOCamlClass n@(Name ns    nm      ) = do
   currNs  <- currentNS
   currMod <- currentModule
