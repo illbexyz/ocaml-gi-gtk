@@ -126,11 +126,7 @@ genObject' n o ocamlName = do
 
   genObjectTypeInit o namespacedOcamlName
 
-  gline "open GtkSignal"
   gline "open Gobject"
-  gline "open Data"
-  gblank
-  gline $ "open " <> objectName
   gblank
 
   let parentClass = case parent of
@@ -227,6 +223,7 @@ genObject' n o ocamlName = do
     <> ocamlName
     <> "_signals obj"
   gline "end"
+  gblank
 
   if "Widget" `elem` map name parents
     then do

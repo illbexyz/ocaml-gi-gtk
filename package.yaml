@@ -26,6 +26,7 @@ dependencies:
 - directory
 - bytestring
 - pretty-show
+- process
 - haskell-gi-base >= 0.23.0 && <0.24
 - regex-tdfa >= 1.2
 - attoparsec >= 0.13

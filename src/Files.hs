@@ -14,13 +14,6 @@ excludeFiles = S.fromList
     [ Name "Gtk"   "HeaderBarAccessible"  -- Its type isn't included in <gtk/gtk-a11y.h>
     , Name "Gtk"   "EntryIconAccessible"  -- Bug: The GIR Parser doesn't return its CType (bug in the parser)
     , Name "Gtk"   "TreeModelFilter"      -- Need to generate interface
-    -- Dependency cycle
-    , Name "Gtk"   "TextBuffer"
-    , Name "Gtk"   "TextMark"
-    , Name "Gtk"   "TreeSelection"
-    , Name "Gtk"   "TreeView"
-    -- Depend on the files from the cycle
-    , Name "Gtk"   "TextView"
     --
     -- , Name "Gtk"   "StyleContext"
     -- Pango

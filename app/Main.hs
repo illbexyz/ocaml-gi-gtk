@@ -7,7 +7,7 @@ import qualified Data.Text                     as T
 import           System.Environment
 import           System.Exit
 
-import           Lib                            ( genBindings
+import           GI                             ( genBindings
                                                 , Library(..)
                                                 )
 

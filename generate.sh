@@ -45,14 +45,14 @@ build () {
 
 generate
 
-if $full; then
-    build GObject
-    build GLib
-    build Gio
-    build Atk
-    build GdkPixbuf
-    build Gdk
-    build Pango
-fi
+# if $full; then
+#     build GObject
+#     build GLib
+#     build Gio
+#     build Atk
+#     build GdkPixbuf
+#     build Gdk
+#     build Pango
+# fi
 
-build Gtk
+# build Gtk
