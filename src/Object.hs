@@ -216,12 +216,7 @@ genObject' n o ocamlName = do
 
   gline $ "and " <> ocamlName <> " obj = object (self)"
   gline $ "  inherit " <> ocamlName <> "_skel obj"
-  unless (null $ objSignals o)
-    $  group
-    $  gline
-    $  "  method connect = new "
-    <> ocamlName
-    <> "_signals obj"
+  group $ gline $ "  method connect = new " <> ocamlName <> "_signals obj"
   gline "end"
   gblank
 
