@@ -29,6 +29,7 @@ import           Signal                         ( genSignal
 import           Files                          ( excludeFiles
                                                 , genFiles
                                                 )
+import           Debug.Trace
 
 isSetterOrGetter :: Object -> Method -> Bool
 isSetterOrGetter o m =
@@ -53,9 +54,8 @@ genSignalClass n o = do
   parents <- instanceTree n
 
   let parent          = head parents
-      objectName      = name n
-      ocamlName       = camelCaseToSnakeCase objectName
-      ocamlParentName = camelCaseToSnakeCase $ name parent
+      ocamlName       = ocamlIdentifier n
+      ocamlParentName = ocamlIdentifier parent
 
   gline $ "and " <> ocamlName <> "_signals obj = object (self)"
 
@@ -129,6 +129,8 @@ genObject' n o ocamlName = do
   gline "open Gobject"
   gblank
 
+  when (name' == "Coverage") $ traceShowM o
+
   let parentClass = case parent of
         -- Name "Gtk" "Container" -> "['a] GContainer.container_impl"
         Name "Gtk" "Widget" -> "['a] GObj.widget_impl"
@@ -166,7 +168,7 @@ genObject' n o ocamlName = do
   unless (null $ objSignals o) $ group $ do
     line "module S = struct"
     indent $ do
-      line $ "open " <> nspace <> "Signal"
+      line "open GtkSignal"
       forM_ (objSignals o) $ \s -> genSignal s n
 
     line "end"
@@ -220,20 +222,31 @@ genObject' n o ocamlName = do
   gline "end"
   gblank
 
-  if "Widget" `elem` map name parents
-    then do
-      gline "let pack_return create p ?packing ?show () ="
-      gline "  GObj.pack_return (create p) ~packing ~show"
+  gline "let pack_return ?packing ?show create p () ="
+  gline "  GObj.pack_return (create p) ~packing ~show"
 
+  case ("Widget" `elem` map name parents, parent == Name "Gtk" "Widget") of
+    (True, True) -> do
       gline $ "let " <> ocamlName <> " = "
-      gline $ "  " <> objectName <> ".make_params [] ~cont:("
+      gline $ "  " <> "GtkBase.Widget.size_params [] ~cont:("
+      gline $ "  " <> objectName <> ".make_params ~cont:("
       gline
         $  "    pack_return (fun p -> new "
         <> ocamlName
         <> " ("
         <> objectName
-        <> ".create p)))"
-    else do
+        <> ".create p))))"
+    (True, False) -> do
+      gline $ "let " <> ocamlName <> " = "
+      gline $ "  " <> name parent <> ".make_params [] ~cont:("
+      gline $ "  " <> objectName <> ".make_params ~cont:("
+      gline
+        $  "    pack_return (fun p -> new "
+        <> ocamlName
+        <> " ("
+        <> objectName
+        <> ".create p))))"
+    (False, _) -> do
       gline $ "let " <> ocamlName <> " = "
       gline
         $  "  "

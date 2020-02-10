@@ -142,6 +142,7 @@ escapeOCamlReserved "end"    = "end_"
 escapeOCamlReserved "done"   = "done_"
 escapeOCamlReserved "type"   = "type_"
 escapeOCamlReserved "new"    = "new_"
+escapeOCamlReserved "open"   = "open_"
 escapeOCamlReserved t        = do
   let (nums, text) = T.span C.isNumber t
   text <> nums

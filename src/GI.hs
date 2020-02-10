@@ -146,17 +146,20 @@ genBindings verbosity Library { GI.name = libName, version, overridesFile } =
     mbDuneError <- compile outputDir
     forM_ mbDuneError $ \duneError -> do
       let files = parseCycles duneError
-      putStrLn $ "Found a cycle in the following files: " <> T.unpack
-        (T.intercalate ", " files)
-      putStrLn
-        $  "They will be moved to "
-        <> (outputDir </> T.unpack libName </> "Recursion.ml")
-      resolveRecursion (outputDir </> T.unpack libName) files
-      putStrLn "Recompiling..."
-      cycleError <- compile outputDir
-      case cycleError of
-        Nothing  -> putStrLn "Success"
-        Just err -> putStrLn err
+      if null files
+        then putStrLn duneError
+        else do
+          putStrLn $ "Found a cycle in the following files: " <> T.unpack
+            (T.intercalate ", " files)
+          putStrLn
+            $  "They will be moved to "
+            <> (outputDir </> T.unpack libName </> "Recursion.ml")
+          resolveRecursion (outputDir </> T.unpack libName) files
+          putStrLn "Recompiling..."
+          cycleError <- compile outputDir
+          case cycleError of
+            Nothing  -> putStrLn "Success"
+            Just err -> putStrLn err
 
 resolveRecursion :: FilePath -> [Text] -> IO ()
 resolveRecursion dirPrefix files = do

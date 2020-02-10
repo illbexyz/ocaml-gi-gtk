@@ -887,8 +887,11 @@ genDuneFile libName outputDir cFiles = do
           , "GIAtk"
           , "GIcairo"
           ]
-        "Gdk" -> ["GIGio"]
-        _     -> []
+        "Gdk"       -> ["GIGObject", "GIGio", "GIGdkPixbuf", "GIcairo", "GIPango"]
+        "Atk"       -> ["GIGObject"]
+        "GdkPixbuf" -> ["GIGLib"]
+        "Gio"       -> ["GIGObject", "GIGLib"]
+        _           -> []
 
   let commonPart =
         [ "(library"
