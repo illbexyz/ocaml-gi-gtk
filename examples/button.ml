@@ -30,21 +30,20 @@ let main () =
   let window = WindowG.window ~show:true () in
   let _ = window#connect#destroy ~callback:GMain.quit in
   let hbox = GPack.hbox ~packing:window#add () in
-  let button = ButtonG.button ~packing:(hbox#add) () in
-  let _ = button#set_label "One" in
-  let _ = button#connect#clicked ~callback:
+  let button1 = ButtonG.button ~label:"One" ~packing:(hbox#add) () in
+  let _ = button1#connect#clicked ~callback:
       (fun () -> prerr_endline "Button one clicked") in
-  let button = ButtonG.button ~use_underline:true ~label:"Two" ~packing:(hbox#add) () in
-  let _ = button#connect#clicked ~callback:
+  let button2 = ButtonG.button ~use_underline:true ~label:"Two" ~packing:(hbox#add) () in
+  let _ = button2#connect#clicked ~callback:
       (fun () ->
-         let () = prerr_endline "Button two clicked, GC" in
+         prerr_endline "Button two clicked, GC";
          Gc.compact ()
       ) in
-  let button = ButtonG.button ~use_stock:true ~packing:(hbox#add) () in
-  let _ = button#set_label "HOME" in
-  let _ = button#connect#clicked ~callback:
+  let button3 = ButtonG.button ~use_stock:true ~packing:(hbox#add) () in
+  button3#set_label "HOME";
+  let _ = button3#connect#clicked ~callback:
       (fun () -> prerr_endline "HOME button clicked") in
-  (* let _ = window#show () in *)
+
   GMain.main ()
 
 
