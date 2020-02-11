@@ -5,17 +5,10 @@ module CodeGen
   )
 where
 
-import           Control.Monad                  ( forM
-                                                , forM_
-                                                , when
-                                                , unless
-                                                , filterM
-                                                )
-import           Data.List                      ( nub )
-import           Data.Maybe                     ( fromJust
-                                                , fromMaybe
-                                                , mapMaybe
+import           Control.Monad
+import           Data.Maybe                     ( mapMaybe
                                                 , isNothing
+                                                , fromJust
                                                 )
 import           Data.Monoid                    ( (<>) )
 import qualified Data.Map                      as M
@@ -23,6 +16,8 @@ import qualified Data.Text                     as T
 import           Data.Text                      ( Text )
 
 import           API
+import           Conversions
+import           TypeRep
 import           Constant                       ( genConstant )
 import           EnumFlags                      ( genEnum
                                                 , genFlags
@@ -33,29 +28,16 @@ import           Fixups                         ( dropMovedItems
                                                 , dropDuplicatedFields
                                                 , checkClosureDestructors
                                                 )
-import           GObject
-import           Method                         ( genMethod )
-import           Haddock                        ( deprecatedPragma
-                                                , addSectionDocumentation
-                                                , writeHaddock
-                                                , RelativeDocPosition
-                                                  ( DocBeforeSymbol
-                                                  )
-                                                )
 import           Object                         ( genObject
-                                                , genGObjectCasts
                                                 , genInterface
                                                 )
+import           Method                         ( genMethod )
 import           Struct                         ( extractCallbacksInStruct
                                                 , fixAPIStructs
                                                 , ignoreStruct
                                                 )
 import           Code
-import           Callable                       ( genCCallableWrapper
-                                                , callableOCamlTypes
-                                                )
-import           Inheritance                    ( instanceTree )
-import           Signal                         ( genSignal )
+import           Callable                       ( genCCallableWrapper )
 import           Naming
 import           QualifiedNaming                ( submoduleLocation )
 import           Debug.Trace
@@ -87,19 +69,22 @@ genStructCasts n s = do
         $  "#define "
         <> structVal n
         <> "(val) ((GdkAtom) MLPointer_val(val))"
-    _ ->
+    _ -> do
       hline
         $  "#define "
         <> structVal n
         <> "(val) (("
         <> cType
         <> "*) MLPointer_val(val))"
-      -- TODO: Val_
+
+      hline $ "#define " <> valStruct n <> " Val_pointer"
+  addCDep (namespace n <> name n)
 
 -- | Generate wrapper for structures.
 genStruct :: Name -> Struct -> CodeGen ()
 genStruct n s = unless (ignoreStruct n s) $ do
-  let name' = upperName n
+  let name'     = upperName n
+      ocamlName = ocamlIdentifier n
   -- writeHaddock DocBeforeSymbol "Memory-managed wrapper type."
 
   -- addSectionDocumentation ToplevelSection (structDocumentation s)
@@ -107,6 +92,104 @@ genStruct n s = unless (ignoreStruct n s) $ do
 
   genStructCasts n s
 
+  when (n == Name "Gtk" "PageRange" || n == Name "Gtk" "Border") $ do
+  -- traceShowM s
+    handleCGExc (\e -> line $ describeCGError e) (genCreate ocamlName)
+    group $ forM_ (structFields s) (genField ocamlName)
+    group $ forM_ (structMethods s) genStructMethod
+
+ where
+  genCreate :: Text -> ExcCodeGen ()
+  genCreate ocamlName = do
+    currNS     <- currentNS
+    fieldTypes <- forM (structFields s)
+      $ \f -> typeShow currNS <$> haskellType (fieldType f)
+    fieldConvs <- forM (structFields s) $ \f -> ocamlValueToC (fieldType f)
+    let mlName     = mlGiPrefix n (ocamlName <> "_create")
+        fieldNames = fieldName <$> structFields s
+    line
+      $  "external create : "
+      <> T.intercalate " -> " fieldTypes
+      <> " -> "
+      <> nsOCamlType currNS n
+      <> " = \""
+      <> mlName
+      <> "\""
+
+    cline
+      $  "CAMLprim value "
+      <> mlName
+      <> "(value "
+      <> T.intercalate ", value " fieldNames
+      <> ") {"
+
+    ctype <- case structCType s of
+      Just typ -> return typ
+      Nothing  -> missingInfoError "Need ctype"
+
+    cline $ "  " <> ctype <> " " <> ocamlName <> ";"
+    forM_ (zip fieldNames fieldConvs) $ \(fN, conv) ->
+      cline
+        $  "  "
+        <> ocamlName
+        <> "."
+        <> fN
+        <> " = "
+        <> conv
+        <> "("
+        <> fN
+        <> ");"
+    cline $ "  return Val_copy(" <> ocamlName <> ");"
+    cline "}"
+    cline ""
+
+
+  genField :: Text -> Field -> CodeGen ()
+  genField ocamlName f = do
+    let fName = escapeOCamlReserved $ fieldName f
+        fType = fieldType f
+    currNS   <- currentNS
+    fTypeStr <- typeShow currNS <$> haskellType fType
+    handleCGExc (\e -> line $ "(* " <> describeCGError e <> " *)")
+                (genFieldExtractor f)
+    line
+      $  "external "
+      <> fName
+      <> " : "
+      <> nsOCamlType currNS n
+      <> " -> "
+      <> fTypeStr
+      <> " = \""
+      <> mlGiPrefix n (ocamlName <> "_" <> fieldName f)
+      <> "\""
+
+  genFieldExtractor :: Field -> ExcCodeGen ()
+  genFieldExtractor f = do
+    let nspace     = T.toLower (namespace n)
+        structN    = camelCaseToSnakeCase (name n)
+        structConv = structVal n
+        fieldN     = fieldName f
+    fieldConv <- cToOCamlValue False (Just . fieldType $ f)
+    cline
+      $  "Make_Extractor ("
+      <> T.intercalate ", " [nspace, structN, structConv, fieldN, fieldConv]
+      <> ")"
+
+  genStructMethod :: Method -> CodeGen ()
+  genStructMethod m@Method { methodName = mn, methodSymbol = sym, methodCallable = c, methodType = t }
+    = do
+      isFunction <- symbolFromFunction (methodSymbol m)
+      unless isFunction $ handleCGExc
+        (\e -> line
+          (  "(* Could not generate method "
+          <> name mn
+          <> " *)\n"
+          <> "(* Error was : "
+          <> describeCGError e
+          <> " *)"
+          )
+        )
+        (genCCallableWrapper mn sym c)
   -- if structIsBoxed s
   --   then traceShowM $ "Struct " <> show n <> " is boxed"
   --   else traceShowM $ "Struct " <> show n <> " not boxed"
@@ -114,40 +197,6 @@ genStruct n s = unless (ignoreStruct n s) $ do
   -- if structIsBoxed s
   --   then genBoxedObject n (fromJust $ structTypeInit s)
   --   else genWrappedPtr n (structAllocationInfo s) (structSize s)
-
-  -- exportDecl (name' <> "(..)")
-
-  -- -- Generate a builder for a structure filled with zeroes.
-  -- genZeroStruct n s
-
-  -- noName name'
-
-  -- -- Generate code for fields.
-  -- genStructOrUnionFields n (structFields s)
-
-  -- -- Methods
-  -- _methods <- forM (structMethods s) $ \f -> do
-  --   let mn = methodName f
-  --   isFunction <- symbolFromFunction (methodSymbol f)
-  --   if not isFunction
-  --     then handleCGExc
-  --       (\e ->
-  --         line
-  --             (  "(* Could not generate method "
-  --             <> name'
-  --             <> "::"
-  --             <> name mn
-  --             <> " *)\n"
-  --             <> "(* Error was : "
-  --             <> describeCGError e
-  --             <> " *)"
-  --             )
-  --           >> return Nothing
-  --       )
-  --       (genMethod n f >> return (Just (n, f)))
-  --     else return Nothing
-
-  return ()
 
 -- TODO: A struct ovverride type
 genUnionCasts :: Name -> Union -> CodeGen ()

@@ -453,8 +453,8 @@ CAMLprim value Val_##type (type *p) \
 #define Wosize_asize(x) ((x-1)/sizeof(value)+1)
 #define Wosizeof(x) Wosize_asize(sizeof(x))
 
-#define Make_Extractor(name,conv1,field,conv2) \
-CAMLprim value ml_##name##_##field (value val) \
+#define Make_Extractor(namespace,name,conv1,field,conv2) \
+CAMLprim value ml_gi##namespace##_##name##_##field (value val) \
 { return conv2 ((conv1(val))->field); }
 
 #define Make_Setter(name,conv1,conv2,field) \

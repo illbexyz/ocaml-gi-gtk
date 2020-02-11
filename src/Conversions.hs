@@ -131,29 +131,20 @@ haskellType t@(TInterface n) = do
   case api of
     APIFlags _f -> do
       flagsRes <- enumResolver n
-      return $ ListCon $ TextCon $ (flagsRes <> "." <> ocamlName)
+      return $ ListCon $ TextCon (flagsRes <> "." <> ocamlName)
     APIEnum _e -> do
       enumRes <- enumResolver n
       return $ TextCon $ enumRes <> "." <> ocamlName
-    APIObject    _o -> handleObj ocamlName
-    APIInterface _i -> handleObj ocamlName
+    APIObject    _o -> handleObj
+    APIInterface _i -> handleObj
     APIStruct    _s -> TextCon <$> getModuleType n
     APIConst     _c -> return $ TextCon "const"
     APIFunction  _f -> return $ TextCon "function"
     APICallback  _c -> return $ TextCon "callback"
     APIUnion     _u -> return $ TextCon "union"
  where
-  handleObj ocamlName = do
+  handleObj = do
     freshVar <- getFreshTypeVariable
-    currMod  <- currentModule
-    currNS   <- currentNS
-    -- let currModuleName = last $ T.splitOn "." currMod
-        -- ocamlName      = camelCaseToSnakeCase $ name n
-        -- typeRep = case (currNS == namespace n, currModuleName == name n) of
-          -- (True , _) -> TextCon $ "`" <> ocamlName
-          -- (True , True ) -> TextCon $ "`" <> ocamlName
-          -- (True , False) -> TextCon $ name n <> "G." <> ocamlName
-          -- (False, _) -> TextCon $ "`" <> ocamlName
     return $ ObjCon $ TypeVarCon freshVar $ RowCon More $ PolyCon $ NameCon n
 
 -- | Whether the callable has closure arguments (i.e. "user_data"
@@ -200,39 +191,20 @@ typeAllocInfo t = do
         in  return (Just info)
     _ -> return Nothing
 
--- | This translates GI types to the types used for generated OCaml code.
+-- | This translates GI types to the types used for generated OCaml code when the
+-- type is the output of a function
 outParamOcamlType :: Type -> ExcCodeGen TypeRep
-outParamOcamlType (TBasicType bt) = return $ ocamlBasicType bt
-outParamOcamlType t@(TCArray _ _ _ (TBasicType TUInt8))   = haskellType t
-outParamOcamlType t@(TCArray _ _ _ a                  )   = haskellType t
-outParamOcamlType t@(TGArray   a                      )   = haskellType t
-outParamOcamlType t@(TPtrArray a                      )   = haskellType t
-outParamOcamlType t@TByteArray                            = haskellType t
-outParamOcamlType t@(TGList  a )                          = haskellType t
-outParamOcamlType t@(TGSList a )                          = haskellType t
-outParamOcamlType t@(TGHash a b)                          = haskellType t
-outParamOcamlType t@TError                                = haskellType t
-outParamOcamlType t@TVariant                              = haskellType t
-outParamOcamlType t@TParamSpec                            = haskellType t
-outParamOcamlType t@(TGClosure  _                       ) = haskellType t
-outParamOcamlType t@(TInterface (Name "GObject" "Value")) = haskellType t
-outParamOcamlType t@(TInterface n                       ) = do
-  let ocamlName = ocamlIdentifier n
-      tname     = lowerName n
+outParamOcamlType t@(TInterface n) = do
   api <- getAPI t
   case api of
-    APIFlags     _ -> handleEnum ocamlName
-    APIEnum      _ -> handleEnum ocamlName
-    APIInterface _ -> handleObj n
-    APIObject    _ -> handleObj n
-    _ -> notImplementedError "(outParamOcamlType) can't handle this type"
+    APIInterface _ -> handleObj
+    APIObject    _ -> handleObj
+    _              -> haskellType t
  where
-  handleEnum ocamlName = do
-    enumRes <- enumResolver n
-    return $ TextCon $ enumRes <> "." <> ocamlName
-  handleObj n = do
+  handleObj = do
     freshVar <- getFreshTypeVariable
     return $ ObjCon $ TypeVarCon freshVar $ RowCon Less $ PolyCon $ NameCon n
+outParamOcamlType t = haskellType t
 
 cType :: Type -> ExcCodeGen Text
 cType (TBasicType t) = case t of
@@ -367,7 +339,7 @@ ocamlValueToC (TBasicType t) = case t of
   TULong    -> return "Long_val"
   TInt8     -> ocamlValueToCErr "TInt8"
   TUInt8    -> ocamlValueToCErr "TUInt8"
-  TInt16    -> ocamlValueToCErr "TInt16"
+  TInt16    -> return "(gint16) Long_val"
   TUInt16   -> ocamlValueToCErr "TUInt16"
   TInt32    -> ocamlValueToCErr "TInt32"
   TUInt32   -> ocamlValueToCErr "TUInt32"
@@ -439,7 +411,7 @@ cToOCamlValue False (Just (TBasicType t)) = case t of
   TULong    -> return "Val_long"
   TInt8     -> cToOCamlValueErr "TInt8"
   TUInt8    -> cToOCamlValueErr "TUInt8"
-  TInt16    -> cToOCamlValueErr "TInt16"
+  TInt16    -> return "Val_long"
   TUInt16   -> cToOCamlValueErr "TUInt16"
   TInt32    -> return "caml_copy_int32"
   TUInt32   -> return "caml_copy_int32"
@@ -501,8 +473,12 @@ cToOCamlValue False (Just (TInterface n)) = do
     APIObject _o -> do
       addCDep (namespace n <> name n)
       return $ valObject n
-    APIStruct _s -> cToOCamlValueErr "APIStruct"
-    APIUnion  _u -> cToOCamlValueErr "APIUnion"
+    APIStruct _s -> case n of
+      Name "Gtk" "Border" -> do
+        addCDep (namespace n <> name n)
+        return $ valStruct n
+      _ -> cToOCamlValueErr "APIStruct"
+    APIUnion _u -> cToOCamlValueErr "APIUnion"
 cToOCamlValue True (Just (TInterface n)) = do
   api <- findAPIByName n
   case api of
