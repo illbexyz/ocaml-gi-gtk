@@ -40,7 +40,7 @@ isSetterOrGetter o m =
                 && any (`T.isSuffixOf` mName) propNames
 
 genGObjectCasts :: Name -> Text -> Text -> CodeGen ()
-genGObjectCasts n ctype checkMacro = do
+genGObjectCasts n ctype checkMacro = unless (n `elem` excludeFiles) $ do
   hline
     ("#define " <> objectVal n <> "(val) check_cast(" <> checkMacro <> ", val)")
   -- hline $ "#define " <> nspace <> n <> "_val(" <> "val) ((" <> x <> "*) val)"
