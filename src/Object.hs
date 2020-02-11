@@ -222,40 +222,26 @@ genObject' n o ocamlName = do
   gline "end"
   gblank
 
-  gline "let pack_return ?packing ?show create p () ="
-  gline "  GObj.pack_return (create p) ~packing ~show"
+  -- gline "let pack_return ?packing ?show create p () ="
+  -- gline "  GObj.pack_return (create p) ~packing ~show"
 
-  case ("Widget" `elem` map name parents, parent == Name "Gtk" "Widget") of
-    (True, True) -> do
-      gline $ "let " <> ocamlName <> " = "
-      gline $ "  " <> "GtkBase.Widget.size_params [] ~cont:("
-      gline $ "  " <> objectName <> ".make_params ~cont:("
+  gline $ "let " <> ocamlName <> " = "
+  gline $ "  " <> objectName <> ".make_params [] ~cont:("
+  case "Widget" `elem` map name parents of
+    True ->
       gline
-        $  "    pack_return (fun p -> new "
+        $  "    fun pl ?packing ?show () -> GObj.pack_return (new "
         <> ocamlName
         <> " ("
         <> objectName
-        <> ".create p))))"
-    (True, False) -> do
-      gline $ "let " <> ocamlName <> " = "
-      gline $ "  " <> name parent <> ".make_params [] ~cont:("
-      gline $ "  " <> objectName <> ".make_params ~cont:("
+        <> ".create pl)) ~packing ~show)"
+    False ->
       gline
-        $  "    pack_return (fun p -> new "
+        $  "    (fun pl () -> new "
         <> ocamlName
         <> " ("
         <> objectName
-        <> ".create p))))"
-    (False, _) -> do
-      gline $ "let " <> ocamlName <> " = "
-      gline
-        $  "  "
-        <> objectName
-        <> ".make_params [] ~cont:(fun p -> new "
-        <> ocamlName
-        <> " ("
-        <> objectName
-        <> ".create p))"
+        <> ".create pl)))"
 
 genInterface :: Name -> Interface -> CodeGen ()
 genInterface n iface = do

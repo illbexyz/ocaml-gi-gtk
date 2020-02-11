@@ -243,7 +243,7 @@ genMakeParams className props = do
           Name "Gtk"     _        -> inheritedMake parent
           Name _         _        -> emptyMake
  where
-  emptyMake = "let make_params ~cont pl () = cont pl"
+  emptyMake = "let make_params ~cont pl = cont pl"
   inheritedMake parent = "let make_params = " <> name parent <> ".make_params"
   isConstructor prop =
     PropertyConstructOnly
