@@ -1,3 +1,3 @@
 (executables
- (names button radiobutton label entry calendar counter notebook)
+ (names button radiobutton label entry calendar counter notebook pango2)
  (libraries lablgtk3 GIGtk))
