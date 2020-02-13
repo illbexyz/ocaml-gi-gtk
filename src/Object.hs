@@ -20,6 +20,7 @@ import           GObject
 import           Inheritance                    ( instanceTree )
 import           Method                         ( genMethod )
 import           Naming
+import           QualifiedNaming                ( nsOCamlClass )
 import           Properties                     ( genObjectProperties
                                                 , genInterfaceProperties
                                                 )
@@ -53,18 +54,23 @@ genSignalClass :: Name -> Object -> CodeGen ()
 genSignalClass n o = do
   parents <- instanceTree n
 
-  let parent          = head parents
-      ocamlName       = ocamlIdentifier n
-      ocamlParentName = ocamlIdentifier parent
+  let parent    = head parents
+      ocamlName = ocamlIdentifier n
 
   gline $ "and " <> ocamlName <> "_signals obj = object (self)"
 
-
+  -- TODO: The default case should be the commented one but it makes sense 
+  --       only when every lib can be generated, otherwise the parent class
+  --       is not available.
+  --       Then the (Name "Gtk" _) case can be removed 
+  parentClass <- nsOCamlClass parent
   let parentSignal = case head parents of
-        -- Name "Gtk" "Container" -> "GContainer.container_signals_impl"
-        Name "Gtk" "Widget" -> "GObj.widget_signals_impl"
-        Name "Gtk" nm       -> nm <> "G." <> ocamlParentName <> "_signals"
-        Name _     _        -> "[_] GObj.gobject_signals"
+        Name "Gtk"       "Widget" -> "GObj.widget_signals_impl"
+        Name "GObject"   "Object" -> "[_] GObj.gobject_signals"
+        Name "Gtk"       _        -> parentClass <> "_signals"
+        Name "GtkSource" _        -> parentClass <> "_signals"
+        _                         -> "[_] GObj.gobject_signals"
+        -- _                       -> parentClass <> "_signals" 
 
   gline $ "  inherit " <> parentSignal <> " obj"
 
@@ -106,8 +112,7 @@ genObject n o = do
         [] -> addType n Nothing
         _  -> addType n (Just $ head parents)
 
-      when (n /= Name "Gtk" "HeaderBarAccessible")
-        $ forM_ (objCType o)
+      forM_ (objCType o)
         $ \ctype -> genGObjectCasts n ctype (getObjCheckMacro o)
 
       if namespace n /= "Gtk" || n `elem` excludeFiles -- || n `notElem` genFiles
@@ -122,23 +127,27 @@ genObject' n o ocamlName = do
       objectName          = name n
       namespacedOcamlName = camelCaseToSnakeCase $ nspace <> objectName
       parent              = head parents
-      ocamlParentName     = camelCaseToSnakeCase $ name parent
 
   genObjectTypeInit o namespacedOcamlName
 
   gline "open Gobject"
   gblank
 
-  when (name' == "Coverage") $ traceShowM o
-
-  let parentClass = case parent of
-        -- Name "Gtk" "Container" -> "['a] GContainer.container_impl"
-        Name "Gtk" "Widget" -> "['a] GObj.widget_impl"
-        Name "Gtk" nm       -> nm <> "G." <> ocamlParentName <> "_skel"
-        Name _     _        -> "GObj.gtkobj"
+  -- TODO: The default case should be the commented one but it makes sense 
+  --       only when every lib can be generated, otherwise the parent class
+  --       is not available.
+  --       Then the (Name "Gtk" _) case can be removed 
+  parentClass <- nsOCamlClass parent
+  let parentSkelClass = case parent of
+        Name "Gtk"       "Widget" -> "['a] GObj.widget_impl"
+        Name "GObject"   "Object" -> "GObj.gtkobj"
+        Name "Gtk"       _        -> parentClass <> "_skel"
+        Name "GtkSource" _        -> parentClass <> "_skel"
+        _                         -> "GObj.gtkobj"
+        -- _                       -> parentClass <> "_skel"
 
   gline $ "class " <> ocamlName <> "_skel obj = object (self)"
-  gline $ "  inherit " <> parentClass <> " obj"
+  gline $ "  inherit " <> parentSkelClass <> " obj"
   gline
     $  "  method as_"
     <> ocamlName

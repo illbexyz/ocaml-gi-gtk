@@ -234,14 +234,14 @@ genMakeParams className props = do
         line "cont pl"
     else do
       parents <- instanceTree className
+      currNS  <- currentNS
       unless (null parents) $ do
         let parent = head parents
-        line $ case parent of
-          Name "GObject" "Object" -> emptyMake
-          Name "Gtk"     "Widget" -> emptyMake
-          -- Name "Gtk"     "Container" -> emptyMake
-          Name "Gtk"     _        -> inheritedMake parent
-          Name _         _        -> emptyMake
+        line $ case (currNS, parent) of
+          ("Gtk", Name "GObject" "Object") -> emptyMake
+          ("Gtk", Name "Gtk" "Widget"    ) -> emptyMake
+          ("Gtk", Name "Gtk" _           ) -> inheritedMake parent
+          (_    , _                      ) -> emptyMake
  where
   emptyMake = "let make_params ~cont pl = cont pl"
   inheritedMake parent = "let make_params = " <> name parent <> ".make_params"

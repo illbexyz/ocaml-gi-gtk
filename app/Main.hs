@@ -65,6 +65,12 @@ gioLib = Library { name          = "Gio"
                  , overridesFile = Just "overrides/Gio.overrides"
                  }
 
+gtkSourceLib :: Library
+gtkSourceLib = Library { name          = "GtkSource"
+                       , version       = "3.0"
+                       , overridesFile = Just "overrides/GtkSource.overrides"
+                       }
+
 parseArg :: String -> IO Library
 parseArg "atk"       = return atkLib
 parseArg "gtk"       = return gtkLib
@@ -75,21 +81,25 @@ parseArg "cairo"     = return cairoLib
 parseArg "glib"      = return glibLib
 parseArg "gobject"   = return gobjectLib
 parseArg "gio"       = return gioLib
+parseArg "gtksource" = return gtkSourceLib
 parseArg "-h"        = printUsage >> exitSuccess
 parseArg "-v"        = printVersion >> exitSuccess
 parseArg _           = printUsage >> exitSuccess
 
 main :: IO ()
 main = do
-    let verbose = False
-    args <- getArgs
-    libs <- mapM parseArg args
-    forM_ libs (genBindings verbose)
+  let verbose = False
+  args <- getArgs
+  case args of
+    [] -> printUsage >> exitSuccess
+    _  -> do
+      libs <- mapM parseArg args
+      forM_ libs (genBindings verbose)
 
 printUsage :: IO ()
 printUsage =
-    putStrLn
-        "Usage: ocaml-gi-gtk [-h] [-v] [atk, gdk, gdkpixbuf, pango, cairo, gtk, gio, glib, gobject]"
+  putStrLn
+    "Usage: ocaml-gi-gtk [-h] [-v] [atk, gdk, gdkpixbuf, pango, cairo, gtk, gio, glib, gobject, gtksource]"
 
 printVersion :: IO ()
 printVersion = putStrLn "ocaml-gi-gtk 0.1"

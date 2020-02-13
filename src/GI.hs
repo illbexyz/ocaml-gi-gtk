@@ -25,6 +25,7 @@ import           Data.Bifunctor                 ( bimap )
 import           API                            ( loadGIRInfo
                                                 , API
                                                 , Name(..)
+                                                , GIRInfo(..)
                                                 )
 import           Config                         ( Config(..) )
 
@@ -68,7 +69,7 @@ genModuleCode
   -> Text -- ^ version
   -> Bool -- ^ verbose
   -> [TaggedOverride] -- ^ Explicit overrides
-  -> IO ModuleInfo
+  -> IO (ModuleInfo, [Text])
 genModuleCode name version verbosity overrides = do
   setupTypelibSearchPath []
 
@@ -85,11 +86,13 @@ genModuleCode name version verbosity overrides = do
   let ovs = mconcat parsed
 
   (gir, girDeps) <- loadGIRInfo verbosity name (Just version) [] (girFixups ovs)
-  let (apis, deps) = filterAPIsAndDeps ovs gir girDeps
-      allAPIs = M.union apis deps
+  let dependencies = girNSName <$> girDeps
+      (apis, deps) = filterAPIsAndDeps ovs gir girDeps
+      allAPIs      = M.union apis deps
       cfg = Config { modName = name, verbose = verbosity, overrides = ovs }
 
-  return $ genCode cfg allAPIs (toModulePath name) (genModule apis)
+  return
+    (genCode cfg allAPIs (toModulePath name) (genModule apis), dependencies)
 
 -- | Write a module containing information about the configuration for
 -- the package.
@@ -99,7 +102,6 @@ genConfigFiles outputDir modName _maybeGiven = do
       dunePrj      = joinPath [baseDir, "dune-project"]
       duneBindings = joinPath [baseDir, "dune"]
       dirname      = takeDirectory baseDir
-      -- duneModule   = joinPath [baseDir, T.unpack modName, "dune"]
 
   createDirectoryIfMissing True dirname
 
@@ -109,19 +111,9 @@ genConfigFiles outputDir modName _maybeGiven = do
   utf8WriteFile duneBindings $ T.unlines
     ["(env", " (_", "  (binaries", "   ./tools/dune_config.exe)))"]
 
-    -- utf8WriteFile duneModule $ T.unlines
-    --     [ "(library"
-    --     , " (name " <> modName <> ")"
-    --     , " (libraries objects enums)"
-    --     , ")"
-    --     ]
-
-
 genBindings :: Bool -> Library -> IO ()
 genBindings verbosity Library { GI.name = libName, version, overridesFile } =
   do
-    -- let name               = "Gdk"
-    --     overridesFile      = Just $ "overrides" </> "Gdk.overrides"
     let inheritedOverrides = []
         outputDir          = "bindings" </> T.unpack libName
 
@@ -134,8 +126,11 @@ genBindings verbosity Library { GI.name = libName, version, overridesFile } =
 
     let ovs = maybe inheritedOverrides (: inheritedOverrides) givenOvs
 
-    m <- genModuleCode libName version verbosity ovs
-    _ <- writeModuleTree verbosity (Just outputDir) m
+    (m, deps') <- genModuleCode libName version verbosity ovs
+
+    let deps = filter (`notElem` ["xlib", "GModule"]) deps'
+
+    _ <- writeModuleTree verbosity (Just outputDir) m deps
 
     genConfigFiles (Just outputDir) libName givenOvs
 
@@ -198,7 +193,13 @@ resolveRecursion dirPrefix files = do
     let removeG   = fst $ T.splitAt (T.length x - 1) x
         ocamlName = escapeOCamlReserved $ camelCaseToSnakeCase removeG
     T.unlines
-      [ "class " <> ocamlName <> " = Recursion." <> ocamlName
+      [ "class " <> ocamlName <> "_skel = Recursion." <> ocamlName <> "_skel"
+      , "class "
+      <> ocamlName
+      <> "_signals = Recursion."
+      <> ocamlName
+      <> "_signals"
+      , "class " <> ocamlName <> " = Recursion." <> ocamlName
       , "let " <> ocamlName <> " = Recursion." <> ocamlName
       ]
 

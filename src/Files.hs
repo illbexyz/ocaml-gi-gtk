@@ -11,16 +11,18 @@ import           API                            ( Name(..) )
 
 excludeFiles :: Set Name
 excludeFiles = S.fromList
-    [ Name "Gtk"   "HeaderBarAccessible"  -- Its type isn't included in <gtk/gtk-a11y.h>
-    , Name "Gtk"   "EntryIconAccessible"  -- Bug: The GIR Parser doesn't return its CType (bug in the parser)
-    , Name "Gtk"   "TreeModelFilter"      -- Need to generate interface
+    [ Name "Gtk"       "HeaderBarAccessible"  -- Its type isn't included in <gtk/gtk-a11y.h>
+    , Name "Gtk"       "EntryIconAccessible"  -- Bug: The GIR Parser doesn't return its CType (bug in the parser)
+    , Name "Gtk"       "TreeModelFilter"      -- Need to generate interface
     --
     -- , Name "Gtk"   "StyleContext"
     -- Pango
-    , Name "Pango" "Engine"
-    , Name "Pango" "EngineShape"
-    , Name "Pango" "EngineLang"
-    , Name "Pango" "FontsetSimple"
+    , Name "Pango"     "Engine"
+    , Name "Pango"     "EngineShape"
+    , Name "Pango"     "EngineLang"
+    , Name "Pango"     "FontsetSimple"
+    , Name "GtkSource" "Gutter"
+    , Name "GtkSource" "View"
     ]
 
 genFiles :: Set Name

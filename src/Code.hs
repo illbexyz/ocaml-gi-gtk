@@ -786,6 +786,7 @@ commonCImports = T.unlines
   , "#include <caml/memory.h>"
   , "#include <caml/callback.h>"
   , "#include <caml/fail.h>"
+  -- , "#include <gtksourceview/gtksource.h>"
   , "#include \"gio_includes.h\""
   , "#include \"gdkpixbuf_includes.h\""
   , "#include \"pango_includes.h\""
@@ -868,30 +869,18 @@ genHStubs minfo = codeToText (hCode minfo)
 genCStubs :: ModuleInfo -> Text
 genCStubs minfo = codeToText (cCode minfo)
 
--- | Generate the g*.ml file for the given module.
+-- | Generate the *G.ml file for the given module.
 genGModule :: ModuleInfo -> Text
 genGModule minfo = codeToText (gCode minfo)
 
-genDuneFile :: Text -> FilePath -> [Text] -> IO ()
-genDuneFile libName outputDir cFiles = do
+genDuneFile :: Text -> FilePath -> [Text] -> [Text] -> IO ()
+genDuneFile libName outputDir cFiles deps = do
   let duneFilepath = joinPath [outputDir, "dune"]
-
-  let libs = T.pack <$> case libName of
-        "Gtk" ->
-          [ "GIGObject"
-          , "GIGio"
-          , "GIGLib"
-          , "GIGdk"
-          , "GIPango"
-          , "GIGdkPixbuf"
-          , "GIAtk"
-          , "GIcairo"
-          ]
-        "Gdk"       -> ["GIGObject", "GIGio", "GIGdkPixbuf", "GIcairo", "GIPango"]
-        "Atk"       -> ["GIGObject"]
-        "GdkPixbuf" -> ["GIGLib"]
-        "Gio"       -> ["GIGObject", "GIGLib"]
-        _           -> []
+      libs         = ("GI" <>) <$> deps
+      -- TODO: Actually it would be nice to find the exact name for each lib
+      pkgConfName  = case libName of
+        "GtkSource" -> "gtksourceview-3.0"
+        _           -> "gtk+-3.0"
 
   let commonPart =
         [ "(library"
@@ -901,22 +890,26 @@ genDuneFile libName outputDir cFiles = do
         ]
   utf8WriteFile duneFilepath $ case cFiles of
     [] -> T.unlines $ commonPart ++ [")"]
-    cFiles ->
+    _ ->
       T.unlines
         $ [ "(rule"
           , " (targets"
-          , "  cflag-gtk+-3.0.sexp"
-          , "  clink-gtk+-3.0.sexp)"
-          , " (action (run dune_config -pkg gtk+-3.0 -version 3.18)))"
+          , "  cflag-" <> pkgConfName <> ".sexp"
+          , "  clink-" <> pkgConfName <> ".sexp)"
+          , " (action (run dune_config -pkg "
+          <> pkgConfName
+          <> " -version 3.18)))"
           ]
         ++ commonPart
         ++ [ " (flags :standard -w -6-7-9-10-27-32-33-34-35-36-50-52 -no-strict-sequence)"
-           , " (c_library_flags (:include clink-gtk+-3.0.sexp))"
+           , " (c_library_flags (:include clink-" <> pkgConfName <> ".sexp))"
            , " (foreign_stubs"
            , "  (language c)"
            , "  (names " <> T.intercalate " " cFiles <> ")"
            , "  (include_dirs %{project_root}/include)"
-           , "  (flags (:include cflag-gtk+-3.0.sexp) -I$BASE_OCAML_C $GI_INCLUDES -Wno-deprecated-declarations)))"
+           , "  (flags (:include cflag-"
+           <> pkgConfName
+           <> ".sexp) -I$BASE_OCAML_C $GI_INCLUDES -Wno-deprecated-declarations)))"
            ]
 
 
@@ -940,8 +933,8 @@ writeModuleTree' verbose dirPrefix minfo = do
   return (dotWithPrefix (modulePath minfo) : submodulePaths)
 
 writeModuleTree
-  :: Bool -> Maybe FilePath -> ModuleInfo -> IO ([Text], [FilePath])
-writeModuleTree verbose dirPrefix minfo = do
+  :: Bool -> Maybe FilePath -> ModuleInfo -> [Text] -> IO ([Text], [FilePath])
+writeModuleTree verbose dirPrefix minfo dependencies = do
   (modules, (cFiles, ocamlTypes)) <- runStateT
     (writeModuleTree' verbose dirPrefix minfo)
     ([], Set.empty)
@@ -962,7 +955,7 @@ writeModuleTree verbose dirPrefix minfo = do
     (\path -> do
       createDirectoryIfMissing True path
       let cFilenames = fromMaybe [] (M.lookup path cFilesMap)
-      genDuneFile (T.pack libName) path cFilenames
+      genDuneFile (T.pack libName) path cFilenames dependencies
     )
 
   unless (Set.null ocamlTypes) $ do
