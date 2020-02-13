@@ -11,11 +11,23 @@ import           GI                             ( genBindings
                                                 , Library(..)
                                                 )
 
+glibLib :: Library
+glibLib = Library { name          = "GLib"
+                  , version       = "2.0"
+                  , overridesFile = Just "overrides/GLib.overrides"
+                  }
+
 gobjectLib :: Library
 gobjectLib = Library { name          = "GObject"
                      , version       = "2.0"
                      , overridesFile = Just "overrides/GObject.overrides"
                      }
+
+gioLib :: Library
+gioLib = Library { name          = "Gio"
+                 , version       = "2.0"
+                 , overridesFile = Just "overrides/Gio.overrides"
+                 }
 
 atkLib :: Library
 atkLib = Library { name          = "Atk"
@@ -23,23 +35,11 @@ atkLib = Library { name          = "Atk"
                  , overridesFile = Just "overrides/Atk.overrides"
                  }
 
-gtkLib :: Library
-gtkLib = Library { name          = "Gtk"
-                 , version       = "3.0"
-                 , overridesFile = Just "overrides/Gtk.overrides"
-                 }
-
-gdkLib :: Library
-gdkLib = Library { name          = "Gdk"
-                 , version       = "3.0"
-                 , overridesFile = Just "overrides/Gdk.overrides"
-                 }
-
-gdkPixbufLib :: Library
-gdkPixbufLib = Library { name          = "GdkPixbuf"
-                       , version       = "2.0"
-                       , overridesFile = Just "overrides/GdkPixbuf.overrides"
-                       }
+cairoLib :: Library
+cairoLib = Library { name          = "cairo"
+                   , version       = "1.0"
+                   , overridesFile = Just "overrides/cairo.overrides"
+                   }
 
 pangoLib :: Library
 pangoLib = Library { name          = "Pango"
@@ -47,22 +47,22 @@ pangoLib = Library { name          = "Pango"
                    , overridesFile = Just "overrides/Pango.overrides"
                    }
 
-cairoLib :: Library
-cairoLib = Library { name          = "cairo"
-                   , version       = "1.0"
-                   , overridesFile = Just "overrides/cairo.overrides"
-                   }
+gdkPixbufLib :: Library
+gdkPixbufLib = Library { name          = "GdkPixbuf"
+                       , version       = "2.0"
+                       , overridesFile = Just "overrides/GdkPixbuf.overrides"
+                       }
 
-glibLib :: Library
-glibLib = Library { name          = "GLib"
-                  , version       = "2.0"
-                  , overridesFile = Just "overrides/GLib.overrides"
-                  }
+gdkLib :: Library
+gdkLib = Library { name          = "Gdk"
+                 , version       = "3.0"
+                 , overridesFile = Just "overrides/Gdk.overrides"
+                 }
 
-gioLib :: Library
-gioLib = Library { name          = "Gio"
-                 , version       = "2.0"
-                 , overridesFile = Just "overrides/Gio.overrides"
+gtkLib :: Library
+gtkLib = Library { name          = "Gtk"
+                 , version       = "3.0"
+                 , overridesFile = Just "overrides/Gtk.overrides"
                  }
 
 gtkSourceLib :: Library
@@ -72,15 +72,15 @@ gtkSourceLib = Library { name          = "GtkSource"
                        }
 
 parseArg :: String -> IO Library
-parseArg "atk"       = return atkLib
-parseArg "gtk"       = return gtkLib
-parseArg "gdk"       = return gdkLib
-parseArg "gdkpixbuf" = return gdkPixbufLib
-parseArg "pango"     = return pangoLib
-parseArg "cairo"     = return cairoLib
 parseArg "glib"      = return glibLib
 parseArg "gobject"   = return gobjectLib
 parseArg "gio"       = return gioLib
+parseArg "atk"       = return atkLib
+parseArg "cairo"     = return cairoLib
+parseArg "pango"     = return pangoLib
+parseArg "gdkpixbuf" = return gdkPixbufLib
+parseArg "gdk"       = return gdkLib
+parseArg "gtk"       = return gtkLib
 parseArg "gtksource" = return gtkSourceLib
 parseArg "-h"        = printUsage >> exitSuccess
 parseArg "-v"        = printVersion >> exitSuccess
@@ -94,12 +94,13 @@ main = do
     [] -> printUsage >> exitSuccess
     _  -> do
       libs <- mapM parseArg args
-      forM_ libs (genBindings verbose)
+      genBindings verbose (last libs)
 
 printUsage :: IO ()
-printUsage =
+printUsage = do
+  putStrLn "Usage: ocaml-gi-gtk [-h] [-v] LIB"
   putStrLn
-    "Usage: ocaml-gi-gtk [-h] [-v] [atk, gdk, gdkpixbuf, pango, cairo, gtk, gio, glib, gobject, gtksource]"
+    "Available LIBs are: glib, gobject, gio, atk, cairo, pango, gdkpixbuf, gdk, gtk, gtksource"
 
 printVersion :: IO ()
 printVersion = putStrLn "ocaml-gi-gtk 0.1"
