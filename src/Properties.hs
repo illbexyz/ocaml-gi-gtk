@@ -10,7 +10,9 @@ import           Control.Monad                  ( forM_
                                                 , unless
                                                 , forM
                                                 )
-import           Data.Maybe                     ( fromMaybe )
+import           Data.Maybe                     ( fromMaybe
+                                                , catMaybes
+                                                )
 import           Data.Monoid                    ( (<>) )
 import           Data.Text                      ( Text )
 import qualified Data.Text                     as T
@@ -73,16 +75,23 @@ genPropertyGetter getter classe prop = do
     <> getter
     <> " obj"
 
+propTypeConverter :: Property -> ExcCodeGen Text
+propTypeConverter prop = do
+  let isNullable = fromMaybe False $ propReadNullable prop
+  ocamlDataConv isNullable (propType prop)
+
 genPropertyOCaml :: Name -> Property -> ExcCodeGen ()
 genPropertyOCaml classe prop = do
   currNS <- currentNS
   let pName       = propName prop
       uScoresName = escapeOCamlReserved $ hyphensToUnderscores pName
       classType   = typeShow currNS $ RowCon More $ PolyCon $ NameCon classe
-      isNullable  = fromMaybe False $ propReadNullable prop
+
   -- TODO: uncomment next line
   -- writeHaddock DocBeforeSymbol (getterDoc n prop) 
-  ocamlConverter <- ocamlDataConv isNullable (propType prop)
+
+  ocamlConverter <- propTypeConverter prop
+
   line $ "let " <> uScoresName <> " : " <> "(" <> classType <> ",_) property ="
   indent
     $  line
@@ -212,8 +221,19 @@ genMakeParams className props = do
   let constructors = filter isConstructor props
   if not $ null constructors
     then do
-      let constructorNames = map (escapeOCamlReserved . propName) constructors
-          underlinedConstrNames = map hyphensToUnderscores constructorNames
+      -- A property may have failed to generate, so we're calling propTypeConverter,
+      -- which is the function that may fail. So if a property has failed to generate,
+      -- the constructor name won't be generated
+      constructorNames <- catMaybes <$> forM
+        constructors
+        (\prop -> handleCGExc
+          (\_err -> return Nothing)
+          (  propTypeConverter prop
+          >> return (Just $ escapeOCamlReserved $ propName prop)
+          )
+        )
+
+      let underlinedConstrNames = map hyphensToUnderscores constructorNames
           optionalArgs = "?" <> T.intercalate " ?" underlinedConstrNames
       blank
       line $ "let make_params ~cont pl " <> optionalArgs <> " ="
@@ -223,8 +243,6 @@ genMakeParams className props = do
             lastConstr      = last underlinedConstrNames
         line "let pl = ("
         indent $ do
-          let mayCons constrName =
-                "may_cons P." <> constrName <> " " <> constrName
           forM_ firstConstrs $ \cName -> line $ mayCons cName <> " ("
           line
             $  mayCons lastConstr
@@ -243,13 +261,10 @@ genMakeParams className props = do
           ("Gtk", Name "Gtk" _           ) -> inheritedMake parent
           (_    , _                      ) -> emptyMake
  where
+  mayCons constrName = "may_cons P." <> constrName <> " " <> constrName
   emptyMake = "let make_params ~cont pl = cont pl"
   inheritedMake parent = "let make_params = " <> name parent <> ".make_params"
-  isConstructor prop =
-    PropertyConstructOnly
-      `elem` propFlags prop
-      ||     PropertyConstruct
-      `elem` propFlags prop
+  isConstructor prop = PropertyWritable `elem` propFlags prop
 
 genProperties :: Name -> [Property] -> [Text] -> CodeGen ()
 genProperties n ownedProps _allProps = do
