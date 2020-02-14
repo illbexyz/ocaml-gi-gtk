@@ -19,6 +19,8 @@
 5. Table:
      ~columns => ~n_columns
      ~rows => ~n_rows
+5. LinkButton:
+     uri => ~uri
 
 6. #PPP => #get_PPP per le proprietà PPP Read
 
