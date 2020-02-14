@@ -1,19 +1,31 @@
 1. #show => #misc#show
 2. #grab_default => #misc#grab_default
 
-3. Separator: #pack => #add
+3. Separator/Box:
+     #pack => #add
+     #pack ~padding:5 => (fun w -> hbox#pack_start w false true (*~padding:*)5)
 4. #PPP => #get_PPP per le proprietà PPP Read
 
+5. a window w is not a #container, but it can be casted to it
+   (e.g. in example button.ml). It used to be a #container instead.
+   The problem is due to #connect: window signals inherit from container
+   signals, but a cast is required. How did it work without before?
+
+
+============= TO TEST ==================
+1. output of button.exe: is it the expected one?
 
 ============= TODO (XXX) ==================
 1. radiobutton.ml: #get_group
 2. entry.ml: #select_region
+3. button.ml: ~use_mnemonic ~stock
 
 ============= Bugs ==================
 0. Calendar: get_date ritorna uno unit di troppo
    (gestione parametri di I/O per funzioni che tornano void errata?)
 1. RadioButtonG get_group not implemented (GSList *)
 2. Inheritance from interfaces not implemented (e.g. Entry is an Editable)
+3. Additional constructors not implemented (e.g. Buttong.new_with_mnemonic)
 
 ============= Notes ==================
 1. Widget.size_params is an exeption w.r.t. Widget.make_params

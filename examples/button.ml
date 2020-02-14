@@ -1,50 +1,44 @@
-(* let main () =
-   let _ = GMain.init () in
-   let window = GWindow.window ~title:"Buttons" ~border_width:10 () in
-   let _ = window#connect#destroy ~callback:GMain.quit in
-   let hbox = GPack.hbox ~packing:window#add () in
-   let button = GIGtk.ButtonG.button ~packing:(hbox#pack ~padding:5) () in
-   let _ = button#set_label "One" in
-   let _ = button#connect#clicked ~callback:
-      (fun () -> prerr_endline "Button one clicked") in
-   let button = GIGtk.ButtonG.button ~use_underline:true ~label:"Two" ~packing:(hbox#pack ~padding:5) () in
-   let _ = button#connect#clicked ~callback:
-      (fun () ->
-        let () = prerr_endline "Button two clicked, GC" in
-        Gc.compact ()
-      ) in
-   let button = GIGtk.ButtonG.button ~use_stock:true ~packing:(hbox#pack ~padding:5) () in
-   let _ = button#set_label "HOME" in
-   let _ = button#connect#clicked ~callback:
-      (fun () -> prerr_endline "HOME button clicked") in
-   let _ = window#show () in
-   GMain.main ()
+(**************************************************************************)
+(*    Lablgtk - Examples                                                  *)
+(*                                                                        *)
+(*    This code is in the public domain.                                  *)
+(*    You may freely copy parts of it in your application.                *)
+(*                                                                        *)
+(**************************************************************************)
 
-
-   let _ = main () *)
+(* $Id$ *)
 
 open GIGtk
 
+let pack (box : #BoxG.box) w ~padding =
+ box#pack_start w false true padding
+
+let xpm_label_box ~(window : #ContainerG.container)
+    ~file ~text ?packing ?(show=true) () =
+  if not (Sys.file_exists file) then failwith (file ^ " does not exist");
+  let box = HBoxG.h_box ~border_width: 2 ?packing ~show:false () in
+  let image = ImageG.image ~file ~packing:(pack box ~padding:3) () in
+  LabelG.label ~label:text ~packing:(pack box ~padding:3) ();
+  if show then box#misc#show ();
+  new GObj.widget_full box#as_widget
+
 let main () =
-  let _ = GMain.init () in
-  let window = WindowG.window ~show:true () in
-  let _ = window#connect#destroy ~callback:GMain.quit in
+  GMain.init ();
+  let window = WindowG.window ~title:"Pixmap'd Buttons!" ~border_width:10 () in
+  window#connect#destroy ~callback:GMain.quit;
   let hbox = HBoxG.h_box ~packing:window#add () in
-  let button1 = ButtonG.button ~label:"One" ~packing:(hbox#add) () in
-  let _ = button1#connect#clicked ~callback:
-      (fun () -> prerr_endline "Button one clicked") in
-  let button2 = ButtonG.button ~use_underline:true ~label:"Two" ~packing:(hbox#add) () in
-  let _ = button2#connect#clicked ~callback:
-      (fun () ->
-         prerr_endline "Button two clicked, GC";
-         Gc.compact ()
-      ) in
-  let button3 = ButtonG.button ~use_stock:true ~packing:(hbox#add) () in
-  button3#set_label "HOME";
-  let _ = button3#connect#clicked ~callback:
-      (fun () -> prerr_endline "HOME button clicked") in
-
+  let button = ButtonG.button ~packing:(pack hbox ~padding:5) () in
+  button#connect#clicked ~callback:
+    (fun () -> prerr_endline "Hello again - cool button was pressed");
+  xpm_label_box ~window:(window :> ContainerG.container) ~file:"test.xpm" ~text:"cool button"
+    ~packing:button#add ();
+  let button = ButtonG.button (*XXX~use_mnemonic:true*) ~label:"_Coucou" ~packing:(pack hbox ~padding:5) () in
+  button#connect#clicked ~callback:
+    (fun () -> prerr_endline "Coucou");
+  let button = ButtonG.button (*~stock:`HOME*) ~packing:(pack hbox ~padding:5) () in
+  button#connect#clicked ~callback:
+    (fun () -> prerr_endline "Stock buttons look nice");
+  window#misc#show ();
   GMain.main ()
-
 
 let _ = main ()
