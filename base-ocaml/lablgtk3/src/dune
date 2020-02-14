@@ -29,9 +29,7 @@
    ml_pango cairo_pango_stubs
    ml_gdk ml_gdkpixbuf
    ml_gtk
-   ml_gtkbuilder
    ml_gtkinvisible
-   ml_gtkaction
    ml_gtkstock
  )
  (c_flags         (:include cflag-gtk+-3.0.sexp) (:include cflag-extraflags.sexp) -Wno-deprecated-declarations)
