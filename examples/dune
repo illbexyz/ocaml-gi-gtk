@@ -1,4 +1,4 @@
 (executables
- (names about buttons calendar counter entry fifteen fixpoint label link_button notebook pango2 radiobuttons seppala)
+ (names about buttons cairo_demo calendar counter entry fifteen fixpoint label link_button notebook pango2 radiobuttons seppala)
  (flags (:standard \ -strict-sequence) -w -3-6-7-10-24-26-27-33-35)
  (libraries GIGtk))
