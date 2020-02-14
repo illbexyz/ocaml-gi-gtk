@@ -50,6 +50,7 @@
 4. about.ml: ~authors
 5. fifteen.ml: window#event#connect#key_press
 6. seppala.ml: add_accel_group type mismatch
+7. expander.ml: type mismatch (used Obj.magic)
 
 ============= Bugs ==================
 0. Calendar: get_date ritorna uno unit di troppo
@@ -66,6 +67,17 @@
 5. window#event#connect#key_press ~callback ==> ???
 6. add_accel_group: function type mismatch
    visible in seppala.ml
+7. type mismatch
+   File "expander.ml", line 14, characters 40-46:
+   14 |   let icon = ImageG.image ~pixbuf:(Some pixbuf) ~packing:e#add () in
+                                                ^^^^^^
+   Error: This expression has type GdkPixbuf.pixbuf = [ `pixbuf ] Gtk.obj
+          but an expression was expected of type
+            GIGdkPixbuf.Types.pixbuf Gtk.obj
+          Type [ `pixbuf ] is not compatible with type
+            GIGdkPixbuf.Types.pixbuf = [ `giu | `pixbuf ] 
+          The first variant type does not allow tag(s) `giu
+   visible in expander.ml
 
 
 ============= Notes ==================
