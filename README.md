@@ -25,6 +25,13 @@ $ stack build
 
 will download the needed dependencies and build the project.
 
+## Installing the core library
+Enter the base-ocaml/gilablgtk3 directory, compile and install the library:
+
+```
+dune install
+```
+
 ## Generate the bindings
 The easiest way is to use the `generate.sh` script. The bindings will be generated inside the `bindings` folder.
 
