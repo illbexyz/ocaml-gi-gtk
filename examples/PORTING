@@ -53,8 +53,6 @@
 7. expander.ml: type mismatch (used Obj.magic)
 
 ============= Bugs ==================
-0. Calendar: get_date ritorna uno unit di troppo
-   (gestione parametri di I/O per funzioni che tornano void errata?)
 1. RadioButtonG get_group not implemented (GSList *)
    AboutDialog authors not implemented (TCArray)
 2. Inheritance from interfaces not implemented (e.g. Entry is an Editable)

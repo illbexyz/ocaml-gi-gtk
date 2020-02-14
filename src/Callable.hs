@@ -93,7 +93,6 @@ genMlMacro mn cSymbol callable = do
     then do
       let numOutArgs = T.pack $ show $ length outArgs
           numInArgs  = T.pack $ show $ length inArgs
-          macroName  = "ML_" <> numInArgs <> "in_" <> numOutArgs <> "out ("
       outCTypes    <- mapM (cType . argType) outArgs
       outConvTypes <- mapM
         (\outArg -> cToOCamlValue (mayBeNull outArg) (Just (argType outArg)))
@@ -104,6 +103,10 @@ genMlMacro mn cSymbol callable = do
 
       let outArgTypes =
             map (\(x, y) -> x <> ", " <> y) (zip outCTypes outConvTypes)
+          macroName = case returnType callable of
+            Nothing ->
+              "ML_" <> numInArgs <> "in_" <> numOutArgs <> "out_discard_ret ("
+            _ -> "ML_" <> numInArgs <> "in_" <> numOutArgs <> "out ("
 
       cline
         $  macroName
@@ -321,9 +324,10 @@ callableOCamlTypes c = do
   let optionalRetType =
         if returnMayBeNull c then OptionCon retType else retType
 
-  let outArgs' = case outArgs of
-        [] -> optionalRetType
-        _  -> TupleCon $ optionalRetType : outArgs
+  let outArgs' = case (outArgs, returnType c) of
+        ([], _      ) -> optionalRetType
+        (_ , Nothing) -> TupleCon outArgs
+        (_ , _      ) -> TupleCon $ optionalRetType : outArgs
 
   return $ inArgs ++ [outArgs']
 

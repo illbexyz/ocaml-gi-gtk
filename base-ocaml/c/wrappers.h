@@ -374,6 +374,136 @@ CAMLprim value ml_gi##namespace##_##cname (value arg1, value arg2, value arg3, v
     CAMLreturn (tuple); \
 }
 
+#define ML_1in_1out_discard_ret(namespace, cname, conv1in, cType1out, conv1out, convRes) \
+CAMLprim value ml_gi##namespace##_##cname (value arg1) \
+{ \
+    CAMLparam1(arg1); CAMLlocal1(tuple); \
+    cType1out a; tuple = alloc_tuple(2); \
+    cname(conv1in(arg1), &a); \
+    Store_field(tuple, 0, conv1out(a));\
+    CAMLreturn (tuple); \
+}
+
+#define ML_1in_2out_discard_ret(namespace, cname, conv1in, cType1out, conv1out, cType2out, conv2out, convRes) \
+CAMLprim value ml_gi##namespace##_##cname (value arg1) \
+{ \
+    CAMLparam1(arg1); CAMLlocal1(tuple); \
+    cType1out a; cType2out b; tuple = alloc_tuple(3); \
+    cname(conv1in(arg1), &a, &b); \
+    Store_field(tuple, 0, conv1out(a)); Store_field(tuple, 1, conv2out(b)); \
+    CAMLreturn (tuple); \
+}
+
+#define ML_1in_3out_discard_ret(namespace, cname, conv1in, cType1out, conv1out, cType2out, conv2out, cType3out, conv3out, convRes) \
+CAMLprim value ml_gi##namespace##_##cname (value arg1) \
+{ \
+    CAMLparam1(arg1); CAMLlocal1(tuple); \
+    cType1out a; cType2out b; cType3out c; tuple = alloc_tuple(4); \
+    cname(conv1in(arg1), &a, &b, &c); \
+    Store_field(tuple, 0, conv1out(a)); Store_field(tuple, 1, conv2out(b)); Store_field(tuple, 2, conv3out(c)); \
+    CAMLreturn (tuple); \
+}
+
+#define ML_1in_4out_discard_ret(namespace, cname, conv1in, cType1out, conv1out, cType2out, conv2out, cType3out, conv3out, cType4out, conv4out, convRes) \
+CAMLprim value ml_gi##namespace##_##cname (value arg1) \
+{ \
+    CAMLparam1(arg1); CAMLlocal1(tuple); \
+    cType1out a; cType2out b; cType2out c; cType2out d; tuple = alloc_tuple(5); \
+    cname(conv1in(arg1), &a, &b, &c, &d); \
+    Store_field(tuple, 0, conv1out(a)); Store_field(tuple, 1, conv2out(b)); Store_field(tuple, 2, conv3out(c)); Store_field(tuple, 3, conv4out(d)); \
+    CAMLreturn (tuple); \
+}
+
+#define ML_2in_1out_discard_ret(namespace, cname, conv1in, conv2in, cType1out, conv1out, convRes) \
+CAMLprim value ml_gi##namespace##_##cname (value arg1, value arg2) \
+{ \
+    CAMLparam2(arg1, arg2); CAMLlocal1(tuple); \
+    cType1out a; tuple = alloc_tuple(2); \
+    cname(conv1in(arg1), conv2in(arg2), &a); \
+    Store_field(tuple, 0, conv1out(a));\
+    CAMLreturn (tuple); \
+}
+
+#define ML_2in_2out_discard_ret(namespace, cname, conv1in, conv2in, cType1out, conv1out, cType2out, conv2out, convRes) \
+CAMLprim value ml_gi##namespace##_##cname (value arg1, value arg2) \
+{ \
+    CAMLparam2(arg1, arg2); CAMLlocal1(tuple); \
+    cType1out a; cType2out b; tuple = alloc_tuple(3); \
+    cname(conv1in(arg1), conv2in(arg2), &a, &b); \
+    Store_field(tuple, 0, conv1out(a)); Store_field(tuple, 1, conv2out(b)); \
+    CAMLreturn (tuple); \
+}
+
+#define ML_2in_3out_discard_ret(namespace, cname, conv1in, conv2in, cType1out, conv1out, cType2out, conv2out, cType3out, conv3out, convRes) \
+CAMLprim value ml_gi##namespace##_##cname (value arg1, value arg2) \
+{ \
+    CAMLparam2(arg1, arg2); CAMLlocal1(tuple); \
+    cType1out a; cType2out b; cType3out c; tuple = alloc_tuple(4); \
+    cname(conv1in(arg1), conv2in(arg2), &a, &b, &c); \
+    Store_field(tuple, 0, conv1out(a)); Store_field(tuple, 1, conv2out(b)); Store_field(tuple, 2, conv3out(c)); \
+    CAMLreturn (tuple); \
+}
+
+#define ML_2in_4out_discard_ret(namespace, cname, conv1in, conv2in, cType1out, conv1out, cType2out, conv2out, cType3out, conv3out, cType4out, conv4out, convRes) \
+CAMLprim value ml_gi##namespace##_##cname (value arg1, value arg2) \
+{ \
+    CAMLparam2(arg1, arg2); CAMLlocal1(tuple); \
+    cType1out a; cType2out b; cType3out c; cType4out d; tuple = alloc_tuple(5); \
+    cname(conv1in(arg1), conv2in(arg2), &a, &b, &c, &d); \
+    Store_field(tuple, 0, conv1out(a)); Store_field(tuple, 1, conv2out(b)); Store_field(tuple, 2, conv3out(c)); Store_field(tuple, 3, conv4out(d)); \
+    CAMLreturn (tuple); \
+}
+
+#define ML_3in_2out_discard_ret(namespace, cname, conv1in, conv2in, conv3in, cType1out, conv1out, cType2out, conv2out, convRes) \
+CAMLprim value ml_gi##namespace##_##cname (value arg1, value arg2, value arg3) \
+{ \
+    CAMLparam3(arg1, arg2, arg3); CAMLlocal1(tuple); \
+    cType1out a; cType2out b; tuple = alloc_tuple(3); \
+    cname(conv1in(arg1), conv2in(arg2), conv3in(arg3), &a, &b); \
+    Store_field(tuple, 0, conv1out(a)); Store_field(tuple, 1, conv2out(b)); \
+    CAMLreturn (tuple); \
+}
+
+#define ML_3in_3out_discard_ret(namespace, cname, conv1in, conv2in, conv3in, cType1out, conv1out, cType2out, conv2out, cType3out, conv3out, convRes) \
+CAMLprim value ml_gi##namespace##_##cname (value arg1, value arg2, value arg3) \
+{ \
+    CAMLparam3(arg1, arg2, arg3); CAMLlocal1(tuple); \
+    cType1out a; cType2out b; cType3out c; tuple = alloc_tuple(4); \
+    cname(conv1in(arg1), conv2in(arg2), conv3in(arg3), &a, &b, &c); \
+    Store_field(tuple, 0, conv1out(a)); Store_field(tuple, 1, conv2out(b)); Store_field(tuple, 2, conv3out(c)); \
+    CAMLreturn (tuple); \
+}
+
+#define ML_3in_4out_discard_ret(namespace, cname, conv1in, conv2in, conv3in, cType1out, conv1out, cType2out, conv2out, cType3out, conv3out, cType4out, conv4out, convRes) \
+CAMLprim value ml_gi##namespace##_##cname (value arg1, value arg2, value arg3) \
+{ \
+    CAMLparam3(arg1, arg2, arg3); CAMLlocal1(tuple); \
+    cType1out a; cType2out b; cType3out c; cType4out d; tuple = alloc_tuple(5); \
+    cname(conv1in(arg1), conv2in(arg2), conv3in(arg3), &a, &b, &c, &d); \
+    Store_field(tuple, 0, conv1out(a)); Store_field(tuple, 1, conv2out(b)); Store_field(tuple, 2, conv3out(c)); Store_field(tuple, 3, conv4out(d)); \
+    CAMLreturn (tuple); \
+}
+
+#define ML_4in_2out_discard_ret(namespace, cname, conv1in, conv2in, conv3in, conv4in, cType1out, conv1out, cType2out, conv2out, convRes) \
+CAMLprim value ml_gi##namespace##_##cname (value arg1, value arg2, value arg3, value arg4) \
+{ \
+    CAMLparam4(arg1, arg2, arg3, arg4); CAMLlocal1(tuple); \
+    cType1out a; cType2out b; tuple = alloc_tuple(3); \
+    cname(conv1in(arg1), conv2in(arg2), conv3in(arg3), conv4in(arg4), &a, &b); \
+    Store_field(tuple, 0, conv1out(a)); Store_field(tuple, 1, conv2out(b)); \
+    CAMLreturn (tuple); \
+}
+
+#define ML_5in_2out_discard_ret(namespace, cname, conv1in, conv2in, conv3in, conv4in, conv5in, cType1out, conv1out, cType2out, conv2out, convRes) \
+CAMLprim value ml_gi##namespace##_##cname (value arg1, value arg2, value arg3, value arg4, value arg5) \
+{ \
+    CAMLparam5(arg1, arg2, arg3, arg4, arg5); CAMLlocal1(tuple); \
+    cType1out a; cType2out b; tuple = alloc_tuple(3); \
+    cname(conv1in(arg1), conv2in(arg2), conv3in(arg3), conv4in(arg4), conv5in(arg5), &a, &b); \
+    Store_field(tuple, 0, conv1out(a)); Store_field(tuple, 1, conv2out(b)); \
+    CAMLreturn (tuple); \
+}
+
 /* result conversion */
 #define Unit(x) (((void)x), Val_unit)
 #define Id(x) x

@@ -18,9 +18,9 @@ let main () =
   let calendar = CalendarG.calendar ~packing:window#add () in
   calendar#connect#day_selected ~callback:
     begin fun () ->
-      let ((),year,month,day) = calendar#get_date in
+      let (year,month,day) = calendar#get_date in
       Printf.printf "You selected %d/%d/%02d.\n"
-	day (month+1) (year mod 100);
+        day (month+1) (year mod 100);
       flush stdout
     end;
 
