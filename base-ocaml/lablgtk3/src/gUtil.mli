@@ -77,35 +77,6 @@ class virtual add_ml_signals :
     val mutable disconnectors : (GtkSignal.id -> bool) list
   end
 
-(** To add ML signals to a LablGTK object:
-{[
-   class mywidget_signals obj ~mysignal1 ~mysignal2 = object
-     inherit somewidget_signals obj
-     inherit add_ml_signals obj [mysignal1#disconnect; mysignal2#disconnect]
-     method mysignal1 = mysignal1#connect ~after
-     method mysignal2 = mysignal2#connect ~after
-   end
-
-   class mywidget obj = object (self)
-     inherit somewidget obj
-     val mysignal1 = new signal obj
-     val mysignal2 = new signal obj
-     method connect = new mywidget_signals obj ~mysignal1 ~mysignal2
-     method call1 = mysignal1#call
-     method call2 = mysignal2#call
-   end
-]}
-   You can also add ML signals to an arbitrary object; just inherit
-   from [ml_signals] in place of [widget_signals]+[add_ml_signals].
-{[ 
-  class mysignals ~mysignal1 ~mysignal2 = object
-     inherit ml_signals [mysignal1#disconnect; mysignal2#disconnect]
-     method mysignal1 = mysignal1#connect ~after
-     method mysignal2 = mysignal2#connect ~after
-   end
-]}
-*)
-
 (** {4 Propagating state modifications}
    The variable class provides an easy way to propagate state modifications.
    A new variable is created by [new variable init]. The [#set] method just

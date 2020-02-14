@@ -207,11 +207,6 @@ and drag_context context = object
     new widget (unsafe_cast (DnD.get_source_widget context))
   method set_icon_widget (w : widget) =
     DnD.set_icon_widget context (w#as_widget)
-(*
-  method set_icon_pixmap ?(colormap = Gdk.Color.get_system_colormap ())
-      (pix : GDraw.pixmap) =
-    DnD.set_icon_pixmap context ~colormap pix#pixmap ?mask:pix#mask
-*)
 end
 
 and misc_signals obj = object (self)
