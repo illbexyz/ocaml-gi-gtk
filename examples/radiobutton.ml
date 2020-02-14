@@ -1,39 +1,50 @@
-assert false (*
+(**************************************************************************)
+(*    Lablgtk - Examples                                                  *)
+(*                                                                        *)
+(*    This code is in the public domain.                                  *)
+(*    You may freely copy parts of it in your application.                *)
+(*                                                                        *)
+(**************************************************************************)
+
+(* $Id$ *)
+
+open GIGtk
+
 let main () =
-  let _ = GMain.init () in
-  let window = GIGtk.WindowG.window ~title: "radio buttons" (*~border_width: 0*) () in
-  let _ = window#connect#destroy ~callback:GMain.quit in
 
-  let box1 = GIGtk.VBoxG.v_box ~packing: window#add () in
+  GMain.init ();
+  let window = WindowG.window ~title: "radio buttons" ~border_width: 0 () in
+  window#connect#destroy ~callback:GMain.quit;
 
-  let box2 = GIGtk.VBoxG.v_box ~spacing:10 ~border_width: 10 ~packing: box1#add () in
+  let box1 = VBoxG.v_box ~packing: window#add () in
 
-  let button1 = GIGtk.RadioButtonG.radio_button (*~label:"button1"*) ~packing: box2#add () in
-  let _ = button1#connect#clicked ~callback:(fun () -> prerr_endline "button1") in
+  let box2 = VBoxG.v_box ~spacing:10 ~border_width: 10 ~packing: box1#add () in
 
-  let button2 = GIGtk.RadioButtonG.radio_button (*~label:"button2"*)
-      ~packing: box2#add () in
-  let _ = button2#join_group (Some button1) in
-  let _ = button2#connect#clicked ~callback:(fun () -> 
-      Gc.compact ();
-      prerr_endline "button2") in
+  let button1 = RadioButtonG.radio_button ~label:"button1" ~packing: box2#add () in
+  button1#connect#clicked ~callback:(fun () -> prerr_endline "button1");
 
-  let button3 = GIGtk.RadioButtonG.radio_button (*~label:"button3"*) ~packing: box2#add () in
-  let _ = button3#join_group (Some button1) in
-  let _ = button3#connect#clicked ~callback:(fun () -> prerr_endline "button3") in
+(*XXX
+  let button2 = RadioButtonG.radio_button ~group:button1#group ~label:"button2"
+      ~active:true ~packing: box2#add () in
+  button2#connect#clicked ~callback:(fun () -> prerr_endline "button2");
 
-  let _separator = GMisc.separator `HORIZONTAL ~packing: box1#pack () in
+  let button3 = RadioButtonG.radio_button
+      ~group:button1#group ~label:"button3" ~packing: box2#add () in
+  button3#connect#clicked ~callback:(fun () -> prerr_endline "button3");
+*)
 
-  let box3 = GIGtk.VBoxG.v_box ~spacing: 10 ~border_width: 10
-      ~packing: box1#pack () in
+  let separator =
+    HSeparatorG.h_separator ~packing: box1#add () in
 
-  let button = GIGtk.ButtonG.button ~label: "close" ~packing: box3#add () in
-  let _ = button#connect#clicked ~callback:GMain.quit in
-  (*let _ = button#grab_default () in*)
+  let box3 = VBoxG.v_box ~spacing: 10 ~border_width: 10
+      ~packing: box1#add () in
 
-  let _ = window#misc#show () in
+  let button = ButtonG.button ~label: "close" ~packing: box3#add () in
+  button#connect#clicked ~callback:GMain.quit;
+  button#misc#grab_default ();
+
+  window#misc#show ();
 
   GMain.main ()
 
 let _ = main ()
-*)

@@ -1,0 +1,16 @@
+1. #show => #misc#show
+2. #grab_default => #misc#grab_default
+
+3. Separator: #pack => #add
+
+
+============= TODO ==================
+1. radiobutton.ml: #get_group
+
+============= Bugs ==================
+1. RadioButtonG get_group not implemented (GSList *)
+
+============= Notes ==================
+1. Widget.size_params is an exeption w.r.t. Widget.make_params
+   Consequence:use ~width in place of ~width_request.
+   Why??
