@@ -7,8 +7,18 @@
 4. Notebook:
      #append_page w => #append_page w None
      #switch_page (fun i -> ..) => #switch_page (fun w i -> ..)
+4. Table:
+     #attach =>
+     let attach (tbl : #TableG.table) ~left ~top ?(right=left+1) ?(bottom=top+1)
+         ?(xoptions=[]) ?(yoptions=[])
+         ?(xpadding=0) ?(ypadding=0) w =
+       tbl#attach w left top right bottom xoptions yoptions xpadding ypadding
+
 5. AboutDialog:
      ~name => ~program_name
+5. Table:
+     ~columns => ~n_columns
+     ~rows => ~n_rows
 
 6. #PPP => #get_PPP per le proprietà PPP Read
 
@@ -22,6 +32,8 @@
 
 9. about.ml: run no longer takes a () (visible in dialog.ml)
 
+10. window#event#connect => window#connect
+
 ============= TO TEST ==================
 1. output of button.exe: is it the expected one?
    same for counter.exe: maybe wrong default somewhere?
@@ -32,6 +44,7 @@
 2. entry.ml: #select_region
 3. button.ml: ~use_mnemonic ~stock
 4. about.ml: ~authors
+5. fifteen.ml: window#event#connect#key_press
 
 ============= Bugs ==================
 0. Calendar: get_date ritorna uno unit di troppo
@@ -45,6 +58,7 @@
    28 | let sc = HScaleG.h_scale ~adjustment:adj ~draw_value:false
    Error: This expression has type GData.adjustment
           but an expression was expected of type Types.adjustment Gtk.obj
+5. window#event#connect#key_press ~callback ==> ???
 
 
 ============= Notes ==================
