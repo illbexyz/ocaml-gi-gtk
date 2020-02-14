@@ -35,6 +35,7 @@
    be no one (e.g. counter.ml)
 
 9. about.ml: run no longer takes a () (visible in dialog.ml)
+9. ProgressBar: #pulse no longer takes a ()
 
 10. window#event#connect => window#connect
 
