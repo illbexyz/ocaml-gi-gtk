@@ -57,13 +57,8 @@ let _ = GMain.init ()
 let window = WindowG.window ()
 let _ = window#connect#destroy ~callback:GMain.quit
 
-let attach (tbl : #TableG.table) ~left ~top ?(right=left+1) ?(bottom=top+1)
-    ?(xoptions=[]) ?(yoptions=[])
-    ?(xpadding=0) ?(ypadding=0) w =
-  tbl#attach w left right top bottom xoptions yoptions xpadding ypadding
-
 let tbl = TableG.table ~n_rows:4 ~n_columns:4 ~homogeneous:true ~packing:window#add ()
-let dummy = LabelG.label ~label:"" ~packing:(attach tbl ~left:3 ~top:3) ()
+let dummy = LabelG.label ~label:"" ~packing:(Lablgtk3Compat.attach tbl ~left:3 ~top:3) ()
 let arr = Array.make_matrix ~dimx:4 ~dimy:4 dummy
 let init = game_init ()
 let _ =
@@ -72,7 +67,7 @@ let _ =
     let k = i/4 in
     let frame =
       FrameG.frame ~shadow_type:`OUT ~width:32 ~height:32
-	~packing:(attach tbl ~left:j ~top:k) () in
+	~packing:(Lablgtk3Compat.attach tbl ~left:j ~top:k) () in
     if i < 15 then
       arr.(j).(k) <-
 	LabelG.label ~label:(string_of_int (List.nth init i))

@@ -8,19 +8,21 @@
      #append_page w => #append_page w None
      #switch_page (fun i -> ..) => #switch_page (fun w i -> ..)
 4. Table:
-     #attach =>
-     let attach (tbl : #TableG.table) ~left ~top ?(right=left+1) ?(bottom=top+1)
-         ?(xoptions=[]) ?(yoptions=[])
-         ?(xpadding=0) ?(ypadding=0) w =
-       tbl#attach w left top right bottom xoptions yoptions xpadding ypadding
+     #attach => Lablgtk3Compat.attach
 
 5. AboutDialog:
      ~name => ~program_name
 5. Table:
      ~columns => ~n_columns
      ~rows => ~n_rows
+     ~row_spacings => ~row_spacing
+     ~col_spacings => ~column_spacing
 5. LinkButton:
      uri => ~uri
+5. Dialog
+    #vbox => #get_content_area
+5. ScrolledWindow
+    ~hpolicy => ~hscrollbar_policy
 
 6. #PPP => #get_PPP per le proprietà PPP Read
 
@@ -53,6 +55,7 @@
 7. expander.ml: type mismatch (used Obj.magic)
 
 ============= Bugs ==================
+0. (scrolledwin.exe:1306065): Gtk-CRITICAL **: 21:35:13.609: gtk_widget_grab_default: assertion 'gtk_widget_get_can_default (widget)' failed
 1. RadioButtonG get_group not implemented (GSList *)
    AboutDialog authors not implemented (TCArray)
 2. Inheritance from interfaces not implemented (e.g. Entry is an Editable)
