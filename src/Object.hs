@@ -231,26 +231,60 @@ genObject' n o ocamlName = do
   gline "end"
   gblank
 
-  -- gline "let pack_return ?packing ?show create p () ="
-  -- gline "  GObj.pack_return (create p) ~packing ~show"
+  genObjectConstructor n ocamlName
+
+genObjectConstructor :: Name -> Text -> CodeGen ()
+genObjectConstructor n ocamlName = do
+  currNS  <- currentNS
+  parents <- instanceTree n
+
+  let makeParamsParents = filter (isMakeParamsParent currNS) $ reverse parents
+      mkParentsNum      = length makeParamsParents
 
   gline $ "let " <> ocamlName <> " = "
-  gline $ "  " <> objectName <> ".make_params [] ~cont:("
-  case "Widget" `elem` map name parents of
-    True ->
-      gline
-        $  "    fun pl ?packing ?show () -> GObj.pack_return (new "
-        <> ocamlName
-        <> " ("
-        <> objectName
-        <> ".create pl)) ~packing ~show)"
-    False ->
-      gline
-        $  "    (fun pl () -> new "
-        <> ocamlName
-        <> " ("
-        <> objectName
-        <> ".create pl)))"
+
+  forM_ (zip makeParamsParents [0 ..])
+    $ \(p, idx) -> gline $ makeParamsCont p idx
+  gline $ makeParamsCont n mkParentsNum
+
+  -- If Widget is a parent then we need to add the ~packing and ~show labels
+  gline $ indentBy (mkParentsNum + 2) <> if Name "Gtk" "Widget" `elem` parents
+    then "fun pl ?packing ?show () -> GObj.pack_return ("
+    else "fun pl () -> ("
+
+  gline
+    $  indentBy (mkParentsNum + 3)
+    <> "new "
+    <> ocamlName
+    <> " ("
+    <> name n
+    <> ".create pl))"
+    <> packShowLabels parents
+    <> closedParentheses makeParamsParents
+ where
+  isMakeParamsParent :: Text -> Name -> Bool
+  isMakeParamsParent _ (Name "GObject" "Object") = False
+  isMakeParamsParent currNS (Name ns _) | currNS /= ns = False
+                                        | otherwise    = True
+  makeParamsCont :: Name -> Int -> Text
+  makeParamsCont parent 0 = indentBy 1 <> makeParams parent <> " [] ~cont:("
+  makeParamsCont parent idx =
+    indentBy (idx + 1) <> "fun pl -> " <> makeParams parent <> " pl ~cont:("
+
+  makeParams :: Name -> Text
+  makeParams (Name "Gtk" "Widget") = "GtkBase.Widget.size_params"
+  makeParams (Name _     nm      ) = nm <> ".make_params"
+
+  packShowLabels :: [Name] -> Text
+  packShowLabels parents
+    | Name "Gtk" "Widget" `elem` parents = " ~packing ~show"
+    | otherwise                          = ""
+
+  indentBy :: Int -> Text
+  indentBy idx = T.replicate idx "  "
+
+  closedParentheses :: [Name] -> Text
+  closedParentheses makeParents = T.replicate (length makeParents + 1) ")"
 
 genInterface :: Name -> Interface -> CodeGen ()
 genInterface n iface = do
