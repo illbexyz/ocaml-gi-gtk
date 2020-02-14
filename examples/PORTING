@@ -52,8 +52,9 @@
 3. button.ml: ~use_mnemonic ~stock
 4. about.ml: ~authors
 5. fifteen.ml: window#event#connect#key_press
-6. seppala.ml: add_accel_group type mismatch
-7. expander.ml: type mismatch (used Obj.magic)
+6. hello.ml: window#event#connect#delete
+7. seppala.ml: add_accel_group type mismatch
+8. expander.ml: type mismatch (used Obj.magic)
 
 ============= Bugs ==================
 0. (scrolledwin.exe:1306065): Gtk-CRITICAL **: 21:35:13.609: gtk_widget_grab_default: assertion 'gtk_widget_get_can_default (widget)' failed
@@ -67,6 +68,7 @@
    Error: This expression has type GData.adjustment
           but an expression was expected of type Types.adjustment Gtk.obj
 5. window#event#connect#key_press ~callback ==> ???
+   window#event#connect#delete ==> ???
 6. add_accel_group: function type mismatch
    visible in seppala.ml
 7. type mismatch
