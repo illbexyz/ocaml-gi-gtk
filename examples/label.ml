@@ -1,14 +1,22 @@
+(**************************************************************************)
+(*    Lablgtk - Examples                                                  *)
+(*                                                                        *)
+(*    This code is in the public domain.                                  *)
+(*    You may freely copy parts of it in your application.                *)
+(*                                                                        *)
+(**************************************************************************)
+
+(* $Id$ *)
+
 open GIGtk
 
 let main () =
-  let _ = GMain.init () in
-  let w = WindowG.window ~show:true () in
-  let _ = w#set_border_width 2 in
-  let _ = w#misc#realize () in
+  GMain.init ();
+  let w = WindowG.window ~border_width:2 ~show:true () in
+  w#misc#realize ();
   let hbox = HBoxG.h_box ~packing:w#add () in
-  let label = LabelG.label ~packing:hbox#add () in
-  let _ = label#set_text "hello world" in
-  let _ = w#connect#destroy ~callback:GMain.quit in
+  LabelG.label ~label:"hello <b>world</b>" ~use_markup:true ~packing:hbox#add ();
+  w#connect#destroy ~callback:GMain.quit;
   GMain.main ()
 
 let () = main ()
