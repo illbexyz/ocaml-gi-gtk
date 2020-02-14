@@ -45,11 +45,15 @@
 
 11. GtkButtonProps.Button.S.activate => Button.S.activate
 
+12. Assistant: #npage returns an option now
+
 ============= TO TEST ==================
 1. output of button.exe: is it the expected one?
    same for counter.exe: maybe wrong default somewhere?
 2. output of about.exe: it seems strange
 3. output of assistant.exe: it is correct?
+4. assistant_tutorial is surely not working properly because
+   of XXX
 
 ============= TODO (XXX) ==================
 1. radiobutton.ml: #get_group
@@ -62,6 +66,7 @@
 7. dcalendar.ml: window#event#connect#delete
 8. seppala.ml: add_accel_group type mismatch
 9. expander.ml: type mismatch (used Obj.magic)
+10. assistant_tutorial.ml: Entry is not Editable
 
 ============= Bugs ==================
 0. (scrolledwin.exe:1306065): Gtk-CRITICAL **: 21:35:13.609: gtk_widget_grab_default: assertion 'gtk_widget_get_can_default (widget)' failed
