@@ -11,9 +11,13 @@
    The problem is due to #connect: window signals inherit from container
    signals, but a cast is required. How did it work without before?
 
+6. adjustments only at the low level: add #as_adjustment where there should
+   be no one (e.g. counter.ml)
+
 
 ============= TO TEST ==================
 1. output of button.exe: is it the expected one?
+   same for counter.exe: maybe wrong default somewhere?
 
 ============= TODO (XXX) ==================
 1. radiobutton.ml: #get_group
@@ -26,6 +30,12 @@
 1. RadioButtonG get_group not implemented (GSList *)
 2. Inheritance from interfaces not implemented (e.g. Entry is an Editable)
 3. Additional constructors not implemented (e.g. Buttong.new_with_mnemonic)
+4. Adjustments only exist at the low level
+   File "counter.ml", line 28, characters 37-40:
+   28 | let sc = HScaleG.h_scale ~adjustment:adj ~draw_value:false
+   Error: This expression has type GData.adjustment
+          but an expression was expected of type Types.adjustment Gtk.obj
+
 
 ============= Notes ==================
 1. Widget.size_params is an exeption w.r.t. Widget.make_params
