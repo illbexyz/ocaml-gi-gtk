@@ -7,31 +7,37 @@
 4. Notebook:
      #append_page w => #append_page w None
      #switch_page (fun i -> ..) => #switch_page (fun w i -> ..)
+5. AboutDialog:
+     ~name => ~program_name
 
-5. #PPP => #get_PPP per le proprietà PPP Read
+6. #PPP => #get_PPP per le proprietà PPP Read
 
-5. a window w is not a #container, but it can be casted to it
+7. a window w is not a #container, but it can be casted to it
    (e.g. in example button.ml). It used to be a #container instead.
    The problem is due to #connect: window signals inherit from container
    signals, but a cast is required. How did it work without before?
 
-6. adjustments only at the low level: add #as_adjustment where there should
+8. adjustments only at the low level: add #as_adjustment where there should
    be no one (e.g. counter.ml)
 
+9. about.ml: run no longer takes a () (visible in dialog.ml)
 
 ============= TO TEST ==================
 1. output of button.exe: is it the expected one?
    same for counter.exe: maybe wrong default somewhere?
+2. output of about.exe: it seems strange
 
 ============= TODO (XXX) ==================
 1. radiobutton.ml: #get_group
 2. entry.ml: #select_region
 3. button.ml: ~use_mnemonic ~stock
+4. about.ml: ~authors
 
 ============= Bugs ==================
 0. Calendar: get_date ritorna uno unit di troppo
    (gestione parametri di I/O per funzioni che tornano void errata?)
 1. RadioButtonG get_group not implemented (GSList *)
+   AboutDialog authors not implemented (TCArray)
 2. Inheritance from interfaces not implemented (e.g. Entry is an Editable)
 3. Additional constructors not implemented (e.g. Buttong.new_with_mnemonic)
 4. Adjustments only exist at the low level
