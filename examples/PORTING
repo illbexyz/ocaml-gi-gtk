@@ -36,6 +36,8 @@
 
 10. window#event#connect => window#connect
 
+11. GtkButtonProps.Button.S.activate => Button.S.activate
+
 ============= TO TEST ==================
 1. output of button.exe: is it the expected one?
    same for counter.exe: maybe wrong default somewhere?
@@ -47,6 +49,7 @@
 3. button.ml: ~use_mnemonic ~stock
 4. about.ml: ~authors
 5. fifteen.ml: window#event#connect#key_press
+6. seppala.ml: add_accel_group type mismatch
 
 ============= Bugs ==================
 0. Calendar: get_date ritorna uno unit di troppo
@@ -61,6 +64,8 @@
    Error: This expression has type GData.adjustment
           but an expression was expected of type Types.adjustment Gtk.obj
 5. window#event#connect#key_press ~callback ==> ???
+6. add_accel_group: function type mismatch
+   visible in seppala.ml
 
 
 ============= Notes ==================
