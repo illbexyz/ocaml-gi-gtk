@@ -29,6 +29,7 @@ will download the needed dependencies and build the project.
 Enter the base-ocaml/gilablgtk3 directory, compile and install the library:
 
 ```
+dune build
 dune install
 ```
 
