@@ -4,7 +4,11 @@
 3. Separator/Box:
      #pack => #add
      #pack ~padding:5 => (fun w -> hbox#pack_start w false true (*~padding:*)5)
-4. #PPP => #get_PPP per le proprietà PPP Read
+4. Notebook:
+     #append_page w => #append_page w None
+     #switch_page (fun i -> ..) => #switch_page (fun w i -> ..)
+
+5. #PPP => #get_PPP per le proprietà PPP Read
 
 5. a window w is not a #container, but it can be casted to it
    (e.g. in example button.ml). It used to be a #container instead.
