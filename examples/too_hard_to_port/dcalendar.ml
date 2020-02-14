@@ -11,6 +11,8 @@
 (* A small calendar *)
 (* Needs Unix module, so use with lablgtk_t *)
 
+open GIGtk
+
 open StdLabels
 module Unix = UnixLabels
 open Printf
@@ -75,11 +77,11 @@ let styles =
   [| default; default; default |]
 
    (* class date_button: one button for each day in the month *)
-class date_button i (calendar : GPack.table) =
+class date_button i (calendar : TableG.table) =
   let mday = i + 1 in
 
   object (self)
-    val widget = GButton.button ~label: (string_of_int mday) ~show: false ()
+    val widget = ButtonG.button ~label: (string_of_int mday) ~show: false ()
     val mday = mday
     val mutable show = false
     val mutable have_plan = false
@@ -101,7 +103,7 @@ class date_button i (calendar : GPack.table) =
       if not show then
       	let top = (mday + wday0) / 7 + 1
       	and left = (mday + wday0) mod 7 in
-      	calendar#attach ~left ~top ~expand:`BOTH widget#coerce;
+      	Lablgtk3Compat.attach calendar ~left ~top ~expand:`BOTH widget#coerce;
       	widget#misc#show ();
 	show <- true
 	    
@@ -112,7 +114,7 @@ class date_button i (calendar : GPack.table) =
 	 show <- false)
   end
 
-let update_calendar (calendar : GPack.table) (buttons : date_button array) =
+let update_calendar (calendar : TableG.table) (buttons : date_button array) =
   let now = Unix.localtime (Unix.gettimeofday ()) in
   let _, first = Unix.mktime { now with 
 			       Unix.tm_mday = 1;
@@ -136,10 +138,10 @@ let create_GUI () =
   (* views part *)
 
   let win =
-    GWindow.window ~title: "Camlendar" ~show: true
+    WindowG.window ~title: "Camlendar" ~show: true
       ~resizable: false () in
-  win#event#connect#delete
-    ~callback: (fun _ -> GMain.quit (); false);
+  (*XXX win#event#connect#delete
+    ~callback: (fun _ -> GMain.quit (); false);*)
 
   let style = win#misc#style#copy in
   styles.(s_normal) <- style;
@@ -155,32 +157,32 @@ let create_GUI () =
 		`PRELIGHT, `NAME "sky blue"];
   styles.(s_planned) <- style;
 
-  let vbox = GPack.vbox ~packing: win#add () in
+  let vbox = VBoxG.v_box ~packing: win#add () in
   let packing = vbox#add in
-  let toolbar = GButton.toolbar ~style: `TEXT ~packing () in
+  let toolbar = ToolbarG.toolbar ~style: `TEXT ~packing () in
 
-  let prev = GButton.tool_button ~label: "Prev" () in
+  let prev = ToolButtonG.tool_button ~label: "Prev" () in
   prev#set_tooltip_text "Show previous month";
   toolbar#insert prev;
 
-  let next = GButton.tool_button ~label: "Next" () in
+  let next = ToolButtonG.tool_button ~label: "Next" () in
   next#set_tooltip_text "Show next month";
   toolbar#insert next;
   
   let calendar =
-    GPack.table ~homogeneous: true ~rows: 7 ~columns: 7
-      ~border_width: 10 ~row_spacings: 2 ~col_spacings: 2 ~packing () in
+    TableG.table ~homogeneous: true ~n_rows: 7 ~n_columns: 7
+      ~border_width: 10 ~row_spacing: 2 ~column_spacing: 2 ~packing () in
 
   Array.iteri
     ~f: (fun i wday ->
-      ignore (GButton.button ~label: wday
-	      	~packing:(calendar#attach ~top: 0 ~left: i ~expand:`BOTH) ()))
+      ignore (ButtonG.button ~label: wday
+	      	~packing:(Lablgtk3Compat.attach calendar ~top: 0 ~left: i ~expand:`BOTH) ()))
     wday_name;
 
   let buttons =
     Array.init 31 ~f: (fun i -> new date_button i calendar) in
 
-  let date_view = GMisc.label ~justify: `CENTER ~packing () in
+  let date_view = LabelG.label ~justify: `CENTER ~packing () in
 
   let text = GText.view ~editable:true ~width:70 ~height:50 ~packing () in
 
