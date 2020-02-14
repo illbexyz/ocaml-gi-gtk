@@ -16,7 +16,7 @@ let incB = ButtonG.button ~label:"Inc" ~packing:hb#add ()
 
 let adj = AdjustmentG.adjustment ~lower:0. ~upper:100. ~step_increment:1. ~page_increment:10. ()
 
-let sc = ScaleG.scale ~adjustment:adj#as_adjustment ~packing:vb#add ()
+let sc = ScaleG.scale (*~adjustment:adj#as_adjustment*) ~packing:vb#add ()
 
 let counter = ref 0
 

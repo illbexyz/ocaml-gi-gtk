@@ -1,3 +1,26 @@
+(* File: pango2.ml
+   Originally part of library ocaml-pango by Christophe Troestler under name
+      rendering.ml
+   Ported to lablgtk3 and changed to create output on GtkWindow by
+      Claudio Sacerdoti Coen
+
+   Copyright (C) 2009
+
+     Christophe Troestler <Christophe.Troestler@umons.ac.be>
+     WWW: http://math.umh.ac.be/an/software/
+
+   This library is free software; you can redistribute it and/or modify
+   it under the terms of the GNU Lesser General Public License version 3 or
+   later as published by the Free Software Foundation, with the special
+   exception on linking described in the file LICENSE.
+
+   This library is distributed in the hope that it will be useful, but
+   WITHOUT ANY WARRANTY; without even the implied warranty of
+   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the file
+   LICENSE for more details. *)
+
+(* Based on https://cairographics.org/cookbook/pycairo_pango/ *)
+
 open GIGtk
 
 let expose drawing_area cr =
@@ -25,8 +48,7 @@ let expose drawing_area cr =
 
 let () =
   let _ = GMain.init () in
-  let w = WindowG.window () in
-
+  let w = WindowG.window ~title:"Pango demo2" (*~width_request:500 ~height_request:400*) () in
   ignore(w#connect#destroy ~callback:GMain.quit);
 
   let d = DrawingAreaG.drawing_area ~packing:w#add () in

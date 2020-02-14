@@ -29,7 +29,7 @@ let main () =
   let _ = GMain.init () in
   let window = WindowG.window ~show:true () in
   let _ = window#connect#destroy ~callback:GMain.quit in
-  let hbox = GPack.hbox ~packing:window#add () in
+  let hbox = HBoxG.h_box ~packing:window#add () in
   let button1 = ButtonG.button ~label:"One" ~packing:(hbox#add) () in
   let _ = button1#connect#clicked ~callback:
       (fun () -> prerr_endline "Button one clicked") in

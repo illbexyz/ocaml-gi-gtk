@@ -1,3 +1,4 @@
+(*
 (**************************************************************************)
 (*    Lablgtk - Examples                                                  *)
 (*                                                                        *)
@@ -36,18 +37,18 @@ let main () =
 
   let hbox = HBoxG.h_box ~packing: vbox#add () in
 
-  let check1 = CheckButtonG.check_button ~label:"Editable" ~packing:hbox#add () in
+  let check1 = CheckButtonG.check_button (*~label:"Editable"*) ~packing:hbox#add () in
   check1#set_active true;
   let _ = check1#connect#toggled
       ~callback:(fun () -> entry_toggle_editable check1 entry) in
 
   let check2 =
-    CheckButtonG.check_button ~label:"Visible" ~packing:hbox#add () in
+    CheckButtonG.check_button (*~label:"Visible"*) ~packing:hbox#add () in
   let _ = check2#set_active true in
   let _ = check2#connect#toggled
       ~callback:(fun () -> entry_toggle_visibility check2 entry) in
 
-  let button = GButton.button ~label:"Close" ~packing:vbox#add () in
+  let button = ButtonG.button ~label:"Close" ~packing:vbox#add () in
   let _ = button#connect#clicked ~callback:window#destroy in
   let _ = button#grab_default () in
 
@@ -56,3 +57,4 @@ let main () =
   GMain.main ()
 
 let _ = main ()
+*)
