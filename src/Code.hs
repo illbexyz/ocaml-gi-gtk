@@ -886,7 +886,7 @@ genDuneFile libName outputDir cFiles deps = do
         [ "(library"
         , " (name GI" <> libName <> ")"
         , " (public_name GI" <> libName <> ")"
-        , " (libraries lablgtk3 " <> T.intercalate " " libs <> ")"
+        , " (libraries gilablgtk3 " <> T.intercalate " " libs <> ")"
         ]
   utf8WriteFile duneFilepath $ case cFiles of
     [] -> T.unlines $ commonPart ++ [")"]
