@@ -2,13 +2,16 @@
 2. #grab_default => #misc#grab_default
 
 3. Separator: #pack => #add
+4. #PPP => #get_PPP per le proprietà PPP Read
 
 
-============= TODO ==================
+============= TODO (XXX) ==================
 1. radiobutton.ml: #get_group
+2. entry.ml: #select_region
 
 ============= Bugs ==================
 1. RadioButtonG get_group not implemented (GSList *)
+2. Inheritance from interfaces not implemented (e.g. Entry is an Editable)
 
 ============= Notes ==================
 1. Widget.size_params is an exeption w.r.t. Widget.make_params

@@ -1,4 +1,3 @@
-(*
 (**************************************************************************)
 (*    Lablgtk - Examples                                                  *)
 (*                                                                        *)
@@ -9,8 +8,9 @@
 
 (* $Id$ *)
 
-open Printf
 open GIGtk
+
+open Printf
 
 let enter_callback entry =
   printf "Entry contents: %s\n" entry#get_text;
@@ -23,38 +23,39 @@ let entry_toggle_visibility button entry =
   entry#set_visibility button#get_active
 
 let main () =
-  let _ = GMain.init () in
-  let window = WindowG.window ~show:false () in
-  window#set_title "Gtk Entry";
-  let _ = window#connect#destroy ~callback:GMain.quit in
+  GMain.init ();
+  let window =
+    WindowG.window ~title: "GTK Entry" ~width: 200 ~height: 100 () in
+  window#connect#destroy ~callback:GMain.quit;
 
   let vbox = VBoxG.v_box ~packing: window#add () in
 
-  let entry = EntryG.entry ~packing: vbox#add () in
-  let _ = entry#set_max_length 50 in
-  let _ = entry#connect#activate ~callback:(fun () -> enter_callback entry) in
-  let _ = entry#set_text "Hello" in
+  let entry = EntryG.entry ~max_length: 50 ~packing: vbox#add () in
+  entry#connect#activate ~callback:(fun () -> enter_callback entry);
+  entry#set_text "Hello";
+  (* Appending text now requires getting the underlying buffer, and
+   * entry#buffer is not exposed in the bindings yet *)
+  (*entry#append_text " world";*)
+  (*XXX entry#select_region ~start:0 ~stop:entry#get_text_length;*)
 
   let hbox = HBoxG.h_box ~packing: vbox#add () in
 
-  let check1 = CheckButtonG.check_button (*~label:"Editable"*) ~packing:hbox#add () in
-  check1#set_active true;
-  let _ = check1#connect#toggled
-      ~callback:(fun () -> entry_toggle_editable check1 entry) in
+  let check = CheckButtonG.check_button ~label: "Editable" ~active: true
+      ~packing: hbox#add () in
+  check#connect#toggled
+    ~callback:(fun () -> entry_toggle_editable check entry);
 
-  let check2 =
-    CheckButtonG.check_button (*~label:"Visible"*) ~packing:hbox#add () in
-  let _ = check2#set_active true in
-  let _ = check2#connect#toggled
-      ~callback:(fun () -> entry_toggle_visibility check2 entry) in
+  let check =
+    CheckButtonG.check_button ~label:"Visible" ~active:true ~packing:hbox#add () in
+  check#connect#toggled
+    ~callback:(fun () -> entry_toggle_visibility check entry);
 
-  let button = ButtonG.button ~label:"Close" ~packing:vbox#add () in
-  let _ = button#connect#clicked ~callback:window#destroy in
-  let _ = button#grab_default () in
+  let button = ButtonG.button ~label: "Close" ~packing: vbox#add () in
+  button#connect#clicked ~callback:window#destroy;
+  button#misc#grab_default ();
 
-  window#set_default_size 1280 720;
   window#misc#show ();
+
   GMain.main ()
 
 let _ = main ()
-*)
