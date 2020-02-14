@@ -24,6 +24,12 @@
 
 open Gtk
 
+(** {3 Colors} *)
+
+module Cairo : sig
+  val create : Gdk.window -> Gdk.cairo
+end
+
 (** Base classes for objects and widgets *)
 
 (** {3 GObject} *)
@@ -126,6 +132,16 @@ class event_ops : [> widget] obj ->
     method send : GdkEvent.any -> bool
   end
 
+(** @gtkdoc gdk gdk-Colormaps-and-Colors *)
+type color =
+  [ `COLOR of Gdk.color
+  | `WHITE
+  | `BLACK
+  | `NAME of string
+  | `RGB of int * int * int]
+
+val color : color -> Gdk.color
+
 (** @gtkdoc gtk GtkStyle *)
 class style : Gtk.style ->
   object ('a)
@@ -144,16 +160,16 @@ class style : Gtk.style ->
 *)
     method light : Gtk.Tags.state_type -> Gdk.color
     method mid : Gtk.Tags.state_type -> Gdk.color
-    method set_bg : (Gtk.Tags.state_type * GDraw.color) list -> unit
-    method set_base : (Gtk.Tags.state_type * GDraw.color) list -> unit
-    method set_dark : (Gtk.Tags.state_type * GDraw.color) list -> unit
-    method set_fg : (Gtk.Tags.state_type * GDraw.color) list -> unit
+    method set_bg : (Gtk.Tags.state_type * color) list -> unit
+    method set_base : (Gtk.Tags.state_type * color) list -> unit
+    method set_dark : (Gtk.Tags.state_type * color) list -> unit
+    method set_fg : (Gtk.Tags.state_type * color) list -> unit
 (*
     method set_font : Gdk.font -> unit
 *)
-    method set_light : (Gtk.Tags.state_type * GDraw.color) list -> unit
-    method set_mid : (Gtk.Tags.state_type * GDraw.color) list -> unit
-    method set_text : (Gtk.Tags.state_type * GDraw.color) list -> unit
+    method set_light : (Gtk.Tags.state_type * color) list -> unit
+    method set_mid : (Gtk.Tags.state_type * color) list -> unit
+    method set_text : (Gtk.Tags.state_type * color) list -> unit
     method text : Gtk.Tags.state_type -> Gdk.color
   end
 
@@ -224,10 +240,10 @@ and misc_ops : Gtk.widget obj ->
     method is_ancestor : widget -> bool
     method map : unit -> unit
     (* Deprecated since 3.0 *)
-    method modify_bg : (Gtk.Tags.state_type * GDraw.color) list -> unit
-    method modify_base : (Gtk.Tags.state_type * GDraw.color) list -> unit
-    method modify_fg : (Gtk.Tags.state_type * GDraw.color) list -> unit
-    method modify_text : (Gtk.Tags.state_type * GDraw.color) list -> unit
+    method modify_bg : (Gtk.Tags.state_type * color) list -> unit
+    method modify_base : (Gtk.Tags.state_type * color) list -> unit
+    method modify_fg : (Gtk.Tags.state_type * color) list -> unit
+    method modify_text : (Gtk.Tags.state_type * color) list -> unit
     method modify_font : GPango.font_description -> unit
     method modify_font_by_name : string -> unit
     (* End deprecated since 3.0 *)

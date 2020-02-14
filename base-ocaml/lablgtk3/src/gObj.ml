@@ -29,6 +29,24 @@ open Gtk
 open GtkData
 open GtkBase
 
+type color = [
+  | `COLOR of Gdk.color
+  | `WHITE
+  | `BLACK
+  | `NAME of string
+  | `RGB of int * int * int
+]
+
+let color (c : color) =
+  match c with
+  | `COLOR col -> col
+  | `WHITE -> Gdk.Color.color_parse "white"
+  | `BLACK -> Gdk.Color.color_parse "black"
+  | `NAME s -> Gdk.Color.color_parse s
+  | `RGB (r,g,b) -> Gdk.Color.color_parse (Printf.sprintf "#%04X%04X%04X" r g b)
+
+module Cairo = Gdk.Cairo
+
 (* GObject *)
 
 class ['a] gobject_signals obj = object
@@ -113,7 +131,7 @@ class event_ops obj = object
 end
 
 let iter_setcol set style =
-  List.iter ~f:(fun (state, color) -> set style state (GDraw.color color))
+  List.iter ~f:(fun (state, col) -> set style state (color col))
 
 class style st = object
   val style = st
@@ -200,7 +218,10 @@ and drag_ops obj = object
 end
 
 and drag_context context = object
-  inherit GDraw.drag_context context
+  val context = context
+  method status ?(time=Int32.zero) act = Gdk.DnD.drag_status context act ~time
+  method suggested_action = Gdk.DnD.drag_context_suggested_action context
+  method targets = List.map Gdk.Atom.name (Gdk.DnD.drag_context_targets context)
   method context = context
   method finish = DnD.finish context
   method source_widget =
