@@ -6,13 +6,15 @@
 (*                                                                        *)
 (**************************************************************************)
 
+open GIGtk
+
 let run () =
   GMain.init ();
-  let w = GWindow.dialog  ~title:"Go to page" ~modal:true ~position:`CENTER () 
+  let w = DialogG.dialog  ~title:"Go to page" ~modal:true ~position:`CENTER () 
   in
-  ignore (GMisc.label ~text:"Page: " ~packing:w#vbox#add ());
+  ignore (LabelG.label ~label:"Page: " ~packing:w#vbox#add ());
   let sb = 
-    GEdit.spin_button ~packing:w#vbox#add ~digits:0 ~numeric:true ~wrap:true ()
+    SpinButtonG.spin_button ~packing:w#vbox#add ~digits:0 ~numeric:true ~wrap:true ()
   in
   sb#adjustment#set_bounds ~lower:0. ~upper:50.0 ~step_incr:1. ();
   sb#set_value 22.;
@@ -21,7 +23,7 @@ let run () =
   w#add_button_stock `CANCEL `CANCEL;
   w#set_default_response `OK;
   let on_ok () = Format.printf "Ok...@." ; w#destroy () in
-  match w#run () with
+  match w#run with
     | `DELETE_EVENT | `CANCEL -> w#destroy ()
     | `OK -> on_ok ()
 
