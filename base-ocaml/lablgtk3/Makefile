@@ -14,10 +14,6 @@ nopromote:
 opam:
 	opam pin add lablgtk3 . --kind=path -y
 	opam install lablgtk3
-	opam pin add lablgtk3-sourceview3 . --kind=path -y
-	opam install lablgtk3-sourceview3
-	opam pin add lablgtk3-gtkspell3 . --kind=path -y
-	opam install lablgtk3-gtkspell3
 
 clean:
 	dune clean
