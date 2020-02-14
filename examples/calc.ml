@@ -8,6 +8,8 @@
 
 (* $Id$ *)
 
+open GIGtk
+
 (* A simple calculator ported from LablTk to LablGtk *)
 
 let mem_string ~char s =
@@ -79,28 +81,28 @@ let m =
 (* The physical calculator. Inherits from the abstract one *)
 
 class calculator ?packing ?show () =
-  let table = GPack.table ~rows:5 ~columns:4 ~homogeneous:true ~show:false () in
+  let table = TableG.table ~n_rows:5 ~n_columns:4 ~homogeneous:true ~show:false () in
   object (calc)
     inherit calc
 
     val label =
-      let frame = GBin.frame ~shadow_type:`IN ()
-	~packing:(table#attach ~left:0 ~top:0 ~right:4 ~expand:`BOTH) in
-      let evbox = GBin.event_box ~packing:frame#add () in
+      let frame = FrameG.frame ~shadow_type:`IN ()
+	~packing:(Lablgtk3Compat.attach table ~left:0 ~top:0 ~right:4 ~expand:`BOTH) in
+      let evbox = EventBoxG.event_box ~packing:frame#add () in
       evbox#misc#set_style evbox#misc#style#copy;
       evbox#misc#style#set_bg [`NORMAL,`WHITE];
-      GMisc.label ~justify:`RIGHT ~xalign:0.95 ~packing:evbox#add ()
+      LabelG.label ~justify:`RIGHT ~xalign:0.95 ~packing:evbox#add ()
     val table = table
 
     method set = label#set_text
-    method get = label#text
+    method get = label#get_text
     method quit = GMain.quit
 
     initializer
       for i = 0 to 3 do for j = 0 to 3 do
 	let button =
-	  GButton.button ~label:("  " ^ m.(i).(j) ^ "  ")
-	    ~packing:(table#attach ~top:(i+1) ~left:j ~expand:`BOTH) () in
+	  ButtonG.button ~label:("  " ^ m.(i).(j) ^ "  ")
+	    ~packing:(Lablgtk3Compat.attach table ~top:(i+1) ~left:j ~expand:`BOTH) () in
 	button#connect#clicked ~callback:(fun () -> calc#command m.(i).(j));
       done done;
       ignore (GObj.pack_return table ~packing ~show)
@@ -110,13 +112,13 @@ class calculator ?packing ?show () =
 
 let _ = GMain.init ()
 
-let w = GWindow.window ()
+let w = WindowG.window ()
 
 let applet = new calculator ~packing: w#add ()
 
 let _ =
   w#connect#destroy ~callback: GMain.quit;
-  w#event#connect#key_press
-    ~callback:(fun ev -> applet#command (GdkEvent.Key.string ev); true);
-  w#show ();
+  (*XXX w#event#connect#key_press
+    ~callback:(fun ev -> applet#command (GdkEvent.Key.string ev); true);*)
+  w#misc#show ();
   GMain.main ()
