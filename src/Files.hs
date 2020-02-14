@@ -14,6 +14,7 @@ excludeFiles = S.fromList
     [ Name "Gtk"       "HeaderBarAccessible"  -- Its type isn't included in <gtk/gtk-a11y.h>
     , Name "Gtk"       "EntryIconAccessible"  -- Bug: The GIR Parser doesn't return its CType (bug in the parser)
     , Name "Gtk"       "TreeModelFilter"      -- Need to generate interface
+    , Name "Gtk"       "CellAccessibleParent" -- The get_cell_extents method uses an integer pointer which is parsed as an int
     --
     -- , Name "Gtk"   "StyleContext"
     -- Pango

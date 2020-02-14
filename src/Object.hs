@@ -86,6 +86,16 @@ genObjectTypeInit o cTypeName = when (objTypeInit o /= "") $ cline $ T.unlines
   , "}"
   ]
 
+genMlTypeInit :: Text -> CodeGen ()
+genMlTypeInit namespacedOcamlName = group $ do
+  line
+    $  "external ml_"
+    <> namespacedOcamlName
+    <> "_init : unit -> unit = \"ml_"
+    <> namespacedOcamlName
+    <> "_init\""
+  line $ "let () = ml_" <> namespacedOcamlName <> "_init ()"
+
 getObjCheckMacro :: Object -> Text
 getObjCheckMacro o = T.toUpper $ fst $ T.breakOn "_get_type" (objTypeInit o)
 
@@ -161,14 +171,7 @@ genObject' n o ocamlName = do
   line "open Gtk"
   blank
 
-  group $ do
-    line
-      $  "external ml_"
-      <> namespacedOcamlName
-      <> "_init : unit -> unit = \"ml_"
-      <> namespacedOcamlName
-      <> "_init\""
-    line $ "let () = ml_" <> namespacedOcamlName <> "_init ()"
+  genMlTypeInit namespacedOcamlName
 
   group $ do
     genObjectProperties n o
@@ -227,7 +230,7 @@ genObject' n o ocamlName = do
 
   gline $ "and " <> ocamlName <> " obj = object (self)"
   gline $ "  inherit " <> ocamlName <> "_skel obj"
-  group $ gline $ "  method connect = new " <> ocamlName <> "_signals obj"
+  gline $ "  method connect = new " <> ocamlName <> "_signals obj"
   gline "end"
   gblank
 
@@ -287,57 +290,99 @@ genObjectConstructor n ocamlName = do
   closedParentheses makeParents = T.replicate (length makeParents + 1) ")"
 
 genInterface :: Name -> Interface -> CodeGen ()
-genInterface n iface = do
-  let name'     = upperName n
-      ocamlName = escapeOCamlReserved $ camelCaseToSnakeCase (name n)
+genInterface n iface = unless (n `elem` excludeFiles) $ do
+  let name'               = upperName n
+      ocamlName           = escapeOCamlReserved $ camelCaseToSnakeCase (name n)
+      namespacedOcamlName = camelCaseToSnakeCase $ namespace n <> name n
+
   -- addSectionDocumentation ToplevelSection (ifDocumentation iface)
+
   case (ifCType iface, getIfCheckMacro iface) of
     (Just ctype, Just checkMacro) -> genGObjectCasts n ctype checkMacro
     _                             -> return ()
 
   addType n Nothing
 
+  when (namespace n == "Gtk") $ do
+    line "open Gobject"
+    line "open Data"
+    line "open Gtk"
+    blank
 
-  -- when (namespace n == "Gtk") $ do
-  --   line "open Gobject"
-  --   line "open Data"
-  --   line "open Gtk"
+    genMlTypeInit namespacedOcamlName
 
-  --   line "module S = struct"
-  --   indent $ line "open GtkSignal"
-  --   indent $ forM_ (ifSignals iface) $ \s -> handleCGExc
-  --     ( commentLine
-  --     . (T.concat
-  --         [ "Could not generate signal "
-  --         , name'
-  --         , "::"
-  --         , sigName s
-  --         , " *)\n"
-  --         , "(* Error was : "
-  --         ] <>
-  --       )
-  --     . describeCGError
-  --     )
-  --     (genSignal s n)
-  --   line "end"
+    gline "open Gobject"
+    gblank
+    gline $ "class " <> ocamlName <> "_skel obj = object (self)"
+    gline
+      $  "  method as_"
+      <> ocamlName
+      <> " = (obj :> "
+      <> nsOCamlType (namespace n) n
+      <> " obj)"
+    gblank
 
-  --   isGO <- apiIsGObject n (APIInterface iface)
+    isGO <- apiIsGObject n (APIInterface iface)
 
-  --   when isGO $ genInterfaceProperties n iface
+    when isGO $ do
+      -- Properties
+      group $ genInterfaceProperties n iface
 
-  -- forM_ (ifMethods iface) $ \f -> do
-  --   let mn = methodName f
-  --   isFunction <- symbolFromFunction (methodSymbol f)
-  --   unless isFunction $ handleCGExc
-  --     (\e -> line
-  --       (  "(* Could not generate method "
-  --       <> name'
-  --       <> "::"
-  --       <> name mn
-  --       <> " *)\n"
-  --       <> "(* Error was : "
-  --       <> describeCGError e
-  --       <> " *)"
-  --       )
-  --     )
-  --     (genMethod n f)
+      -- Signals
+      unless (null $ ifSignals iface) $ group $ do
+        line "module S = struct"
+        indent $ line "open GtkSignal"
+        indent $ forM_ (ifSignals iface) $ \s -> handleCGExc
+          ( commentLine
+          . (T.concat
+              [ "Could not generate signal "
+              , name'
+              , "::"
+              , sigName s
+              , " *)\n"
+              , "(* Error was : "
+              ] <>
+            )
+          . describeCGError
+          )
+          (genSignal s n)
+        line "end"
+
+    -- Methods
+    let propNames = hyphensToUnderscores . propName <$> ifProperties iface
+        -- TODO: use a Set
+        getsSets  = (("get_" <>) <$> propNames) ++ (("set_" <>) <$> propNames)
+
+    group $ forM_ (ifMethods iface) $ \m -> do
+      let mn = methodName m
+
+      unless (ocamlIdentifier mn `elem` getsSets) $ handleCGExc
+        (\e -> line
+          (  "(* Could not generate method "
+          <> name'
+          <> "::"
+          <> name mn
+          <> " *)\n"
+          <> "(* Error was : "
+          <> describeCGError e
+          <> " *)"
+          )
+        )
+        (genMethod n m)
+
+    gline "end"
+    gblank
+
+    -- Generate the signal class only for GObjects
+    when isGO $ do
+      gline $ "and " <> ocamlName <> "_signals obj = object (self)"
+      gline $ "  inherit [_] GObj.gobject_signals obj"
+      forM_ (ifSignals iface) $ \s -> genGSignal s n
+      gline "end"
+      gblank
+
+    gline $ "and " <> ocamlName <> " obj = object (self)"
+    gline $ "  inherit " <> ocamlName <> "_skel obj"
+    when isGO $ gline $ "  method connect = new " <> ocamlName <> "_signals obj"
+    gline "end"
+    gblank
