@@ -1,8 +1,8 @@
 opam-version: "2.0"
 
-synopsis: "OCaml interface to GTK+3"
+synopsis: "Automatic Generation of an OCaml interface to GTK+3: core files"
 description: """
-OCaml interface to GTK+3
+Automatic Generation of an OCaml interface to GTK+3: core files
 
 See https://garrigue.github.io/lablgtk/ for more information.
 """

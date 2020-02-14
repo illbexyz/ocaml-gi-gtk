@@ -8,16 +8,16 @@
 (executable
  (name gdk_pixbuf_mlsource)
  (public_name gdk_pixbuf_mlsource3)
- (package lablgtk3)
+ (package gilablgtk3)
  (modules gdk_pixbuf_mlsource)
- (libraries lablgtk3))
+ (libraries gilablgtk3))
 
 (executable
  (name lablgladecc)
  (public_name lablgladecc3)
- (package lablgtk3)
+ (package gilablgtk3)
  (modules xml_lexer lablgladecc)
  (flags :standard -w -3-6-27)
- (libraries lablgtk3))
+ (libraries gilablgtk3))
 
 (ocamllex xml_lexer)

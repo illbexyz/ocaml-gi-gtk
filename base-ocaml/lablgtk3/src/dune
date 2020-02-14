@@ -17,8 +17,8 @@
  (action (with-outputs-to cflag-extraflags.sexp (echo "(%{env:LABLGTK_EXTRA_FLAGS=})"))))
 
 (library
- (name lablgtk3)
- (public_name lablgtk3)
+ (name gilablgtk3)
+ (public_name gilablgtk3)
  (wrapped false)
  (flags :standard -w -6-7-9-10-27-32-33-34-35-36-50-52 -no-strict-sequence)
  (install_c_headers
