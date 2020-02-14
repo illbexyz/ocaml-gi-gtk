@@ -1,3 +1,7 @@
+0. w#as_widget => w
+   (thanks to methods always taking #class in input in place
+   of class)
+
 1. #show => #misc#show
 2. #grab_default => #misc#grab_default
 
@@ -45,6 +49,7 @@
 1. output of button.exe: is it the expected one?
    same for counter.exe: maybe wrong default somewhere?
 2. output of about.exe: it seems strange
+3. output of assistant.exe: it is correct?
 
 ============= TODO (XXX) ==================
 1. radiobutton.ml: #get_group
