@@ -28,24 +28,22 @@
 5. ScrolledWindow
     ~hpolicy => ~hscrollbar_policy
 
-6. #PPP => #get_PPP per le proprietà PPP Read
-
-7. a window w is not a #container, but it can be casted to it
+6. a window w is not a #container, but it can be casted to it
    (e.g. in example button.ml). It used to be a #container instead.
    The problem is due to #connect: window signals inherit from container
    signals, but a cast is required. How did it work without before?
 
-8. adjustments only at the low level: add #as_adjustment where there should
+7. adjustments only at the low level: add #as_adjustment where there should
    be no one (e.g. counter.ml)
 
-9. about.ml: run no longer takes a () (visible in dialog.ml)
-9. ProgressBar: #pulse no longer takes a ()
+8. about.ml: run no longer takes a () (visible in dialog.ml)
+8. ProgressBar: #pulse no longer takes a ()
 
-10. window#event#connect => window#connect
+9. window#event#connect => window#connect
 
-11. GtkButtonProps.Button.S.activate => Button.S.activate
+10. GtkButtonProps.Button.S.activate => Button.S.activate
 
-12. Assistant: #npage returns an option now
+11. Assistant: #npage returns an option now
 
 ============= TO TEST ==================
 1. output of button.exe: is it the expected one?

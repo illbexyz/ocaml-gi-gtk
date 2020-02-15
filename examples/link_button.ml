@@ -24,7 +24,7 @@ let main () =
   button#set_uri "GHHHHH";
   Format.printf "Got:%a@." GUtil.print_widget button;
   button#connect#activate_link
-    (fun () -> Format.printf "Got url '%s'@." button#get_uri;   button#set_uri "AGAIN");
+    (fun () -> Format.printf "Got url '%s'@." button#uri;   button#set_uri "AGAIN");
   window#connect#destroy GMain.quit;
   window#misc#show ();
   GMain.main ()

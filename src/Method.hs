@@ -8,6 +8,7 @@ import qualified Data.Text                     as T
 import           Data.Maybe                     ( mapMaybe )
 import           Control.Monad                  ( when
                                                 , forM
+                                                , unless
                                                 )
 
 import           API                            ( Arg(..)
@@ -31,7 +32,6 @@ import           Code                           ( CodeGen
                                                 , currentNS
                                                 , findAPIByName
                                                 )
-import           GObject                        ( isGObject )
 import           Inheritance                    ( instanceTree )
 import           Naming
 import           QualifiedNaming                ( nsOCamlClass )
@@ -166,17 +166,29 @@ fixMethodArgs c = c { args = args'', returnType = returnType' }
   fixInstance :: Arg -> Arg
   fixInstance arg = arg { mayBeNull = False, direction = DirectionIn }
 
+-- TODO: This is old code from haskell-gi. For now we're ignoring constructors
+--       but this may be useful in the future
+
 -- For constructors we want to return the actual type of the object,
 -- rather than a generic superclass (so Gtk.labelNew returns a
 -- Gtk.Label, rather than a Gtk.Widget)
-fixConstructorReturnType :: Bool -> Name -> Callable -> Callable
-fixConstructorReturnType returnsGObject cn c = c { returnType = returnType' }
- where
-  returnType' = if returnsGObject then Just (TInterface cn) else returnType c
+-- fixConstructorReturnType :: Bool -> Name -> Callable -> Callable
+-- fixConstructorReturnType returnsGObject cn c = c { returnType = returnType' }
+--  where
+--   returnType' = if returnsGObject then Just (TInterface cn) else returnType c
+
+isMethodAlsoAProp :: Name -> Text -> CodeGen Bool
+isMethodAlsoAProp cn mName = do
+  api <- findAPIByName cn
+  return $ case api of
+    APIObject o -> do
+      let propNames = hyphensToUnderscores . propName <$> objProperties o
+      mName `elem` propNames
+    _ -> False
 
 isMethodInParents :: Name -> Text -> CodeGen Bool
 isMethodInParents cn mName = do
-  let mName' = snd $ T.breakOnEnd "get_" $ snd $ T.breakOnEnd "set_" mName
+  let mName' = snd $ T.breakOnEnd "set_" mName
   parents        <- instanceTree cn
   parentsHasProp <- forM parents $ \parentName -> do
     api <- findAPIByName parentName
@@ -189,42 +201,46 @@ isMethodInParents cn mName = do
   return $ True `elem` parentsHasProp
 
 genMethod :: Name -> Method -> ExcCodeGen ()
-genMethod cn m@Method { methodName = mn, methodSymbol = sym, methodCallable = c, methodType = t }
-  = when (t /= Constructor) $ do
-    alreadyDefMethod <- isMethodInParents cn (name $ methodName m)
-    let mName = escapeOCamlReserved (name mn)
-        mDeclName =
-          if alreadyDefMethod then mName <> "_" <> ocamlIdentifier cn else mName
-    -- export (NamedSubsection MethodSection $ lowerName mn) (lowerName mn')
-    returnsGObject <- maybe (return False) isGObject (returnType c)
+genMethod _ Method { methodType = Constructor } = return ()
+genMethod cn Method { methodName = mn, methodSymbol = sym, methodCallable = c, methodType = t }
+  = do
+    isAProp <- isMethodAlsoAProp cn (name mn)
+    unless isAProp $ do
+      alreadyDefMethod <- isMethodInParents cn (name mn)
+      let mName     = escapeOCamlReserved (name mn)
+          mDeclName = if alreadyDefMethod
+            then mName <> "_" <> ocamlIdentifier cn
+            else mName
+      -- export (NamedSubsection MethodSection $ lowerName mn) (lowerName mn')
+      -- returnsGObject <- maybe (return False) isGObject (returnType c)
 
-    -- commentLine $ "method " <> name' <> "::" <> mName
-    -- commentLine $ "method type : " <> tshow t
+      -- commentLine $ "method " <> name' <> "::" <> mName
+      -- commentLine $ "method type : " <> tshow t
 
-    let c' = if Constructor == t
-          then fixConstructorReturnType returnsGObject cn c
-          else c
-        c'' = if OrdinaryMethod == t then fixMethodArgs c' else c'
+      -- let c' = if Constructor == t
+      --       then fixConstructorReturnType returnsGObject cn c
+      --       else c
+      let c' = if OrdinaryMethod == t then fixMethodArgs c else c
 
-    genCCallableWrapper mn sym c''
+      genCCallableWrapper mn sym c'
 
-    typeReps     <- callableOCamlTypes c''
-    mbMethodArgs <- typeRepsToMethodArgs typeReps
+      typeReps     <- callableOCamlTypes c'
+      mbMethodArgs <- typeRepsToMethodArgs typeReps
 
-    case mbMethodArgs of
-      Nothing    -> return ()
-      Just mArgs -> do
-        let tVars     = extractClassVars mArgs
-            tVarsText = case tVars of
-              []   -> ""
-              vars -> T.intercalate " " (("'" <>) <$> vars) <> "."
+      case mbMethodArgs of
+        Nothing    -> return ()
+        Just mArgs -> do
+          let tVars     = extractClassVars mArgs
+              tVarsText = case tVars of
+                []   -> ""
+                vars -> T.intercalate " " (("'" <>) <$> vars) <> "."
 
-        mSig  <- methodSignature tVarsText mArgs
-        mBody <- methodBody tVars mName mArgs
+          mSig  <- methodSignature tVarsText mArgs
+          mBody <- methodBody tVars mName mArgs
 
-        gline $ "  method " <> mDeclName <> mSig <> " = "
-        gline $ "    " <> bodyPrefix mArgs <> mBody
-        gline ""
+          gline $ "  method " <> mDeclName <> mSig <> " = "
+          gline $ "    " <> bodyPrefix mArgs <> mBody
+          gline ""
 
  where
   methodSignature :: Text -> MethodArgs -> CodeGen Text

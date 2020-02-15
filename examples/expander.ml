@@ -15,7 +15,7 @@ let setup_expander packing =
   e#set_label "Show image" ;
   e#connect#after#activate (fun () ->
     e#set_label 
-      (if e#get_expanded then "Hide image" else "Show image"))
+      (if e#expanded then "Hide image" else "Show image"))
 
 let main () = 
   GMain.init ();

@@ -27,7 +27,7 @@ let entry_changed assistant entry () =
 (* If the check button is toggled, set the page as complete. Otherwise,
    stop the user from progressing the next page. *)
 let button_toggled toggle (assistant : #AssistantG.assistant) () = 
-  let active = toggle#get_active in
+  let active = toggle#active in
   assistant#set_page_complete toggle active
 
 

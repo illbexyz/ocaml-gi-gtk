@@ -13,14 +13,14 @@ open GIGtk
 open Printf
 
 let enter_callback entry =
-  printf "Entry contents: %s\n" entry#get_text;
+  printf "Entry contents: %s\n" entry#text;
   flush stdout
 
 let entry_toggle_editable button entry =
-  entry#set_editable button#get_active
+  entry#set_editable button#active
 
 let entry_toggle_visibility button entry =
-  entry#set_visibility button#get_active
+  entry#set_visibility button#active
 
 let main () =
   GMain.init ();
@@ -36,7 +36,7 @@ let main () =
   (* Appending text now requires getting the underlying buffer, and
    * entry#buffer is not exposed in the bindings yet *)
   (*entry#append_text " world";*)
-  (*XXX entry#select_region ~start:0 ~stop:entry#get_text_length;*)
+  (*XXX entry#select_region ~start:0 ~stop:entry#text_length;*)
 
   let hbox = HBoxG.h_box ~packing: vbox#add () in
 

@@ -30,7 +30,7 @@ let _ =
 
   entry#connect#activate ~callback:
     begin fun () ->
-      let x = try float_of_string entry#get_text with _ -> 0.0 in
+      let x = try float_of_string entry#text with _ -> 0.0 in
       entry#set_text (string_of_float (cos x));
       let res = fix ~f:cos ~eq:eq_float x in
       result#set_text (string_of_float res)
