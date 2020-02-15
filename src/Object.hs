@@ -27,10 +27,7 @@ import           Properties                     ( genObjectProperties
 import           Signal                         ( genSignal
                                                 , genGSignal
                                                 )
-import           Files                          ( excludeFiles
-                                                , genFiles
-                                                )
-import           Debug.Trace
+import           Files                          ( excludeFiles )
 
 isSetterOrGetter :: Object -> Method -> Bool
 isSetterOrGetter o m =
@@ -78,35 +75,59 @@ genSignalClass n o = do
   gline "end"
   gblank
 
-genObjectTypeInit :: Object -> Text -> CodeGen ()
-genObjectTypeInit o cTypeName = when (objTypeInit o /= "") $ cline $ T.unlines
-  [ "CAMLprim value ml_" <> cTypeName <> "_init(value unit) {"
-  , "    GType t = " <> objTypeInit o <> "();"
+cTypeInit :: Text -> Text -> Text
+cTypeInit cTypeName typeInit = T.unlines
+  [ "CAMLprim value ml_gi" <> cTypeName <> "_init(value unit) {"
+  , "    GType t = " <> typeInit <> "();"
   , "    return Val_GType(t);"
   , "}"
   ]
 
-genMlTypeInit :: Text -> CodeGen ()
-genMlTypeInit namespacedOcamlName = group $ do
+genCObjectTypeInit :: Object -> Name -> CodeGen ()
+genCObjectTypeInit Object { objTypeInit = typeInit } (Name ns nm)
+  | typeInit /= "" = cline
+  $ cTypeInit (camelCaseToSnakeCase (ns <> nm)) typeInit
+genCObjectTypeInit _ _ = return ()
+
+genCInterfaceTypeInit :: Interface -> Name -> CodeGen ()
+genCInterfaceTypeInit Interface { ifTypeInit = Just typeInit } (Name ns nm) =
+  cline $ cTypeInit (camelCaseToSnakeCase (ns <> nm)) typeInit
+genCInterfaceTypeInit _ _ = return ()
+
+genMlTypeInit :: Name -> CodeGen ()
+genMlTypeInit (Name ns nm) = group $ do
+  let namespacedOcamlName = camelCaseToSnakeCase (ns <> nm)
   line
-    $  "external ml_"
+    $  "external ml_gi"
     <> namespacedOcamlName
-    <> "_init : unit -> unit = \"ml_"
+    <> "_init : unit -> unit = \"ml_gi"
     <> namespacedOcamlName
     <> "_init\""
-  line $ "let () = ml_" <> namespacedOcamlName <> "_init ()"
+  line $ "let () = ml_gi" <> namespacedOcamlName <> "_init ()"
 
+-- Every GObject has a macro used to cast a pointer to the type of the GObject
+-- e.g.: GtkButton has the GTK_BUTTON macro
+-- This macro however can't be retrieved by the GIR.
+-- To make this problem even harder, every information we know about the name
+-- of the object is in TitleCase, and we cannot obtain the macro name from
+-- the Name or the CType, because for some objects we can't find the position
+-- of the underlines. (e.g.: UIManager would be converted to U_I_MANAGER instead
+-- of UI_MANAGER).
+-- 
+-- The only attribute we can use is the typeInit. It contains the object name
+-- in snake case followed by a "_get_type" suffix.
+-- So we remove the suffix and turn to upper case.
 getObjCheckMacro :: Object -> Text
 getObjCheckMacro o = T.toUpper $ fst $ T.breakOn "_get_type" (objTypeInit o)
 
+-- See getObjCheckMacro. For the interfaces the getTypeInit is optional,
+-- so some interfaces might not be properly initialized.
+-- #bug?
 getIfCheckMacro :: Interface -> Maybe Text
 getIfCheckMacro i = do
   typeInit <- ifTypeInit i
   return $ T.toUpper $ fst $ T.breakOn "_get_type" typeInit
 
--- | Wrap a given Object. We enforce that every Object that we wrap is a
--- GObject. This is the case for everything except the ParamSpec* set
--- of objects, we deal with these separately.
 genObject :: Name -> Object -> CodeGen ()
 genObject n o = do
   isGO <- isGObject (TInterface n)
@@ -125,20 +146,19 @@ genObject n o = do
       forM_ (objCType o)
         $ \ctype -> genGObjectCasts n ctype (getObjCheckMacro o)
 
-      if namespace n /= "Gtk" || n `elem` excludeFiles -- || n `notElem` genFiles
+      if namespace n /= "Gtk" || n `elem` excludeFiles
         then return ()
         else genObject' n o ocamlName
 
 genObject' :: Name -> Object -> Text -> CodeGen ()
 genObject' n o ocamlName = do
   parents <- instanceTree n
-  let name'               = upperName n
-      nspace              = namespace n
-      objectName          = name n
-      namespacedOcamlName = camelCaseToSnakeCase $ nspace <> objectName
-      parent              = head parents
+  let name'      = upperName n
+      nspace     = namespace n
+      objectName = name n
+      parent     = head parents
 
-  genObjectTypeInit o namespacedOcamlName
+  genCObjectTypeInit o n
 
   gline "open Gobject"
   gblank
@@ -168,10 +188,9 @@ genObject' n o ocamlName = do
   line "open Gobject"
   line "open Data"
   blank
-  line "open Gtk"
   blank
 
-  genMlTypeInit namespacedOcamlName
+  genMlTypeInit n
 
   group $ do
     genObjectProperties n o
@@ -291,25 +310,24 @@ genObjectConstructor n ocamlName = do
 
 genInterface :: Name -> Interface -> CodeGen ()
 genInterface n iface = unless (n `elem` excludeFiles) $ do
-  let name'               = upperName n
-      ocamlName           = escapeOCamlReserved $ camelCaseToSnakeCase (name n)
-      namespacedOcamlName = camelCaseToSnakeCase $ namespace n <> name n
+  let name'     = upperName n
+      ocamlName = escapeOCamlReserved $ camelCaseToSnakeCase (name n)
 
   -- addSectionDocumentation ToplevelSection (ifDocumentation iface)
-
-  case (ifCType iface, getIfCheckMacro iface) of
-    (Just ctype, Just checkMacro) -> genGObjectCasts n ctype checkMacro
-    _                             -> return ()
 
   addType n Nothing
 
   when (namespace n == "Gtk") $ do
     line "open Gobject"
     line "open Data"
-    line "open Gtk"
     blank
 
-    genMlTypeInit namespacedOcamlName
+    case (ifCType iface, getIfCheckMacro iface) of
+      (Just ctype, Just checkMacro) -> do
+        genGObjectCasts n ctype checkMacro
+        genMlTypeInit n
+        genCInterfaceTypeInit iface n
+      _ -> return ()
 
     gline "open Gobject"
     gblank
