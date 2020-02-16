@@ -7,3 +7,7 @@
 #include <gio/gunixfdmessage.h>
 #include <gio/gunixoutputstream.h>
 #include <gio/gunixmounts.h>
+#include <gio/gunixcredentialsmessage.h>
+#include <gio/gfiledescriptorbased.h>
+#define G_SETTINGS_ENABLE_BACKEND
+#include <gio/gsettingsbackend.h>

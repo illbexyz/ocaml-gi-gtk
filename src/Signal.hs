@@ -79,8 +79,9 @@ genOCamlCallbackPrototype subsec cb _htype classe expose _doc = do
   -- writeDocumentation DocBeforeSymbol doc
 
   -- ret <- hOutType cb hOutArgs
-  let ocamlClassName = escapeOCamlReserved $ camelCaseToSnakeCase classe
-      classType      = typeShow currNS $ TextCon $ "`" <> ocamlClassName
+  let
+    classType = "`"
+      <> escapeOCamlReserved (camelCaseToSnakeCase (currNS <> "_" <> classe))
 
   marshaller <- ocamlMarshaller hInArgs subsec classe
 

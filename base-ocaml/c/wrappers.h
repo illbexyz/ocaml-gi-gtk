@@ -484,6 +484,15 @@ CAMLprim value ml_gi##namespace##_##cname (value arg1, value arg2, value arg3) \
     CAMLreturn (tuple); \
 }
 
+#define ML_4in_1out_discard_ret(namespace, cname, conv1in, conv2in, conv3in, conv4in, cType1out, conv1out, convRes) \
+CAMLprim value ml_gi##namespace##_##cname (value arg1, value arg2, value arg3, value arg4) \
+{ \
+    CAMLparam4(arg1, arg2, arg3, arg4); \
+    cType1out a; \
+    cname(conv1in(arg1), conv2in(arg2), conv3in(arg3), conv4in(arg4), &a); \
+    CAMLreturn (conv1out(a)); \
+}
+
 #define ML_4in_2out_discard_ret(namespace, cname, conv1in, conv2in, conv3in, conv4in, cType1out, conv1out, cType2out, conv2out, convRes) \
 CAMLprim value ml_gi##namespace##_##cname (value arg1, value arg2, value arg3, value arg4) \
 { \

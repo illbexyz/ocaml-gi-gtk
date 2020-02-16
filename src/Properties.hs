@@ -253,9 +253,10 @@ genMakeParams className props = do
     else do
       parents <- instanceTree className
       currNS  <- currentNS
-      unless (null parents) $ do
-        let parent = head parents
-        line $ case (currNS, parent) of
+      case parents of
+        []           -> line emptyMake
+        (parent : _) -> line $ case (currNS, parent) of
+          -- TODO: clean here
           ("Gtk", Name "GObject" "Object") -> emptyMake
           ("Gtk", Name "Gtk" "Widget"    ) -> emptyMake
           ("Gtk", Name "Gtk" _           ) -> inheritedMake parent
@@ -268,12 +269,14 @@ genMakeParams className props = do
 
 genProperties :: Name -> [Property] -> [Text] -> CodeGen ()
 genProperties n ownedProps _allProps = do
-  line "let may_cons = Property.may_cons"
-  line "let may_cons_opt = Property.may_cons_opt"
+  line "let may_cons = Gobject.Property.may_cons"
+  line "let may_cons_opt = Gobject.Property.may_cons_opt"
   blank
   gline "  (* Properties *)"
   line "module P = struct"
   indent $ do
+    line "open Gobject"
+    line "open Data"
     let name = upperName n
 
     forM_ ownedProps $ \prop -> handleCGExc

@@ -11,6 +11,7 @@ module Naming
   , hyphensToUnderscores
   , camelCaseToSnakeCase
   , ocamlIdentifier
+  , ocamlIdentifierNs
   , nsOCamlIdentifier
   , nsOCamlType
   , signalOCamlName
@@ -143,12 +144,18 @@ escapeOCamlReserved "done"   = "done_"
 escapeOCamlReserved "type"   = "type_"
 escapeOCamlReserved "new"    = "new_"
 escapeOCamlReserved "open"   = "open_"
+escapeOCamlReserved "match"  = "match_"
+escapeOCamlReserved "and"    = "and_"
 escapeOCamlReserved t        = do
   let (nums, text) = T.span C.isNumber t
   text <> nums
 
 ocamlIdentifier :: Name -> Text
 ocamlIdentifier (Name _ nm) = escapeOCamlReserved $ camelCaseToSnakeCase nm
+
+ocamlIdentifierNs :: Name -> Text
+ocamlIdentifierNs (Name ns nm) =
+  escapeOCamlReserved $ camelCaseToSnakeCase (ns <> nm)
 
 nsOCamlIdentifier :: Text -> Name -> Text
 nsOCamlIdentifier nspace n@(Name ns nm) | nspace == ns = ocamlIdentifier n

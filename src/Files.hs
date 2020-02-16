@@ -1,6 +1,7 @@
 module Files
     ( excludeFiles
-    , genFiles
+    , noCheckMacro
+    , noCType
     )
 where
 
@@ -9,82 +10,50 @@ import qualified Data.Set                      as S
 
 import           API                            ( Name(..) )
 
+noCType :: Set Name
+noCType = S.fromList [Name "Gtk" "HeaderBarAccessible"] -- Its type isn't included in <gtk/gtk-a11y.h>
+
+-- These files doesn't have a macro to check the cast
+noCheckMacro :: Set Name
+noCheckMacro = S.fromList [Name "Pango" "Coverage"]
+
 excludeFiles :: Set Name
 excludeFiles = S.fromList
     [ Name "Gtk"       "HeaderBarAccessible"  -- Its type isn't included in <gtk/gtk-a11y.h>
     , Name "Gtk"       "EntryIconAccessible"  -- Bug: The GIR Parser doesn't return its CType (bug in the parser)
     , Name "Gtk"       "TreeModelFilter"      -- Need to generate interface
     , Name "Gtk"       "CellAccessibleParent" -- The get_cell_extents method uses an integer pointer which is parsed as an int
-    --
-    -- , Name "Gtk"   "StyleContext"
-    -- Pango
+    , Name "Gtk"       "Widget"               -- We use the lablgtk one
     , Name "Pango"     "Engine"
     , Name "Pango"     "EngineShape"
     , Name "Pango"     "EngineLang"
     , Name "Pango"     "FontsetSimple"
-    , Name "GtkSource" "Gutter"
-    , Name "GtkSource" "View"
-    ]
-
-genFiles :: Set Name
-genFiles = S.fromList
-    [ Name "Gtk" "Bin"
-    , Name "Gtk" "Button"
-    , Name "Gtk" "CheckButton"
-    , Name "Gtk" "ToggleButton"
-    , Name "Gtk" "RadioButton"
-    , Name "Gtk" "Misc"
-    , Name "Gtk" "Label"
-    , Name "Gtk" "Entry"
-    , Name "Gtk" "ActionBar"
-    , Name "Gtk" "MenuShell"
-    , Name "Gtk" "RadioMenuItem"
-    , Name "Gtk" "CheckMenuItem"
-    , Name "Gtk" "Menu"
-    , Name "Gtk" "MenuItem"
-    , Name "Gtk" "Adjustment"
-    , Name "Gtk" "Alignment"
-    , Name "Gtk" "AppChooserButton"
-    , Name "Gtk" "ComboBox"
-    , Name "Gtk" "Notebook"
-    , Name "Gtk" "Action"
-    , Name "Gtk" "IconView"
-    , Name "Gtk" "Clipboard"
-    , Name "Gtk" "RcStyle"
-    , Name "Gtk" "ThemingEngine"
-    , Name "Gtk" "MountOperation"
-    , Name "Gtk" "Application"
-    , Name "Gtk" "Window"
-    , Name "Gtk" "WindowGroup"
-    , Name "Gtk" "NumerableIcon"
-    , Name "Gtk" "AccelMap"
-    , Name "Gtk" "IconInfo"
-    , Name "Gtk" "IconTheme"
-    , Name "Gtk" "Settings"
-    , Name "Gtk" "RecentManager"
-    -- , Name "Gtk" "Tooltip"        -- Gtk-CRITICAL **: 21:32:35.797: _gtk_style_provider_private_get_settings: assertion 'GTK_IS_STYLE_PROVIDER_PRIVATE (provider)' failed
-    , Name "Gtk" "TreeModel"
-    , Name "Gtk" "HSV"
-    , Name "Gtk" "Image"
-    , Name "Gtk" "Range"
-    , Name "Gtk" "Layout"
-    , Name "Gtk" "ToolItem"
-    , Name "Gtk" "SizeGroup"
-    , Name "Gtk" "ComboBoxText"
-    , Name "Gtk" "TextTag"
-    , Name "Gtk" "ScrolledWindow"
-    , Name "Gtk" "PlacesSidebar"
-    , Name "Gtk" "CssProvider"
-    , Name "Gtk" "EntryIconAccessible"
-    , Name "Gtk" "Box"
-    , Name "Gtk" "TreeModel"
-    , Name "Gtk" "ToolItemGroup"
-    , Name "Gtk" "PrintOperation"
-    , Name "Gtk" "CellRenderer"
-    -- , Name "Gtk" "CellRendererSpinner"
-    -- , Name "Gtk" "CellRendererText"
-    , Name "Gtk" "ToolPalette"
-    , Name "Gtk" "TreeModelFilter"
-    -- , Name "Gtk" "StyleContext"
-    --  , Name "Gtk" "Container"
+    , Name "GtkSource" "Gutter"               -- gtk_source_gutter_get_padding uses an integer pointer which is parsed as an int
+    , Name "GtkSource" "View"                 -- gtk_source_view_get_mark_attributes uses an integer pointer which is parsed as an int
+    , Name "GtkSource" "Map"                  -- Depends on View
+    , Name "GtkSource" "Mark"
+    -- The following ones have the most obscure #bug: for some reason calling
+    -- (moduleCode minfo) in Code.hs, while writing the files crashes the 
+    -- program
+    , Name "GtkSource" "LanguageManager"
+    , Name "GtkSource" "StyleSchemeManager"
+    , Name "Gio"       "ApplicationCommandLine"
+    , Name "Gio"       "ListStore"
+    -- For the next two we need to write the C functions without using the macro 
+    -- because of pointers in the CType
+    , Name "Gio"       "MenuLinkIter"
+    , Name "Gio"       "SimpleProxyResolver"
+    -- Bug: Unlike every other C in/out functions seen before, the ones in these
+    -- three files doesn't pass every in argument before the out arguments
+    -- Need to generate the C function without a macro
+    , Name "Atk"       "Component"
+    , Name "Atk"       "Image"
+    , Name "Atk"       "Text"
+    --
+    , Name "Atk"       "EditableText" -- ‘atk_editable_text_insert_text’ has an int pointer
+    , Name "Atk"       "Table"        -- Like above for ‘atk_table_get_selected_columns’
+    , Name "Gdk"       "Window"       -- gtk_window_destroy_notify is found inside the GIR
+                                      -- but it doesn't exist
+    , Name "Gdk"       "Device"       -- Methods returning an object inside a tuple aren't handled well
+    , Name "Gdk"       "Display"      -- Same as above
     ]

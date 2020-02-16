@@ -135,25 +135,16 @@ haskellType t@(TInterface n) = do
     APIEnum _e -> do
       enumRes <- enumResolver n
       return $ TextCon $ enumRes <> "." <> ocamlName
-    APIObject    _o -> handleObj ocamlName
-    APIInterface _i -> handleObj ocamlName
+    APIObject    _o -> handleObj
+    APIInterface _i -> handleObj
     APIStruct    _s -> TextCon <$> getModuleType n
     APIConst     _c -> return $ TextCon "const"
     APIFunction  _f -> return $ TextCon "function"
     APICallback  _c -> return $ TextCon "callback"
     APIUnion     _u -> return $ TextCon "union"
  where
-  handleObj ocamlName = do
+  handleObj = do
     freshVar <- getFreshTypeVariable
-    currMod  <- currentModule
-    currNS   <- currentNS
-    -- let currModuleName = last $ T.splitOn "." currMod
-        -- ocamlName      = camelCaseToSnakeCase $ name n
-        -- typeRep = case (currNS == namespace n, currModuleName == name n) of
-          -- (True , _) -> TextCon $ "`" <> ocamlName
-          -- (True , True ) -> TextCon $ "`" <> ocamlName
-          -- (True , False) -> TextCon $ name n <> "G." <> ocamlName
-          -- (False, _) -> TextCon $ "`" <> ocamlName
     return $ ObjCon $ TypeVarCon freshVar $ RowCon More $ PolyCon $ NameCon n
 
 -- | Whether the callable has closure arguments (i.e. "user_data"
@@ -269,7 +260,23 @@ cType (TGList  _t    )        = cTypeErr "TGList"
 cType (TGSList _t    )        = cTypeErr "TGSList"
 cType (TGHash _t1 _t2)        = cTypeErr "TGHash"
 cType (TGClosure  _m )        = cTypeErr "TGClosure"
-cType (TInterface n  )        = return $ namespace n <> name n -- TODO: Probably need to extract the interfaceCType
+cType (TInterface n  )        = do
+  api <- findAPIByName n
+  case api of
+    APIConst     c         -> return $ constantCType c
+    APIFunction  f         -> return $ fnSymbol f -- Not sure
+    APICallback Callback { cbCType = Just ctype } -> return ctype
+    APICallback  _         -> cTypeErr "Callback without cType"
+    APIEnum      e         -> return $ enumCType e
+    APIFlags     (Flags e) -> return $ enumCType e
+    APIInterface Interface { ifCType = Just ctype } -> return ctype
+    APIInterface _         -> cTypeErr "Interface without cType"
+    APIObject Object { objCType = Just ctype } -> return $ ctype <> "*"
+    APIObject    _         -> cTypeErr "Object without cType"
+    APIStruct Struct { structCType = Just ctype } -> return ctype
+    APIStruct    _         -> cTypeErr "Struct without cType"
+    APIUnion Union { unionCType = Just ctype } -> return ctype
+    APIUnion     _         -> cTypeErr "Union without cType"
 
 cTypeErr :: Text -> ExcCodeGen Text
 cTypeErr = conversionError "cType"
@@ -278,9 +285,9 @@ objConverter
   :: Bool     -- ^ is nullable
   -> Text
   -> Text
-objConverter False conv = "(gobject : " <> conv <> " obj data_conv)"
+objConverter False conv = "(gobject : " <> conv <> " Gobject.obj data_conv)"
 objConverter True conv =
-  "(gobject_option : " <> conv <> " obj option data_conv)"
+  "(gobject_option : " <> conv <> " Gobject.obj option data_conv)"
 
 -- Type to data_conv
 ocamlDataConv

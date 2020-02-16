@@ -175,8 +175,7 @@ resolveRecursion dirPrefix files = do
 
   let newFilesContent = map fileToContent files
 
-  utf8WriteFile (dirPrefix </> "Recursion.ml")
-                (T.unlines ["open Gobject", classes, decls])
+  utf8WriteFile (dirPrefix </> "Recursion.ml") (T.unlines [classes, decls])
   forM_ (zip files newFilesContent) $ \(file, content) ->
     utf8WriteFile (dirPrefix </> T.unpack file <> ".ml") content
 
@@ -204,7 +203,9 @@ resolveRecursion dirPrefix files = do
       ]
 
 parseOpens :: Text -> (Text, Text)
-parseOpens t = join bimap T.unlines (splitAt 2 $ T.lines t)
+parseOpens t | "open " `T.isPrefixOf` t =
+  join bimap T.unlines (splitAt 2 $ T.lines t)
+parseOpens t = ("", t)
 
 parseClasses :: Text -> (Text, Text)
 parseClasses = T.breakOn "let "

@@ -32,7 +32,7 @@ data TypeRep = ListCon TypeRep
 typeShow :: Text -> TypeRep -> Text
 typeShow currNS (ListCon   t          ) = typeShow currNS t <> " list"
 typeShow currNS (OptionCon t          ) = typeShow currNS t <> " option"
-typeShow currNS (ObjCon    t          ) = typeShow currNS t <> " obj"
+typeShow currNS (ObjCon    t          ) = typeShow currNS t <> " Gobject.obj"
 typeShow currNS (RowCon     Less t    ) = "[< " <> typeShow currNS t <> "]"
 typeShow currNS (RowCon     More t    ) = "[> " <> typeShow currNS t <> "]"
 typeShow currNS (TypeVarCon var  t    ) = typeShow currNS t
@@ -47,7 +47,7 @@ typeShow currNS (TupleCon treps) =
 methodTypeShow :: Text -> TypeRep -> Text
 methodTypeShow currNS (ListCon   t  ) = methodTypeShow currNS t <> " list"
 methodTypeShow currNS (OptionCon t  ) = methodTypeShow currNS t <> " option"
-methodTypeShow currNS (ObjCon    t  ) = methodTypeShow currNS t <> " obj"
+methodTypeShow currNS (ObjCon t) = methodTypeShow currNS t <> " Gobject.obj"
 methodTypeShow currNS (RowCon Less t) = "[< " <> methodTypeShow currNS t <> "]"
 methodTypeShow currNS (RowCon More t) = "[> " <> methodTypeShow currNS t <> "]"
 methodTypeShow currNS (TypeVarCon var t) =

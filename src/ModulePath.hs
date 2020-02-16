@@ -76,4 +76,5 @@ modulePathNS :: ModulePath -> Text
 modulePathNS mp = head $ modulePathToList mp
 
 moduleName :: ModulePath -> Text
+moduleName (ModulePath []   ) = error "(moduleName): ModulePath can't be empty"
 moduleName (ModulePath paths) = last paths

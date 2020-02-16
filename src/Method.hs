@@ -61,7 +61,7 @@ typeRepsToMethodArgs xs@(h : typeRepsTail) = do
         ClassType _ _ _           -> inArgs'
         t@(BasicIn _ _          ) -> t : inArgs'
         t@(NonGtkClassType _ _ _) -> t : inArgs'
-  let retTypeRep = last xs
+  let retTypeRep = last xs -- This last is safe
   retArg <- methodOutTypeShow currNS retTypeRep
   return $ Just (headArg, inArgs, retArg)
 

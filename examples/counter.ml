@@ -23,7 +23,7 @@ let decB = ButtonG.button ~label:"Dec" ~packing:hb#add ()
 let incB = ButtonG.button ~label:"Inc" ~packing:hb#add ()
 
 let adj =
-  GData.adjustment ~lower:0. ~upper:100. ~step_incr:1. ~page_incr:10. ()
+  AdjustmentG.adjustment ~lower:0. ~upper:100. ~step_increment:1. ~page_increment:10. ()
 
 let sc = HScaleG.h_scale ~adjustment:(adj#as_adjustment) ~draw_value:false
     ~packing:vb#add ()

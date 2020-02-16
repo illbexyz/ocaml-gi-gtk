@@ -106,7 +106,10 @@ import           ModulePath                     ( ModulePath(..)
                                                 , modulePathNS
                                                 , moduleName
                                                 )
-import           Naming                         ( ocamlIdentifier )
+import           Naming                         ( ocamlIdentifier
+                                                , ocamlIdentifierNs
+                                                , nsOCamlIdentifier
+                                                )
 import           TopologicalSort                ( getOrderedTypes )
 import           Util                           ( tshow
                                                 , terror
@@ -126,7 +129,7 @@ emptyCode = Code Seq.empty
 
 -- | Checks whether the given code block is empty.
 isCodeEmpty :: Code -> Bool
-isCodeEmpty (Code seq) = Seq.null seq
+isCodeEmpty (Code seq_) = Seq.null seq_
 
 -- | A block of code consisting of a single token.
 codeSingleton :: CodeToken -> Code
@@ -193,7 +196,7 @@ data ModuleInfo = ModuleInfo {
     , moduleExports :: Seq.Seq Export -- ^ Exports for the module.
     , qualifiedImports :: Set.Set ModulePath -- ^ Qualified (source) imports.
     , sectionDocs   :: M.Map HaddockSection Text -- ^ Documentation
-    }
+    } deriving (Show)
 
 -- | Flags for module code generation.
 data ModuleFlag = ImplicitPrelude  -- ^ Use the standard prelude,
@@ -656,23 +659,39 @@ addType :: Name -> Maybe Name -> CodeGen ()
 addType n parentName = modify'
   (\(cgs, s) -> (cgs, s { types = Set.insert (n, parentName) (types s) }))
 
-typeLines :: [(Text, Maybe Text)] -> Text
+typeLines :: [(Name, Maybe Name)] -> Text
 typeLines s = T.unlines $ uncurry textToOCamlType <$> s
  where
-  typeDeclText :: Text -> Text
-  typeDeclText t = "type " <> t <> " = "
+  textToOCamlType :: Name -> Maybe Name -> Text
+  textToOCamlType n@(Name "GObject" "Object") _ = typeDeclText n <> "[`giu]"
+  textToOCamlType n@(Name "Gtk" "Widget") _ =
+    typeDeclText n <> "[`giu | `widget]"
+  textToOCamlType n Nothing =
+    typeDeclText n <> "[`" <> ocamlIdentifierNs n <> "]"
+  textToOCamlType n (Just (Name "GObject" "Object")) =
+    typeDeclText n <> "[`giu | `" <> ocamlIdentifierNs n <> "]"
+  textToOCamlType n@(Name ns _) (Just pn@(Name pNs _)) | ns == pNs =
+    typeDeclText n
+      <> "["
+      <> ocamlIdentifier pn
+      <> " | `"
+      <> ocamlIdentifierNs n
+      <> "]"
+  textToOCamlType n@(Name ns _) (Just pn) =
+    typeDeclText n
+      <> "["
+      <> nsOCamlIdentifier ns pn
+      <> " | `"
+      <> ocamlIdentifierNs n
+      <> "]"
 
-  textToOCamlType :: Text -> Maybe Text -> Text
-  textToOCamlType t Nothing = typeDeclText t <> "[`" <> t <> "]"
-  textToOCamlType t (Just "object_") =
-    typeDeclText t <> "[`giu | `" <> t <> "]"
-  textToOCamlType t (Just parentName) =
-    typeDeclText t <> "[" <> parentName <> " | `" <> t <> "]"
+  typeDeclText :: Name -> Text
+  typeDeclText n = "type " <> ocamlIdentifier n <> " = "
 
 typeAs :: [Name] -> Text
-typeAs names = T.unlines $ cosooo <$> names
+typeAs names = T.unlines $ nameToClassType <$> names
  where
-  cosooo n = T.unlines
+  nameToClassType n = T.unlines
     [ "class type " <> ocamlId <> "_o = object"
     , "  method as_" <> ocamlId <> " : " <> ocamlId <> " Gobject.obj"
     , "end"
@@ -686,7 +705,7 @@ addSectionFormattedDocs section docs = modify' $ \(cgs, s) ->
 
 -- | Return a text representation of the `Code`.
 codeToText :: Code -> Text
-codeToText (Code seq) = LT.toStrict . B.toLazyText $ genCode 0 (viewl seq)
+codeToText (Code seq_) = LT.toStrict . B.toLazyText $ genCode 0 (viewl seq_)
  where
   genCode :: Int -> ViewL CodeToken -> B.Builder
   genCode _ Seq.EmptyL = mempty
@@ -844,15 +863,16 @@ writeModuleInfo verbose dirPrefix _dependencies minfo = do
   unless (isCodeEmpty $ moduleCode minfo) $ liftIO $ utf8WriteFile
     fname
     (T.unlines [haddock, code])
-  unless (isCodeEmpty $ hCode minfo) $ do
-    let hPrefix    = fromMaybe "" dirPrefix </> "include"
-        hName      = T.unpack $ moduleName $ modulePath minfo
-        hStubsFile = hPrefix </> ("GI" <> T.unpack nspace <> hName <> ".h")
-    liftIO $ do
-      createDirectoryIfMissing True hPrefix
-      utf8WriteFile
-        hStubsFile
-        (T.unlines [cImports nspace, commonCImports, genHStubs minfo])
+
+  -- The header file is generated even when hCode is empty
+  let hPrefix    = fromMaybe "" dirPrefix </> "include"
+      hName      = T.unpack $ moduleName $ modulePath minfo
+      hStubsFile = hPrefix </> ("GI" <> T.unpack nspace <> hName <> ".h")
+  liftIO $ do
+    createDirectoryIfMissing True hPrefix
+    utf8WriteFile
+      hStubsFile
+      (T.unlines [cImports nspace, commonCImports, genHStubs minfo])
 
   unless (isCodeEmpty $ cCode minfo) $ do
     let cStubsFile = modulePathToFilePath dirPrefix (modulePath minfo) ".c"

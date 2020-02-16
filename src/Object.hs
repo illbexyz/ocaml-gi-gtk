@@ -27,7 +27,10 @@ import           Properties                     ( genObjectProperties
 import           Signal                         ( genSignal
                                                 , genGSignal
                                                 )
-import           Files                          ( excludeFiles )
+import           Files                          ( excludeFiles
+                                                , noCheckMacro
+                                                , noCType
+                                                )
 
 isSetterOrGetter :: Object -> Method -> Bool
 isSetterOrGetter o m =
@@ -38,21 +41,26 @@ isSetterOrGetter o m =
                 && any (`T.isSuffixOf` mName) propNames
 
 genGObjectCasts :: Name -> Text -> Text -> CodeGen ()
-genGObjectCasts n ctype checkMacro = unless (n `elem` excludeFiles) $ do
-  hline
-    ("#define " <> objectVal n <> "(val) check_cast(" <> checkMacro <> ", val)")
-  -- hline $ "#define " <> nspace <> n <> "_val(" <> "val) ((" <> x <> "*) val)"
+genGObjectCasts n ctype checkMacro = unless (n `elem` noCType) $ do
+  if n `elem` noCheckMacro
+    then hline $ "#define " <> objectVal n <> "(val) ((" <> ctype <> "*) val)"
+    else
+      hline
+      $  "#define "
+      <> objectVal n
+      <> "(val) check_cast("
+      <> checkMacro
+      <> ", val)"
+
   hline $ "#define " <> valObject n <> " Val_GAnyObject"
   cline ("Make_Val_option(" <> ctype <> "," <> valObject n <> ")")
   hline ("value " <> valOptObject n <> " (" <> ctype <> "*);")
-  addCDep (namespace n <> name n)
 
 genSignalClass :: Name -> Object -> CodeGen ()
 genSignalClass n o = do
   parents <- instanceTree n
 
-  let parent    = head parents
-      ocamlName = ocamlIdentifier n
+  let ocamlName = ocamlIdentifier n
 
   gline $ "and " <> ocamlName <> "_signals obj = object (self)"
 
@@ -60,16 +68,19 @@ genSignalClass n o = do
   --       only when every lib can be generated, otherwise the parent class
   --       is not available.
   --       Then the (Name "Gtk" _) case can be removed 
-  parentClass <- nsOCamlClass parent
-  let parentSignal = case head parents of
-        Name "Gtk"       "Widget" -> "GObj.widget_signals_impl"
-        Name "GObject"   "Object" -> "[_] GObj.gobject_signals"
-        Name "Gtk"       _        -> parentClass <> "_signals"
-        Name "GtkSource" _        -> parentClass <> "_signals"
-        _                         -> "[_] GObj.gobject_signals"
-        -- _                       -> parentClass <> "_signals" 
+  case parents of
+    []           -> return ()
+    (parent : _) -> do
+      parentClass <- nsOCamlClass parent
+      let parentSignal = case head parents of
+            Name "Gtk"       "Widget" -> "GObj.widget_signals_impl"
+            Name "GObject"   "Object" -> "[_] GObj.gobject_signals"
+            Name "Gtk"       _        -> parentClass <> "_signals"
+            Name "GtkSource" _        -> parentClass <> "_signals"
+            _                         -> "[_] GObj.gobject_signals"
+            -- _                       -> parentClass <> "_signals" 
 
-  gline $ "  inherit " <> parentSignal <> " obj"
+      gline $ "  inherit " <> parentSignal <> " obj"
 
   forM_ (objSignals o) $ \s -> genGSignal s n
   gline "end"
@@ -143,12 +154,11 @@ genObject n o = do
         [] -> addType n Nothing
         _  -> addType n (Just $ head parents)
 
+      addCDep (namespace n <> name n)
       forM_ (objCType o)
         $ \ctype -> genGObjectCasts n ctype (getObjCheckMacro o)
 
-      if namespace n /= "Gtk" || n `elem` excludeFiles
-        then return ()
-        else genObject' n o ocamlName
+      if n `elem` excludeFiles then return () else genObject' n o ocamlName
 
 genObject' :: Name -> Object -> Text -> CodeGen ()
 genObject' n o ocamlName = do
@@ -156,39 +166,34 @@ genObject' n o ocamlName = do
   let name'      = upperName n
       nspace     = namespace n
       objectName = name n
-      parent     = head parents
 
   genCObjectTypeInit o n
 
-  gline "open Gobject"
-  gblank
+  gline $ "class " <> ocamlName <> "_skel obj = object (self)"
 
   -- TODO: The default case should be the commented one but it makes sense 
   --       only when every lib can be generated, otherwise the parent class
   --       is not available.
   --       Then the (Name "Gtk" _) case can be removed 
-  parentClass <- nsOCamlClass parent
-  let parentSkelClass = case parent of
-        Name "Gtk"       "Widget" -> "['a] GObj.widget_impl"
-        Name "GObject"   "Object" -> "GObj.gtkobj"
-        Name "Gtk"       _        -> parentClass <> "_skel"
-        Name "GtkSource" _        -> parentClass <> "_skel"
-        _                         -> "GObj.gtkobj"
-        -- _                       -> parentClass <> "_skel"
+  case parents of
+    []           -> return ()
+    (parent : _) -> do
+      parentClass <- nsOCamlClass parent
+      let parentSkelClass = case parent of
+            Name "Gtk"       "Widget" -> "['a] GObj.widget_impl"
+            Name "GObject"   "Object" -> "GObj.gtkobj"
+            Name "Gtk"       _        -> parentClass <> "_skel"
+            Name "GtkSource" _        -> parentClass <> "_skel"
+            _                         -> "GObj.gtkobj"
+            -- _                       -> parentClass <> "_skel"
+      gline $ "  inherit " <> parentSkelClass <> " obj"
 
-  gline $ "class " <> ocamlName <> "_skel obj = object (self)"
-  gline $ "  inherit " <> parentSkelClass <> " obj"
   gline
     $  "  method as_"
     <> ocamlName
     <> " = (obj :> "
     <> nsOCamlType (namespace n) n
-    <> " obj)"
-
-  line "open Gobject"
-  line "open Data"
-  blank
-  blank
+    <> " Gobject.obj)"
 
   genMlTypeInit n
 
@@ -200,6 +205,8 @@ genObject' n o ocamlName = do
     line "module S = struct"
     indent $ do
       line "open GtkSignal"
+      line "open Gobject"
+      line "open Data"
       forM_ (objSignals o) $ \s -> genSignal s n
 
     line "end"
@@ -208,7 +215,7 @@ genObject' n o ocamlName = do
     $  line
     $  "let cast w : "
     <> nsOCamlType (namespace n) n
-    <> " obj = try_cast w \""
+    <> " Gobject.obj = Gobject.try_cast w \""
     <> nspace
     <> objectName
     <> "\""
@@ -217,7 +224,7 @@ genObject' n o ocamlName = do
     $  line
     $  "let create pl : "
     <> nsOCamlType (namespace n) n
-    <> " obj = GtkObject.make \""
+    <> " Gobject.obj = GtkObject.make \""
     <> nspace
     <> objectName
     <> "\" pl"
@@ -309,13 +316,14 @@ genObjectConstructor n ocamlName = do
   closedParentheses makeParents = T.replicate (length makeParents + 1) ")"
 
 genInterface :: Name -> Interface -> CodeGen ()
-genInterface n iface = unless (n `elem` excludeFiles) $ do
+genInterface n iface = do
   let name'     = upperName n
       ocamlName = escapeOCamlReserved $ camelCaseToSnakeCase (name n)
 
   -- addSectionDocumentation ToplevelSection (ifDocumentation iface)
 
   addType n Nothing
+  addCDep (namespace n <> name n)
 
   case (ifCType iface, getIfCheckMacro iface) of
     (Just ctype, Just checkMacro) -> do
@@ -324,20 +332,14 @@ genInterface n iface = unless (n `elem` excludeFiles) $ do
       genCInterfaceTypeInit iface n
     _ -> return ()
 
-  when (namespace n == "Gtk") $ do
-    line "open Gobject"
-    line "open Data"
-    blank
-
-    gline "open Gobject"
-    gblank
+  unless (n `elem` excludeFiles) $ do
     gline $ "class " <> ocamlName <> "_skel obj = object (self)"
     gline
       $  "  method as_"
       <> ocamlName
       <> " = (obj :> "
       <> nsOCamlType (namespace n) n
-      <> " obj)"
+      <> " Gobject.obj)"
     gblank
 
     isGO <- apiIsGObject n (APIInterface iface)
@@ -349,21 +351,24 @@ genInterface n iface = unless (n `elem` excludeFiles) $ do
       -- Signals
       unless (null $ ifSignals iface) $ group $ do
         line "module S = struct"
-        indent $ line "open GtkSignal"
-        indent $ forM_ (ifSignals iface) $ \s -> handleCGExc
-          ( commentLine
-          . (T.concat
-              [ "Could not generate signal "
-              , name'
-              , "::"
-              , sigName s
-              , " *)\n"
-              , "(* Error was : "
-              ] <>
+        indent $ do
+          line "open GtkSignal"
+          line "open Gobject"
+          line "open Data"
+          forM_ (ifSignals iface) $ \s -> handleCGExc
+            ( commentLine
+            . (T.concat
+                [ "Could not generate signal "
+                , name'
+                , "::"
+                , sigName s
+                , " *)\n"
+                , "(* Error was : "
+                ] <>
+              )
+            . describeCGError
             )
-          . describeCGError
-          )
-          (genSignal s n)
+            (genSignal s n)
         line "end"
 
     -- Methods
