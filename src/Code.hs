@@ -786,15 +786,19 @@ commonCImports = T.unlines
   , "#include <caml/memory.h>"
   , "#include <caml/callback.h>"
   , "#include <caml/fail.h>"
-  -- , "#include <gtksourceview/gtksource.h>"
-  , "#include \"gio_includes.h\""
-  , "#include \"gdkpixbuf_includes.h\""
-  , "#include \"pango_includes.h\""
-  , "#include \"gtk_includes.h\""
   , "#include \"wrappers.h\""
   , "#include \"ml_glib.h\""
   , "#include \"ml_gobject.h\""
   ]
+
+cImports :: Text -> Text
+cImports currLib = "#include \"" <> T.toLower currLib <> "_includes.h\""
+
+-- TODO: I'm still evaluating whether to use this function or the one above
+-- cImports :: Text -> [Text] -> Text
+-- cImports currLib dependencies = T.unlines
+--   $ map depToHeader (dependencies ++ [currLib])
+--   where depToHeader d = "#include \"" <> T.toLower d <> "_includes.h\""
 
 -- | Like `dotModulePath`, but add a "GI." prefix.
 dotWithPrefix :: ModulePath -> Text
@@ -816,8 +820,9 @@ addOutTypes types =
 -- | Write to disk the code for a module, under the given base
 -- directory. Does not write submodules recursively, for that use
 -- `writeModuleTree`.
-writeModuleInfo :: Bool -> Maybe FilePath -> ModuleInfo -> GenOutput ()
-writeModuleInfo verbose dirPrefix minfo = do
+writeModuleInfo
+  :: Bool -> Maybe FilePath -> [Text] -> ModuleInfo -> GenOutput ()
+writeModuleInfo verbose dirPrefix _dependencies minfo = do
   let _submodulePaths = map modulePath (M.elems (submodules minfo))
       -- We reexport any submodules.
       _submoduleExports = map dotWithPrefix _submodulePaths
@@ -845,7 +850,9 @@ writeModuleInfo verbose dirPrefix minfo = do
         hStubsFile = hPrefix </> ("GI" <> T.unpack nspace <> hName <> ".h")
     liftIO $ do
       createDirectoryIfMissing True hPrefix
-      utf8WriteFile hStubsFile (T.unlines [commonCImports, genHStubs minfo])
+      utf8WriteFile
+        hStubsFile
+        (T.unlines [cImports nspace, commonCImports, genHStubs minfo])
 
   unless (isCodeEmpty $ cCode minfo) $ do
     let cStubsFile = modulePathToFilePath dirPrefix (modulePath minfo) ".c"
@@ -925,18 +932,20 @@ getLibName Nothing     = ""
 
 -- | Write down the code for a module and its submodules to disk under
 -- the given base directory. It returns the list of written modules.
-writeModuleTree' :: Bool -> Maybe FilePath -> ModuleInfo -> GenOutput [Text]
-writeModuleTree' verbose dirPrefix minfo = do
-  submodulePaths <- concat
-    <$> forM (M.elems (submodules minfo)) (writeModuleTree' verbose dirPrefix)
-  writeModuleInfo verbose dirPrefix minfo
+writeModuleTree'
+  :: Bool -> Maybe FilePath -> [Text] -> ModuleInfo -> GenOutput [Text]
+writeModuleTree' verbose dirPrefix dependencies minfo = do
+  submodulePaths <- concat <$> forM
+    (M.elems (submodules minfo))
+    (writeModuleTree' verbose dirPrefix dependencies)
+  writeModuleInfo verbose dirPrefix dependencies minfo
   return (dotWithPrefix (modulePath minfo) : submodulePaths)
 
 writeModuleTree
   :: Bool -> Maybe FilePath -> ModuleInfo -> [Text] -> IO ([Text], [FilePath])
 writeModuleTree verbose dirPrefix minfo dependencies = do
   (modules, (cFiles, ocamlTypes)) <- runStateT
-    (writeModuleTree' verbose dirPrefix minfo)
+    (writeModuleTree' verbose dirPrefix dependencies minfo)
     ([], Set.empty)
   let
     prefix'     = fromMaybe "" dirPrefix

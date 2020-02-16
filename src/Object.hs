@@ -317,17 +317,17 @@ genInterface n iface = unless (n `elem` excludeFiles) $ do
 
   addType n Nothing
 
+  case (ifCType iface, getIfCheckMacro iface) of
+    (Just ctype, Just checkMacro) -> do
+      genGObjectCasts n ctype checkMacro
+      genMlTypeInit n
+      genCInterfaceTypeInit iface n
+    _ -> return ()
+
   when (namespace n == "Gtk") $ do
     line "open Gobject"
     line "open Data"
     blank
-
-    case (ifCType iface, getIfCheckMacro iface) of
-      (Just ctype, Just checkMacro) -> do
-        genGObjectCasts n ctype checkMacro
-        genMlTypeInit n
-        genCInterfaceTypeInit iface n
-      _ -> return ()
 
     gline "open Gobject"
     gblank
