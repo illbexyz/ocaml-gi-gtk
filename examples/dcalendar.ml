@@ -159,15 +159,15 @@ let create_GUI () =
 
   let vbox = VBoxG.v_box ~packing: win#add () in
   let packing = vbox#add in
-  let toolbar = ToolbarG.toolbar ~style: `TEXT ~packing () in
+  let toolbar = ToolbarG.toolbar ~toolbar_style: `TEXT ~packing () in
 
   let prev = ToolButtonG.tool_button ~label: "Prev" () in
   prev#set_tooltip_text "Show previous month";
-  toolbar#insert prev;
+  toolbar#insert prev ~-1;
 
   let next = ToolButtonG.tool_button ~label: "Next" () in
   next#set_tooltip_text "Show next month";
-  toolbar#insert next;
+  toolbar#insert next ~-1;
   
   let calendar =
     TableG.table ~homogeneous: true ~n_rows: 7 ~n_columns: 7
@@ -184,12 +184,12 @@ let create_GUI () =
 
   let date_view = LabelG.label ~justify: `CENTER ~packing () in
 
-  let text = GText.view ~editable:true ~width:70 ~height:50 ~packing () in
+  let text = TextViewG.text_view ~editable:true ~width:70 ~height:50 ~packing () in
 
   (* Controls part *)
 
   let save_text () =
-    let data = text#buffer#get_text () in
+    let data = (*XXX text#buffer#get_text ()*)"XXX TODO" in
     let key = (date.year, date.mon, date.mday) in
     Hashtbl.remove schedule key;
     if data <> "" then
@@ -198,6 +198,7 @@ let create_GUI () =
     else buttons.(date.mday - 1)#unset_plan in
 
   let restore_text () =
+(*XXX
     try
       text#buffer#set_text
  	(Hashtbl.find schedule (date.year, date.mon, date.mday));
@@ -205,6 +206,7 @@ let create_GUI () =
     with Not_found -> 
       let start,stop = text#buffer#bounds in
       text#buffer#delete ~start ~stop
+*) ()
   in
 
   let update_date_view () =

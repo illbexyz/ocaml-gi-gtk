@@ -47,6 +47,8 @@
 11. Action: #get_widget returns an option now
 
 12. GFile.filter => FileFilterG.file_filter
+13. toolbar ~style => toolbar ~toolbar_style
+    toolbar#insert f => toolbar#insert f ~-1
 
 ============= TO TEST ==================
 1. output of button.exe: is it the expected one?
@@ -57,6 +59,7 @@
    of XXX
 5. cgets.ml: what should it do?
 6. signal_override.ml: what should it do?
+7. dcalendar.ml: test after implementation finished
 
 ============= TODO (XXX) ==================
 1. radiobutton.ml: #get_group
@@ -67,6 +70,7 @@
 9. expander.ml: type mismatch (used Obj.magic)
 10. assistant_tutorial.ml: Entry is not Editable
 11. entry2.ml: Entry is not Editable
+    dcalendar.ml: TextView is not Editable
 
 GText.{view,buffer} ==> ??? (several files in too_hard_to_port)
 socket.ml: what the hell is this example trying to do?
@@ -75,6 +79,7 @@ socket.ml: what the hell is this example trying to do?
 1. action.ml: methods throwing exceptions not implemented yet
 
 ============= Bugs ==================
+-2. (dcalendar.exe:1551223): Gtk-WARNING **: 14:25:00.462: Negative content width -18 (allocation 16, extents 17x17) while allocating gadget (node button, owner GtkButton)
 -1. (cgets.exe:1421601): Gdk-WARNING **: 02:22:59.657: ../../../../../gdk/wayland/gdkselection-wayland.c:275: error reading selection buffer: Operation was cancelled
 0. (scrolledwin.exe:1306065): Gtk-CRITICAL **: 21:35:13.609: gtk_widget_grab_default: assertion 'gtk_widget_get_can_default (widget)' failed
 1. RadioButtonG get_group not implemented (GSList *)
