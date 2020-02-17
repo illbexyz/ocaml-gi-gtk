@@ -65,6 +65,7 @@
 8. seppala.ml: add_accel_group type mismatch
 9. expander.ml: type mismatch (used Obj.magic)
 10. assistant_tutorial.ml: Entry is not Editable
+11. entry2.ml: Entry is not Editable
 
 GText.{view,buffer} ==> ??? (several files in too_hard_to_port)
 socket.ml: what the hell is this example trying to do?
