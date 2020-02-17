@@ -75,6 +75,7 @@
 5. cgets.ml: what should it do?
 6. signal_override.ml: what should it do?
 7. dcalendar.ml: test after implementation finished
+8. nihongo.ml: what does it do with colors? Not working it seems
 
 ============= TODO (XXX) ==================
 1. radiobutton.ml: #get_group
@@ -91,6 +92,7 @@
     events.ml: (APIStruct) isn't implemented yet
 13. kaimono.ml: FileChooserDialog (interface not implemented?)
 14. Many XXX in Lablgtk3Compat.factory
+15. nihongo.ml: type mismatch
 
 GText.{view,buffer} ==> ??? (several files in too_hard_to_port)
 socket.ml: what the hell is this example trying to do?
@@ -113,7 +115,8 @@ socket.ml: what the hell is this example trying to do?
    28 | let sc = HScaleG.h_scale ~adjustment:adj ~draw_value:false
    Error: This expression has type GData.adjustment
           but an expression was expected of type Types.adjustment Gtk.obj
-   - Anche in sping_button#set_adjustment
+   - Also in sping_button#set_adjustment
+   - Also text_view#buffer
 6. add_accel_group: function type mismatch
    visible in seppala.ml
 7. type mismatch

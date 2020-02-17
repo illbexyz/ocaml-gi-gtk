@@ -14,14 +14,14 @@ open GIGtk
 
 let _ = GMain.init ()
 let window = WindowG.window ()
-let box = VBoxG.vbox ~packing: window#add ()
-let text = GText.view ~packing: box#add ()
-let button = GButton.button ~label: "終了" ~packing: box#add ()
-let label = GMisc.label ~text:"これには影響しない" ~packing: box#add ()
+let box = VBoxG.v_box ~packing: window#add ()
+let text = TextViewG.text_view ~packing: box#add ()
+let button = ButtonG.button ~label: "終了" ~packing: box#add ()
+let label = LabelG.label ~label:"これには影響しない" ~packing: box#add ()
 
 let _ =
   window#connect#destroy ~callback:GMain.quit;
-  text#buffer#insert "こんにちは";
+  (new TextBufferG.text_buffer text#buffer)#insert_at_cursor "こんにちは" ~-1;(*XXX*)
   text#misc#set_size_chars ~width:20 ~height:5 ();
   let style = button#misc#style#copy in
   button#misc#set_style style;
@@ -29,5 +29,5 @@ let _ =
   button#connect#clicked ~callback:GMain.quit
 
 let _ =
-  window#show ();
+  window#misc#show ();
   GMain.main ()
