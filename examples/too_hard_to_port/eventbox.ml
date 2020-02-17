@@ -8,6 +8,8 @@
 
 (* $Id: events.ml 1347 2007-06-20 07:40:34Z guesdon $ *)
 
+open GIGtk
+
 let string_of_event x = 
  match GdkEvent.get_type x with 
   | `NOTHING -> "nothing"
@@ -57,10 +59,10 @@ let string_of_event x =
 
 let _ =
   GMain.init ();
-  let w = GWindow.window ~width:200 ~height:200 () in
+  let w = WindowG.window ~width:200 ~height:200 () in
   w#connect#destroy ~callback:GMain.quit ;
 
-  let eb = GBin.event_box ~packing:w#add () in
+  let eb = EventBoxG.event_box ~packing:w#add () in
   eb#event#add [`ALL_EVENTS];
   eb#event#connect#any 
    (fun x -> 
@@ -83,5 +85,5 @@ let _ =
 	prerr_endline (string_of_event x);
 	false);
 
-  w#show ();
+  w#misc#show ();
   GMain.main ()
