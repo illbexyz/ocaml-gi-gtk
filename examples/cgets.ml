@@ -6,6 +6,8 @@
 (*                                                                        *)
 (**************************************************************************)
 
+open GIGtk
+
 open Printf
 
 let pr_targets targets =
@@ -50,13 +52,13 @@ let get_targets () =
 let main () =
   GMain.init ();
   (* Create the toplevel window *)
-  let window = GWindow.window ~title:"Clipboard" ~border_width:10 () in
+  let window = WindowG.window ~title:"Clipboard" ~border_width:10 () in
   window#connect#destroy ~callback:GMain.quit;
 
-  let btn = GButton.button ~label:"Get Targets" ~packing:window#add () in
+  let btn = ButtonG.button ~label:"Get Targets" ~packing:window#add () in
   btn#connect#clicked ~callback:get_targets;
 
-  window#show ();
+  window#misc#show ();
   GMain.main ()
 
 let _ = Printexc.print main ()

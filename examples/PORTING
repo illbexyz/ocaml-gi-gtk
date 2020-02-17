@@ -52,6 +52,7 @@
 3. output of assistant.exe: it is correct?
 4. assistant_tutorial is surely not working properly because
    of XXX
+5. cgets.ml: what should it do?
 
 ============= TODO (XXX) ==================
 1. radiobutton.ml: #get_group
@@ -69,6 +70,7 @@
 GText.{view,buffer} ==> ??? (several files in too_hard_to_port)
 
 ============= Bugs ==================
+-1. (cgets.exe:1421601): Gdk-WARNING **: 02:22:59.657: ../../../../../gdk/wayland/gdkselection-wayland.c:275: error reading selection buffer: Operation was cancelled
 0. (scrolledwin.exe:1306065): Gtk-CRITICAL **: 21:35:13.609: gtk_widget_grab_default: assertion 'gtk_widget_get_can_default (widget)' failed
 1. RadioButtonG get_group not implemented (GSList *)
    AboutDialog authors not implemented (TCArray)
