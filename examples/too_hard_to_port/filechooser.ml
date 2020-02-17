@@ -6,12 +6,14 @@
 (*                                                                        *)
 (**************************************************************************)
 
+open GIGtk
+
 let default d = function
   | None -> d
   | Some v -> v
 
 let all_files () =
-  let f = GFile.filter ~name:"All" () in
+  let f = FileFilterG.file_filter ~name:"All" () in
   f#add_pattern "*" ;
   f
 
@@ -21,7 +23,7 @@ let is_string_prefix s1 s2 =
   l1 <= l2 && s1 = String.sub s2 0 l1
 
 let image_filter () =
-  let f = GFile.filter ~name:"Images" () in
+  let f = FileFilterG.file_filter ~name:"Images" () in
   f#add_custom [ `MIME_TYPE ]
     (fun info ->
       let mime = List.assoc `MIME_TYPE info in
@@ -29,12 +31,12 @@ let image_filter () =
   f
 
 let text_filter () = 
-  GFile.filter 
+  FileFilterG.file_filter 
     ~name:"Caml source code" 
     ~patterns:[ "*.ml"; "*.mli"; "*.mly"; "*.mll" ] ()
 
 let ask_for_file parent =
-  let dialog = GWindow.file_chooser_dialog 
+  let dialog = FileChooserDialogG.file_chooser_dialog 
       ~action:`OPEN
       ~title:"Open File"
       ~parent () in
@@ -54,14 +56,14 @@ let ask_for_file parent =
 
 let main () =
   GMain.init ();
-  let w = GWindow.window ~title:"FileChooser demo" () in
+  let w = WindowG.window ~title:"FileChooser demo" () in
   w#connect#destroy GMain.quit ;
 
-  let b = GButton.button ~stock:`OPEN ~packing:w#add () in
+  let b = ButtonG.button ~stock:`OPEN ~packing:w#add () in
   b#connect#clicked
     (fun () -> ask_for_file w) ;
 
-  w#show () ;
+  w#misc#show () ;
   GMain.main ()
 
 let _ = main ()

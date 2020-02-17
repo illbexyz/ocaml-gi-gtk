@@ -8,12 +8,14 @@
 
 (* $Id$ *)
 
+open GIGtk
+
 (* lablgtk2 -thread -nothinit dialog-thread.ml *)
 
 let _ = GMain.init ()
-let window = GWindow.window ~border_width: 10 ()
+let window = WindowG.window ~border_width: 10 ()
 
-let button = GButton.button ~label:"Open Dialog" ~packing: window#add ()
+let button = ButtonG.button ~label:"Open Dialog" ~packing: window#add ()
 
 let mythread =
   Thread.create
@@ -25,13 +27,13 @@ let main () =
   window#connect#destroy ~callback:GMain.quit;
   button#connect#clicked ~callback:(fun () ->
     let dialog = 
-      GWindow.message_dialog ~title:"Quit ?"
+      MessageDialogG.message_dialog ~title:"Quit ?"
         ~message_type:`QUESTION ~message:"Quit the application ?"
-        ~buttons:GWindow.Buttons.yes_no ()
+        ~buttons:yes_no ()
     in match dialog#run () with
       `YES -> GMain.quit ()
     | `NO | `DELETE_EVENT -> dialog#destroy ());
-  window#show ();
+  window#misc#show ();
   GtkThread.main ()
 
 let _ = Printexc.print main ()
