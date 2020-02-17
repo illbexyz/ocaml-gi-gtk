@@ -20,6 +20,8 @@
    for button 3 is still called, and I see no way to disable that.
    But this is not really relevant to [#event#send]. *)
 
+open GIGtk
+
 let string_of_event x = 
  match GdkEvent.get_type x with 
   | `NOTHING -> "nothing"
@@ -69,7 +71,7 @@ let string_of_event x =
 
 let _ =
   GMain.init ();
-  let window = GWindow.window ~width:200 ~height:200 () in
+  let window = WindowG.window ~width:200 ~height:200 () in
   window#connect#destroy ~callback:GMain.quit ;
   window#event#add [`ALL_EVENTS];
   window#event#connect#any 
@@ -109,5 +111,5 @@ let _ =
 	true
       end
     end;
-  window#show ();
+  window#misc#show ();
   GMain.main ()

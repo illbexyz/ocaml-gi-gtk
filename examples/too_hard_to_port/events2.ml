@@ -8,11 +8,13 @@
 
 (* $Id$ *)
 
+open GIGtk
+
 (* See comments in events.ml *)
 
 let _ =
   GMain.init ();
-  let window = GWindow.window () in
+  let window = WindowG.window () in
   window#connect#destroy ~callback:GMain.quit;
 
   let text = GText.view ~width:200 ~height:100 ~packing:window#add () in
@@ -33,5 +35,5 @@ let _ =
 	true;
       end
     end;
-  window#show ();
+  window#misc#show ();
   GMain.main ()
