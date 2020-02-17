@@ -1,3 +1,7 @@
+-1. text_view: #get_window => #get_window_text_view
+    but this is a special name mangling introduced by the binding
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
 0. w#as_widget => w
    (thanks to methods always taking #class in input in place
    of class)
@@ -77,9 +81,11 @@
 4. about.ml: ~authors
 8. seppala.ml: add_accel_group type mismatch
 9. expander.ml: type mismatch (used Obj.magic)
+9. events2.ml: type mismatch (used Obj.magic)
 10. assistant_tutorial.ml: Entry is not Editable
 11. entry2.ml: Entry is not Editable
     dcalendar.ml: TextView is not Editable
+12. event2.ml: (APIStruct) isn't implemented yet
 
 GText.{view,buffer} ==> ??? (several files in too_hard_to_port)
 socket.ml: what the hell is this example trying to do?
@@ -93,6 +99,7 @@ socket.ml: what the hell is this example trying to do?
 0. (scrolledwin.exe:1306065): Gtk-CRITICAL **: 21:35:13.609: gtk_widget_grab_default: assertion 'gtk_widget_get_can_default (widget)' failed
 1. RadioButtonG get_group not implemented (GSList *)
    AboutDialog authors not implemented (TCArray)
+   TextView (APIStruct) isn't implemented yet
    UIManager.add_ui_from_string not implemented (* "Methods throwing exceptions are not implemented yet" *) (visible in action.ml)
 2. Inheritance from interfaces not implemented (e.g. Entry is an Editable)
 3. Additional constructors not implemented (e.g. Buttong.new_with_mnemonic)
