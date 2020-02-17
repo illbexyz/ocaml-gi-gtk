@@ -6,6 +6,8 @@
 (*                                                                        *)
 (**************************************************************************)
 
+open GIGtk
+
 open StdLabels
 
 (* On Windows, the channel will be set to non blocking mode. 
@@ -33,14 +35,14 @@ let channel_redirector channel callback =
 
 let () = 
   let _l = GMain.init () in
-  let w = GWindow.window ~width:300 ~height:200 () in
-  let notebook = GPack.notebook ~packing:w#add () in
+  let w = WindowG.window ~width:300 ~height:200 () in
+  let notebook = NotebookG.notebook ~packing:w#add () in
   let redirect channel name = 
     let buffer = GText.buffer () in
-    let sw = GBin.scrolled_window ~hpolicy:`AUTOMATIC ~vpolicy:`AUTOMATIC 
+    let sw = ScrolledWindowG.scrolled_window ~hpolicy:`AUTOMATIC ~vpolicy:`AUTOMATIC 
              () 
     in
-    let label = GMisc.label ~markup:name () in
+    let label = LabelG.label ~markup:name () in
     let _ = notebook#prepend_page ~tab_label:label#coerce sw#coerce in
     let _text = GText.view ~buffer ~editable:false ~packing:sw#add () in
     channel_redirector channel (fun c -> buffer#insert c; true )
@@ -63,5 +65,5 @@ let () =
                          true)
   in
   let _ = w#connect#destroy GMain.quit in
-  w#show ();
+  w#misc#show ();
   GMain.main ()

@@ -66,6 +66,8 @@
 9. expander.ml: type mismatch (used Obj.magic)
 10. assistant_tutorial.ml: Entry is not Editable
 
+GText.{view,buffer} ==> ??? (several files in too_hard_to_port)
+
 ============= Bugs ==================
 0. (scrolledwin.exe:1306065): Gtk-CRITICAL **: 21:35:13.609: gtk_widget_grab_default: assertion 'gtk_widget_get_can_default (widget)' failed
 1. RadioButtonG get_group not implemented (GSList *)
