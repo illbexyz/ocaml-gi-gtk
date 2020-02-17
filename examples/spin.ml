@@ -10,21 +10,23 @@ open GIGtk
 
 let run () =
   GMain.init ();
-  let w = DialogG.dialog  ~title:"Go to page" ~modal:true ~position:`CENTER () 
+  let w = DialogG.dialog  ~title:"Go to page" ~modal:true ~window_position:`CENTER () 
   in
-  ignore (LabelG.label ~label:"Page: " ~packing:w#vbox#add ());
+  ignore (LabelG.label ~label:"Page: " ~packing:w#get_content_area#add ());
   let sb = 
-    SpinButtonG.spin_button ~packing:w#vbox#add ~digits:0 ~numeric:true ~wrap:true ()
+    SpinButtonG.spin_button ~packing:w#get_content_area#add ~digits:0 ~numeric:true ~wrap:true ()
   in
-  sb#adjustment#set_bounds ~lower:0. ~upper:50.0 ~step_incr:1. ();
+  let adj = AdjustmentG.adjustment ~lower:0. ~upper:50.0 ~step_increment:1. () in
+  sb#set_adjustment adj#as_adjustment;
   sb#set_value 22.;
   sb#connect#wrapped (fun () -> prerr_endline "Wrapped!");
-  w#add_button_stock `OK `OK;
-  w#add_button_stock `CANCEL `CANCEL;
-  w#set_default_response `OK;
+  let encode,decode = Lablgtk3Compat.encode_decode () in
+  w#add_button (GtkStock.convert_id `OK) (encode `OK);
+  w#add_button (GtkStock.convert_id `CANCEL) (encode `CANCEL);
+  w#set_default_response (encode `OK);
   let on_ok () = Format.printf "Ok...@." ; w#destroy () in
-  match w#run with
-    | `DELETE_EVENT | `CANCEL -> w#destroy ()
+  match decode w#run with
     | `OK -> on_ok ()
+    | `DELETE_EVENT | `CANCEL -> w#destroy ()
 
 let () = run ()

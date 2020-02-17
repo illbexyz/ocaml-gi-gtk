@@ -1,5 +1,41 @@
 open GIGtk
 
+(* Dialog *)
+
+let rec list_rassoc k = function
+  | (a, b) :: _ when b = k -> a
+  | _ :: l -> list_rassoc k l
+  | [] -> raise Not_found
+
+let encode_decode () =
+ let resp = Gpointer.encode_variant GtkEnums.Conv.response_tbl in
+ let rnone = resp `NONE
+ and rreject = resp `REJECT
+ and raccept = resp `ACCEPT
+ and rdelete = resp `DELETE_EVENT
+ and rok = resp `OK
+ and rcancel = resp `CANCEL
+ and rclose = resp `CLOSE
+ and ryes = resp `YES
+ and rno = resp `NO
+ and rapply = resp `APPLY
+ and rhelp = resp `HELP in
+ let tbl = ref [rdelete, `DELETE_EVENT] in
+ let id = ref 0 in
+ let encode (v : 'a) = list_rassoc v !tbl in
+ let decode r = 
+  try 
+    List.assoc r !tbl 
+  with Not_found -> 
+    Format.eprintf 
+      "Warning: unknown response id:%d in dialog. \
+                Please report to lablgtk dev team.@." 
+      r;
+    `DELETE_EVENT in
+ encode,decode
+
+(* Table *)
+
 type expand_type = [`NONE | `X | `Y | `BOTH]
 
 let has_x : expand_type -> bool =
@@ -18,8 +54,12 @@ let attach (tbl : #TableG.table) ~left ~top ?(right=left+1) ?(bottom=top+1)
     let yoptions = if has_y expand then `EXPAND::yoptions else yoptions in
   tbl#attach w left right top bottom xoptions yoptions xpadding ypadding
 
+(* Box *)
+
 let pack (box : #BoxG.box) ?(expand=false) ?(fill=true) ?(padding=0) w =
  box#pack_start w expand fill padding
+
+(* Assistant *)
 
 let append_page (assistant : #AssistantG.assistant) ?page_type ?title ?header_image ?side_image ?complete w =
   let n = assistant#append_page w in

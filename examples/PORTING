@@ -28,6 +28,14 @@
 5. ScrolledWindow
     ~hpolicy => ~hscrollbar_policy
 
+5.5 Dialogs used polymorphic variants in place of numbers;
+    added Lablgtk3Compat.encode_decode (see spin.ml) as an
+    half-baked solution
+
+5.5. add_button_stock `OK `OK =>
+     w#add_button (GtkStock.convert_id `OK) (encode `OK)
+     (visible in spin.ml)
+
 6. a window w is not a #container, but it can be casted to it
    (e.g. in example button.ml). It used to be a #container instead.
    The problem is due to #connect: window signals inherit from container
@@ -49,6 +57,7 @@
 12. GFile.filter => FileFilterG.file_filter
 13. toolbar ~style => toolbar ~toolbar_style
     toolbar#insert f => toolbar#insert f ~-1
+14. window ~position => ~window_position
 
 ============= TO TEST ==================
 1. output of button.exe: is it the expected one?
@@ -92,6 +101,7 @@ socket.ml: what the hell is this example trying to do?
    28 | let sc = HScaleG.h_scale ~adjustment:adj ~draw_value:false
    Error: This expression has type GData.adjustment
           but an expression was expected of type Types.adjustment Gtk.obj
+   - Anche in sping_button#set_adjustment
 6. add_accel_group: function type mismatch
    visible in seppala.ml
 7. type mismatch
