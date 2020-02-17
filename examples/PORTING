@@ -47,6 +47,8 @@
 
 7. adjustments only at the low level: add #as_adjustment where there should
    be no one (e.g. counter.ml)
+7. text_buffer only at the low level: add #as_text_buffer where there should
+   be no one (e.g. gioredirect.ml)
 
 8. about.ml: run no longer takes a () (visible in dialog.ml)
 8. ProgressBar: #pulse no longer takes a ()

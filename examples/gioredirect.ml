@@ -38,14 +38,14 @@ let () =
   let w = WindowG.window ~width:300 ~height:200 () in
   let notebook = NotebookG.notebook ~packing:w#add () in
   let redirect channel name = 
-    let buffer = GText.buffer () in
-    let sw = ScrolledWindowG.scrolled_window ~hpolicy:`AUTOMATIC ~vpolicy:`AUTOMATIC 
+    let buffer = TextBufferG.text_buffer () in
+    let sw = ScrolledWindowG.scrolled_window ~hscrollbar_policy:`AUTOMATIC ~vscrollbar_policy:`AUTOMATIC 
              () 
     in
-    let label = LabelG.label ~markup:name () in
-    let _ = notebook#prepend_page ~tab_label:label#coerce sw#coerce in
-    let _text = GText.view ~buffer ~editable:false ~packing:sw#add () in
-    channel_redirector channel (fun c -> buffer#insert c; true )
+    let label = LabelG.label ~use_markup:true ~label:name () in
+    let _ = notebook#prepend_page sw (Some label) in
+    let _text = TextViewG.text_view ~buffer:buffer#as_text_buffer ~editable:false ~packing:sw#add () in
+    channel_redirector channel (fun c -> buffer#insert_at_cursor c ~-1; true )
   in	
   redirect Unix.stdout "Std Out";
   redirect Unix.stderr "Std Error";
