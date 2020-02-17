@@ -78,7 +78,6 @@ let pos = new position ~init_x:3 ~init_y:3 ~min_x:0 ~min_y:0 ~max_x:3 ~max_y:3
 open GdkKeysyms
 
 let _ =
-(*XXX
   window#event#connect#key_press ~callback:
     begin fun ev ->
       let (x0, y0) = pos#current in
@@ -101,7 +100,6 @@ let _ =
       wid1#set_text "";
       true
     end
-*) ()
 	      
 let main () = 
   window#misc#show ();

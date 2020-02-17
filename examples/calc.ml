@@ -118,7 +118,7 @@ let applet = new calculator ~packing: w#add ()
 
 let _ =
   w#connect#destroy ~callback: GMain.quit;
-  (*XXX w#event#connect#key_press
-    ~callback:(fun ev -> applet#command (GdkEvent.Key.string ev); true);*)
+  w#event#connect#key_press
+    ~callback:(fun ev -> applet#command (GdkEvent.Key.string ev); true);
   w#misc#show ();
   GMain.main ()

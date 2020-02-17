@@ -302,6 +302,7 @@ and widget : ([> Gtk.widget] as 'a) obj ->
     method composite_child : bool
     method destroy : unit -> unit
     method drag : drag_ops
+    method event : event_ops
     method events : GdkEnums.event_mask list
     method expand : bool
     method focus_on_click : bool

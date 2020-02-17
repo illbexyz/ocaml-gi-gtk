@@ -360,6 +360,7 @@ and widget obj = object (self)
   method as_widget = (obj :> Gtk.widget obj)
   method misc = new misc_ops (obj :> Gtk.widget obj)
   method drag = new drag_ops (unsafe_cast obj : Gtk.widget obj)
+  method event = new event_ops obj
   method coerce = (self :> widget)
   method destroy () = Widget.destroy obj
 end
