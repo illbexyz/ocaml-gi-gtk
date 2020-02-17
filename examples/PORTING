@@ -68,6 +68,7 @@
 10. assistant_tutorial.ml: Entry is not Editable
 
 GText.{view,buffer} ==> ??? (several files in too_hard_to_port)
+socket.ml: what the hell is this example trying to do?
 
 ============= Bugs ==================
 -1. (cgets.exe:1421601): Gdk-WARNING **: 02:22:59.657: ../../../../../gdk/wayland/gdkselection-wayland.c:275: error reading selection buffer: Operation was cancelled
