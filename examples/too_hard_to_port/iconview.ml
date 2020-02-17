@@ -6,15 +6,17 @@
 (*                                                                        *)
 (**************************************************************************)
 
+open GIGtk
+
 let files = [ 
   "gnome-fs-regular.png" ; 
   "gnome-fs-directory.png" ]
 
 let error ?parent message = 
   let w = 
-    GWindow.message_dialog ~message 
+    MessageDialogG.message_dialog ~message 
       ~message_type:`ERROR 
-      ~buttons:GWindow.Buttons.close 
+      ~buttons:WindowG.Buttons.close 
       ?parent ~destroy_with_parent:true ~show:true () in
   w#connect#response (fun _ -> w#destroy ()) ;
   ()
