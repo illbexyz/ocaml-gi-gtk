@@ -85,7 +85,8 @@
 10. assistant_tutorial.ml: Entry is not Editable
 11. entry2.ml: Entry is not Editable
     dcalendar.ml: TextView is not Editable
-12. event2.ml: (APIStruct) isn't implemented yet
+12. events2.ml: (APIStruct) isn't implemented yet
+    events.ml: (APIStruct) isn't implemented yet
 
 GText.{view,buffer} ==> ??? (several files in too_hard_to_port)
 socket.ml: what the hell is this example trying to do?
