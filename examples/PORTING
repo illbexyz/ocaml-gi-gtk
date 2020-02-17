@@ -89,6 +89,8 @@
     dcalendar.ml: TextView is not Editable
 12. events2.ml: (APIStruct) isn't implemented yet
     events.ml: (APIStruct) isn't implemented yet
+13. kaimono.ml: FileChooserDialog (interface not implemented?)
+14. Many XXX in Lablgtk3Compat.factory
 
 GText.{view,buffer} ==> ??? (several files in too_hard_to_port)
 socket.ml: what the hell is this example trying to do?

@@ -181,3 +181,47 @@ class ['a] variable x =
       ignore (set#connect ~after:false ~callback:self#real_set)
   end
 end
+
+(* Deprecated, from Gtk2 *)
+class ['a] factory
+    ?(accel_group=AccelGroupG.accel_group ())
+    ?(accel_path="<DEFAULT ROOT>/")
+    ?(accel_modi=[`CONTROL])
+    ?(accel_flags=[`VISIBLE]) (menu_shell : 'a) =
+  object (self)
+    val menu_shell : #MenuShellG.menu_shell = menu_shell
+    val group = accel_group
+    val m = accel_modi
+    val flags = (accel_flags:Gtk.Tags.accel_flag list)
+    val accel_path = accel_path
+    method menu = menu_shell
+    method accel_group = group
+    method private bind ?(modi=m) ?key ?callback (item : #MenuItemG.menu_item) label =
+      menu_shell#append item;
+      let accel_path = accel_path ^ label ^ "/" in
+      (* Default accel path value *)
+      GtkData.AccelMap.add_entry accel_path ?key ~modi:m;
+      (* Register this accel path *)
+      GtkBase.Widget.set_accel_path item#as_widget accel_path (Obj.magic accel_group#as_accel_group)(*XXX Bad type mismatch*);
+      Gaux.may callback ~f:(fun callback -> item#connect#activate ~callback)
+    method add_item ?key ?callback ?submenu label =
+      let item = MenuItemG.menu_item  (*~use_mnemonic:true*)(*XXX REQUIRES ALT. CONSTRUCTOR*) ~label () in
+      self#bind item ?key ?callback label;
+      Gaux.may (submenu : MenuG.menu option) ~f:(fun m -> item#set_submenu m#as_menu)(*XXX Type mismatch*);
+      item
+    method add_check_item ?active ?key ?callback label =
+      let item = CheckMenuItemG.check_menu_item ~label (*~use_mnemonic:true*)(*XXX*) ?active () in
+      self#bind (item : CheckMenuItemG.check_menu_item :> MenuItemG.menu_item) label ?key
+        ?callback:(Gaux.may_map callback ~f:(fun f () -> f item#active));
+      item
+    method add_radio_item ?group ?active ?key ?callback label =
+      let item = RadioMenuItemG.radio_menu_item ~label (*~use_mnemonic:true*)(*XXX*) ?group ?active () in
+      self#bind (item : RadioMenuItemG.radio_menu_item :> MenuItemG.menu_item) label ?key
+        ?callback:(Gaux.may_map callback ~f:(fun f () -> f item#active));
+      item
+    method add_separator () = SeparatorMenuItemG.separator_menu_item ~packing:menu_shell#append ()
+    method add_submenu ?key (label : string) =
+      let item = MenuItemG.menu_item (*~use_mnemonic:true*)(*XXX*) ~label () in
+      self#bind item ?key label;
+      MenuG.menu ~packing:(fun m -> item#set_submenu (Obj.magic m#as_widget))(*XXX Type mismatch*) ()
+end

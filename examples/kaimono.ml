@@ -8,6 +8,7 @@
 
 (* $Id$ *)
 
+module S = Stack
 open GIGtk
 
 open StdLabels
@@ -16,10 +17,12 @@ open Printf
 let _ = GMain.init ()
 
 let file_dialog ~title ~callback ?filename () =
+callback "foo" (*XXX
   let sel = FileChooserDialogG.file_chooser_dialog ~action:`OPEN ~title ?filename () in
-  sel#add_button_stock `CANCEL `CANCEL ;
-  sel#add_select_button_stock `OPEN `OPEN ;
-  begin match sel#run () with
+  let encode,decode = Lablgtk3Compat.encode_decode () in
+  sel#add_button (GtkStock.convert_id `CANCEL) (encode `CANCEL);
+  sel#add_button (GtkStock.convert_id `OPEN) (encode `OPEN);
+  begin match decode sel#run with
   | `OPEN -> begin
       match sel#filename with
       | Some name -> callback name
@@ -28,26 +31,26 @@ let file_dialog ~title ~callback ?filename () =
   | `DELETE_EVENT | `CANCEL -> ()
   end ;
   sel#destroy ()
+*)
 
 let w = WindowG.window ~title:"Okaimono" ()
 let vb = VBoxG.v_box ~packing:w#add ()
 
 let menubar = MenuBarG.menu_bar ~packing:(Lablgtk3Compat.pack vb) ()
-let factory = new GMenu.factory menubar
+let factory = new Lablgtk3Compat.factory menubar
 let file_menu = factory#add_submenu "File"
 let edit_menu = factory#add_submenu "Edit"
 
-let sw = GBin.scrolled_window ~height:200 ~packing:vb#add
-    ~hpolicy:`AUTOMATIC ~vpolicy:`AUTOMATIC ()
-let vp = GBin.viewport ~width:340 ~shadow_type:`NONE ~packing:sw#add ()
-let table = GPack.table ~columns:4 ~rows:256 ~packing:vp#add ()
-let _ =
-  table#focus#set_vadjustment (Some vp#vadjustment)
+let sw = ScrolledWindowG.scrolled_window ~height:200 ~packing:vb#add
+    ~hscrollbar_policy:`AUTOMATIC ~vscrollbar_policy:`AUTOMATIC ()
+let vp = ViewportG.viewport ~width:340 ~shadow_type:`NONE ~packing:sw#add ()
+let table = TableG.table ~n_columns:4 ~n_rows:256 ~packing:vp#add ()
+let _ = table#set_focus_vadjustment vp#get_vadjustment
 
 let top = ref 0
 and left = ref 0
 let add_to_table  w =
-  table#attach ~left:!left ~top:!top ~expand:`X w;
+  Lablgtk3Compat.attach table ~left:!left ~top:!top ~expand:`X w;
   incr left;
   if !left >= 4 then (incr top; left := 0)
 
@@ -56,13 +59,13 @@ let entry_list = ref []
 let add_entry () =
   let entry =
     List.map [40;200;40;60]
-      ~f:(fun width -> GEdit.entry ~packing:add_to_table ~width ())
+      ~f:(fun width -> EntryG.entry ~packing:add_to_table ~width ())
   in entry_list := entry :: !entry_list
 
 let _ =
   List.iter2 ["Number";"Name";"Count";"Price"] [40;200;40;60] ~f:
     begin fun label width ->
-      let b = GButton.button ~label ~packing:add_to_table () in
+      let b = ButtonG.button ~label ~packing:add_to_table () in
       b#misc#set_size_request ~width ()
     end;
   for i = 1 to 9 do add_entry () done
@@ -82,14 +85,14 @@ let load name =
     let ic = open_in name in
     List.iter !entry_list
       ~f:(fun l -> List.iter l ~f:(fun e -> e#set_text ""));
-    let entries = Stack.create () in
-    List.iter !entry_list ~f:(fun x -> Stack.push x entries);
+    let entries = S.create () in
+    List.iter !entry_list ~f:(fun x -> S.push x entries);
     try while true do
       let line = input_line ic in
       let fields = split ~sep:'\t' line in
       let entry =
-	try Stack.pop entries
-	with Stack.Empty ->
+	try S.pop entries
+	with S.Empty ->
 	  add_entry (); List.hd !entry_list
       in
       List.fold_left fields ~init:entry ~f:
@@ -124,7 +127,7 @@ let _ =
   w#connect#destroy ~callback:GMain.quit;
   w#event#connect#key_press ~callback:
     begin fun ev ->
-      let key = GdkEvent.Key.keyval ev and adj = vp#vadjustment in
+      let key = GdkEvent.Key.keyval ev and adj = vp#get_vadjustment in
       if key = _Page_Up then
 	adj#set_value (adj#value -. adj#page_increment)
       else if key = _Page_Down then
@@ -133,14 +136,14 @@ let _ =
       false
     end;
   w#add_accel_group factory#accel_group;
-  let ff = new GMenu.factory file_menu ~accel_group:factory#accel_group in
+  let ff = new Lablgtk3Compat.factory (file_menu :> MenuShellG.menu_shell) ~accel_group:factory#accel_group in
   ff#add_item ~key:_O "Open..."
     ~callback:(file_dialog ~title:"Open data file" ~callback:load);
   ff#add_item ~key:_S "Save..."
     ~callback:(file_dialog ~title:"Save data" ~callback:save);
   ff#add_separator ();
   ff#add_item ~key:_Q "Quit" ~callback:w#destroy;
-  let ef = new GMenu.factory edit_menu ~accel_group:factory#accel_group in
+  let ef = new Lablgtk3Compat.factory (edit_menu :> MenuShellG.menu_shell) ~accel_group:factory#accel_group in
   ef#add_item ~key:_A "Add line" ~callback:add_entry;
-  w#show ();
+  w#misc#show ();
   GMain.main ()
