@@ -8,13 +8,15 @@
 
 (* $Id$ *)
 
+open GIGtk
+
 open StdLabels
 open Printf
 
 let _ = GMain.init ()
 
 let file_dialog ~title ~callback ?filename () =
-  let sel = GWindow.file_chooser_dialog ~action:`OPEN ~title ?filename () in
+  let sel = FileChooserDialogG.file_chooser_dialog ~action:`OPEN ~title ?filename () in
   sel#add_button_stock `CANCEL `CANCEL ;
   sel#add_select_button_stock `OPEN `OPEN ;
   begin match sel#run () with
@@ -27,10 +29,10 @@ let file_dialog ~title ~callback ?filename () =
   end ;
   sel#destroy ()
 
-let w = GWindow.window ~title:"Okaimono" ()
-let vb = GPack.vbox ~packing:w#add ()
+let w = WindowG.window ~title:"Okaimono" ()
+let vb = VBoxG.v_box ~packing:w#add ()
 
-let menubar = GMenu.menu_bar ~packing:vb#pack ()
+let menubar = MenuBarG.menu_bar ~packing:(Lablgtk3Compat.pack vb) ()
 let factory = new GMenu.factory menubar
 let file_menu = factory#add_submenu "File"
 let edit_menu = factory#add_submenu "Edit"
