@@ -19,6 +19,8 @@
    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the file
    LICENSE for more details. *)
 
+open GIGtk
+
 open Cairo
 
 let two_pi = 2. *. acos(-1.)
@@ -60,11 +62,11 @@ let expose drawing_area cr =
 
 let () =
   let _ = GMain.init () in
-  let w = GWindow.window ~title:"Pango demo1" ~width:500 ~height:400 () in
+  let w = WindowG.window ~title:"Pango demo1" ~width:500 ~height:400 () in
   ignore(w#connect#destroy ~callback:GMain.quit);
 
-  let d = GMisc.drawing_area ~packing:w#add () in
+  let d = DrawingAreaG.drawing_area ~packing:w#add () in
   ignore(d#misc#connect#draw ~callback:(expose d));
 
-  w#show();
+  w#misc#show();
   GMain.main()
