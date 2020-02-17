@@ -8,13 +8,16 @@
 
 (* $Id$ *)
 
+open GIGtk
+
 open StdLabels
 
 type action = [`OPEN|`SAVE|`DELETE_EVENT|`CANCEL]
 
 let file_dialog ~(action:[`OPEN|`SAVE]) ~callback ?filename () =
+ callback "foo" (*XXX
   let dialog =
-    GWindow.file_chooser_dialog ~action:(action :> GtkEnums.file_chooser_action)
+    FileChooserDialogG.file_chooser_dialog ~action:(action :> GtkEnums.file_chooser_action)
       ~modal:true ?filename () in
   dialog#add_button_stock `CANCEL `CANCEL ;
   dialog#add_select_button_stock (action :> GtkStock.id) (action :> action)  ;
@@ -24,6 +27,7 @@ let file_dialog ~(action:[`OPEN|`SAVE]) ~callback ?filename () =
   | `DELETE_EVENT | `CANCEL -> ()
   end ;
   dialog#destroy ()
+*)
 
 let input_channel b ic =
   let buf = Bytes.create 1024 and len = ref 0 in
@@ -37,7 +41,7 @@ let with_file name ~f =
 
 
 class editor ?packing ?show () = object (self)
-  val text = GText.view ?packing ?show ()
+  val text = TextViewG.text_view ?packing ?show ()
   val mutable filename = None
 
   method text = text
@@ -47,10 +51,10 @@ class editor ?packing ?show () = object (self)
       let b = Buffer.create 1024 in
       with_file name ~f:(input_channel b);
       let s = Glib.Convert.locale_to_utf8 (Buffer.contents b) in
-      let n_buff = GText.buffer ~text:s () in
-      text#set_buffer n_buff;
+      let n_buff = TextBufferG.text_buffer ~text:s () in
+      text#set_buffer n_buff#as_text_buffer;
       filename <- Some name;
-      n_buff#place_cursor n_buff#start_iter
+      n_buff#place_cursor n_buff#get_start_iter
     with _ -> prerr_endline "Load failed"
 
   method open_file () = file_dialog ~action:`OPEN ~callback:self#load_file ()
@@ -67,7 +71,7 @@ class editor ?packing ?show () = object (self)
   method output ~file =
     try
       if Sys.file_exists file then Sys.rename file (file ^ "~");
-      let s = text#buffer#get_text () in
+      let s = new TextBufferG.text_buffer text#buffer)#get_text () in(*XXX*)
       let oc = open_out file in
       output_string oc (Glib.Convert.locale_from_utf8 s);
       close_out oc;
@@ -76,7 +80,7 @@ class editor ?packing ?show () = object (self)
 end
 
 let _ = GMain.init ()
-let window = GWindow.window ~width:500 ~height:300 ~title:"editor" ()
+let window = WindowG.window ~width:500 ~height:300 ~title:"editor" ()
 let vbox = GPack.vbox ~packing:window#add ()
 
 let menubar = GMenu.menu_bar ~packing:vbox#pack ()
@@ -96,7 +100,7 @@ open GdkKeysyms
 
 let _ =
   window#connect#destroy ~callback:GMain.quit;
-  let factory = new GMenu.factory ~accel_path:"<EDITOR2 File>/////" file_menu ~accel_group 
+  let factory = new Lablgtk3Compat.factory ~accel_path:"<EDITOR2 File>/////" file_menu ~accel_group 
   in
   factory#add_item "Open" ~key:_O ~callback:editor#open_file;
   factory#add_item "Save" ~key:_S ~callback:editor#save_file;
@@ -126,7 +130,7 @@ let _ =
       if button = 3 then begin
 	file_menu#popup ~button ~time:(GdkEvent.Button.time ev); true
       end else false);
-  window#show ();
+  window#misc#show ();
   let () = GtkData.AccelMap.load "test.accel" in
   GtkData.AccelMap.foreach
     (fun ~path ~key ~modi ~changed ->
