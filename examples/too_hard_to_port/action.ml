@@ -6,6 +6,8 @@
 (*                                                                        *)
 (**************************************************************************)
 
+open GIGtk
+
 let ui_info = "<ui>\
   <menubar name='MenuBar'>\
     <menu action='FileMenu'>\
@@ -115,33 +117,33 @@ let setup_ui window =
 	]
     ] ;
 
-  let ui_m = GAction.ui_manager () in
+  let ui_m = UIManagerG.u_i_manager () in
   ui_m#insert_action_group actions 0 ;
   window#add_accel_group ui_m#get_accel_group ;
   ui_m#add_ui_from_string ui_info ;
   
-  let box1 = GPack.vbox ~packing:window#add () in
-  box1#pack (ui_m#get_widget "/MenuBar") ;
-  box1#pack (ui_m#get_widget "/ToolBar") ;
-  GMisc.label ~text:"Type\n<alt>\nto start" 
+  let box1 = VBoxG.v_box ~packing:window#add () in
+  Lablgtk3Compat.pack box1 (Option.get (ui_m#get_widget "/MenuBar")) ;
+  Lablgtk3Compat.pack box1 (Option.get (ui_m#get_widget "/ToolBar")) ;
+  LabelG.label ~label:"Type\n<alt>\nto start" 
     ~xalign:0.5 ~yalign:0.5 
     ~width:200 ~height:200
-    ~packing:box1#pack () ;
+    ~packing:(Lablgtk3Compat.pack box1) () ;
 
-  GMisc.separator `HORIZONTAL ~packing:box1#pack () ;
+  HSeparatorG.h_separator ~packing:(Lablgtk3Compat.pack box1) () ;
 
-  let b = GButton.button ~stock:`CLOSE ~packing:box1#pack () in
+  let b = ButtonG.button ~stock:`CLOSE ~packing:(Lablgtk3Compat.pack box1) () in
   b#connect#clicked window#destroy ;
   b#misc#set_can_default true ;
   b#misc#grab_default ()
 
 let main () =
   GMain.init () ;
-  let w = GWindow.window ~title:"UI Manager" () in
+  let w = WindowG.window ~title:"UI Manager" () in
   w#connect#destroy GMain.quit ;
   setup_stock () ;
   setup_ui w ;
-  w#show () ;
+  w#misc#show () ;
   GMain.main ()
 
 let _ = main ()

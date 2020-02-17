@@ -44,6 +44,9 @@
 10. GtkButtonProps.Button.S.activate => Button.S.activate
 
 11. Assistant: #npage returns an option now
+11. Action: #get_widget returns an option now
+
+12. GFile.filter => FileFilterG.file_filter
 
 ============= TO TEST ==================
 1. output of button.exe: is it the expected one?
@@ -70,11 +73,15 @@
 GText.{view,buffer} ==> ??? (several files in too_hard_to_port)
 socket.ml: what the hell is this example trying to do?
 
+============= TOO HARD ==================
+1. action.ml: methods throwing exceptions not implemented yet
+
 ============= Bugs ==================
 -1. (cgets.exe:1421601): Gdk-WARNING **: 02:22:59.657: ../../../../../gdk/wayland/gdkselection-wayland.c:275: error reading selection buffer: Operation was cancelled
 0. (scrolledwin.exe:1306065): Gtk-CRITICAL **: 21:35:13.609: gtk_widget_grab_default: assertion 'gtk_widget_get_can_default (widget)' failed
 1. RadioButtonG get_group not implemented (GSList *)
    AboutDialog authors not implemented (TCArray)
+   UIManager.add_ui_from_string not implemented (* "Methods throwing exceptions are not implemented yet" *) (visible in action.ml)
 2. Inheritance from interfaces not implemented (e.g. Entry is an Editable)
 3. Additional constructors not implemented (e.g. Buttong.new_with_mnemonic)
 4. Adjustments only exist at the low level
