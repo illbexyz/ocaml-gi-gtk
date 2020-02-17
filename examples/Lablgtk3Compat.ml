@@ -7,6 +7,9 @@ let rec list_rassoc k = function
   | _ :: l -> list_rassoc k l
   | [] -> raise Not_found
 
+(*XXX BUGGED: it should encode enum GtkResponseType using numbers from -1 to -12
+and the same used by C because "MessageDialogG.message_dialog ~buttons" expects
+this behaviour. Moreover one cannot add the buttons later to MessageDialogs*)
 let encode_decode () =
  let resp = Gpointer.encode_variant GtkEnums.Conv.response_tbl in
  let rnone = resp `NONE

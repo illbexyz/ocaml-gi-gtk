@@ -25,14 +25,19 @@ let mythread =
 let main () =
   Glib.Timeout.add ~ms:100 ~callback:GtkThread.do_jobs;
   window#connect#destroy ~callback:GMain.quit;
+(*XXX BUGGED: it should encode enum GtkResponseType using numbers from -1 to -12
+and the same used by C because "MessageDialogG.message_dialog ~buttons" expects
+this behaviour. Moreover one cannot add the buttons later to MessageDialogs*)
+  let encode,decode = Lablgtk3Compat.encode_decode () in
   button#connect#clicked ~callback:(fun () ->
     let dialog = 
       MessageDialogG.message_dialog ~title:"Quit ?"
-        ~message_type:`QUESTION ~message:"Quit the application ?"
-        ~buttons:yes_no ()
-    in match dialog#run () with
-      `YES -> GMain.quit ()
-    | `NO | `DELETE_EVENT -> dialog#destroy ());
+        ~message_type:`QUESTION ~text:"Quit the application ?"
+        ~buttons:`YES_NO () in
+    match decode dialog#run with
+      `YES -> prerr_endline "Yes"; GMain.quit ()
+    | `NO -> prerr_endline "No"; dialog#destroy ()
+    | `DELETE_EVENT -> prerr_endline "Delete"; dialog#destroy ());
   window#misc#show ();
   GtkThread.main ()
 

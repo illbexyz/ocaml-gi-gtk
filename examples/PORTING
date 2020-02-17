@@ -115,6 +115,11 @@ socket.ml: what the hell is this example trying to do?
             GIGdkPixbuf.Types.pixbuf = [ `giu | `pixbuf ] 
           The first variant type does not allow tag(s) `giu
    visible in expander.ml
+8. (*XXX BUGGED: it should encode enum GtkResponseType using numbers from -1 to -12
+and the same used by C because "MessageDialogG.message_dialog ~buttons" expects
+this behaviour. Moreover one cannot add the buttons later to MessageDialogs*)
+   visible in dialog_thread.ml
+
 
 
 ============= Notes ==================
