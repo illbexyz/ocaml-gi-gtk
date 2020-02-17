@@ -10,9 +10,11 @@
 
 (* これを実行する前にLC_ALL=ja_JP.EUCなどと指定しなければならない *)
 
+open GIGtk
+
 let _ = GMain.init ()
-let window = GWindow.window ()
-let box = GPack.vbox ~packing: window#add ()
+let window = WindowG.window ()
+let box = VBoxG.vbox ~packing: window#add ()
 let text = GText.view ~packing: box#add ()
 let button = GButton.button ~label: "終了" ~packing: box#add ()
 let label = GMisc.label ~text:"これには影響しない" ~packing: box#add ()
