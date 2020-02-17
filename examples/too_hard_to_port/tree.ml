@@ -8,6 +8,8 @@
 
 (* $Id$ *)
 
+open GIGtk
+
 open StdLabels
 open Gobject.Data
 
@@ -17,7 +19,7 @@ let author = cols#add string
 let checked = cols#add boolean
 
 let create_model () =
-  let store = GTree.tree_store cols in
+  let store = TreeStoreG.tree_store cols in
   let row = store#append () in
   store#set ~row ~column:title "The Art of Computer Programming";
   store#set ~row ~column:author "Donald E. Knuth";
@@ -33,16 +35,16 @@ let create_model () =
 let main () =
   GMain.init ();
   let model = create_model () in
-  let window = GWindow.window () in
+  let window = WindowG.window () in
   window#connect#destroy ~callback:GMain.quit;
-  let view = GTree.view ~model ~packing:window#add () in
-  let col = GTree.view_column ~title:"Title" ()
+  let view = TreeViewG.tree_view ~model ~packing:window#add () in
+  let col = TreeViewColumnG.tree_view_column ~title:"Title" ()
       ~renderer:(GTree.cell_renderer_text[], ["text",title]) in
   view#append_column col;
-  let col = GTree.view_column ~title:"Author" ()
+  let col = TreeViewColumnG.tree_view_column ~title:"Author" ()
       ~renderer:(GTree.cell_renderer_text[], ["text",author]) in
   view#append_column col;
-  let col = GTree.view_column ~title:"Checked-out" ()
+  let col = TreeViewColumnG.tree_view_column ~title:"Checked-out" ()
       ~renderer:(GTree.cell_renderer_text[], ["text",checked]) in
   view#append_column col;
   view#selection#connect#after#changed ~callback:
@@ -56,7 +58,7 @@ let main () =
        prerr_endline "Row activated";
        let it = model#get_iter path in
        assert (model#iter_is_valid it);
-       model#clear ();
+       model#clear;
     );
 
   (* Seems to be inverted *)
@@ -79,7 +81,7 @@ let main () =
        else (Format.printf "Collapse NOT allowed@."; 
                               allow_collapse := true; 
                               false));
-  window#show ();
+  window#misc#show ();
   GMain.main ()
 
 let () = main ()
