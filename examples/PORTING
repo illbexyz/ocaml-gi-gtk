@@ -56,6 +56,7 @@
 4. assistant_tutorial is surely not working properly because
    of XXX
 5. cgets.ml: what should it do?
+6. signal_override.ml: what should it do?
 
 ============= TODO (XXX) ==================
 1. radiobutton.ml: #get_group
