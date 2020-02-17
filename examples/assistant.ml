@@ -25,7 +25,7 @@ let main () =
     ~label:"BYE" ~packing:box#add () 
   in
   button#set_uri "GHHHHH";
-  Format.printf "Got:%a@." GUtil.print_widget button;
+  Format.printf "Got:%a@." Lablgtk3Compat.GUtil.print_widget button;
   button#connect#activate_link
     (fun () -> Format.printf "Got url '%s'@." button#uri;   button#set_uri "AGAIN");
   assistant#connect#close GMain.quit;

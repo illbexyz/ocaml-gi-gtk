@@ -28,7 +28,7 @@ let adj =
 let sc = HScaleG.h_scale ~adjustment:(adj#as_adjustment) ~draw_value:false
     ~packing:vb#add ()
 
-let counter = new GUtil.variable 0
+let counter = new Lablgtk3Compat.GUtil.variable 0
 
 let _ =
   decB#connect#clicked
