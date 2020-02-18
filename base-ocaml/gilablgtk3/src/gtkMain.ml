@@ -66,9 +66,9 @@ module Main = struct
 end
 
 module Grab = struct
-  external add : [>`widget] obj -> unit = "ml_gtk_grab_add"
-  external remove : [>`widget] obj -> unit = "ml_gtk_grab_remove"
-  external get_current : unit -> widget obj= "ml_gtk_grab_get_current"
+  external add : [>`widget] Gobject.obj -> unit = "ml_gtk_grab_add"
+  external remove : [>`widget] Gobject.obj -> unit = "ml_gtk_grab_remove"
+  external get_current : unit -> widget Gobject.obj= "ml_gtk_grab_get_current"
 end
 
 module Event = struct
@@ -79,9 +79,9 @@ module Event = struct
   external get_current : unit -> GdkEvent.any
     = "ml_gtk_get_current_event"
   (* May raise Gpointer.Null *)
-  external get_widget : 'a Gdk.event -> widget obj
+  external get_widget : 'a Gdk.event -> widget Gobject.obj
     = "ml_gtk_get_event_widget"
-  external propagate : [> `widget] obj -> 'a Gdk.event -> unit
+  external propagate : [> `widget] Gobject.obj -> 'a Gdk.event -> unit
     = "ml_gtk_propagate_event"
 end
 

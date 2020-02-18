@@ -34,9 +34,9 @@ end
 
 (** {3 GObject} *)
 
-class gobject_ops : 'a obj ->
+class gobject_ops : 'a Gobject.obj ->
   object
-    val obj : 'a obj
+    val obj : 'a Gobject.obj
     method get_oid : int
     method get_type : string
     method disconnect : GtkSignal.id -> unit
@@ -48,9 +48,9 @@ class gobject_ops : 'a obj ->
     method thaw_notify : unit -> unit
   end
 
-class ['a] gobject_signals : 'a obj ->
+class ['a] gobject_signals : 'a Gobject.obj ->
   object ('b)
-    val obj : 'a obj
+    val obj : 'a Gobject.obj
     val after : bool
     method after : 'b
     method private connect :
@@ -62,15 +62,15 @@ class ['a] gobject_signals : 'a obj ->
 (** {3 GtkObject} *)
 
 class type ['a] objvar = object
-  val obj : 'a obj
+  val obj : 'a Gobject.obj
   (* needed for pre 3.10
-  method private obj : 'a obj
+  method private obj : 'a Gobject.obj
   *)
 end
 
-class gtkobj : 'a obj ->
+class gtkobj : 'a Gobject.obj ->
   object
-    val obj : 'a obj
+    val obj : 'a Gobject.obj
     method get_oid : int
   end
 
@@ -79,7 +79,7 @@ class type gtkobj_signals =
 
 (** {3 GtkWidget} *)
 
-class event_signals : [> widget] obj ->
+class event_signals : [> widget] Gobject.obj ->
   object ('a)
     method after : 'a
     method any :
@@ -125,7 +125,7 @@ class event_signals : [> widget] obj ->
 	callback:(GdkEvent.WindowState.t -> bool) -> GtkSignal.id
   end
 
-class event_ops : [> widget] obj ->
+class event_ops : [> widget] Gobject.obj ->
   object
     method add : Gdk.Tags.event_mask list -> unit
     method connect : event_signals
@@ -197,7 +197,7 @@ class selection_context :
 
 (** @gtkdoc gtk gtk-Drag-and-Drop *)
 
-class drag_ops : Gtk.widget obj ->
+class drag_ops : Gtk.widget Gobject.obj ->
   object
     method connect : drag_signals
     method dest_set :
@@ -214,10 +214,10 @@ class drag_ops : Gtk.widget obj ->
   end
 
 (** @gtkdoc gtk GtkWidget *)
-and misc_ops : Gtk.widget obj ->
+and misc_ops : Gtk.widget Gobject.obj ->
   object
     inherit gobject_ops
-    val obj : Gtk.widget obj
+    val obj : Gtk.widget Gobject.obj
     method activate : unit -> bool
     method add_accelerator : 'a.
       sgn:('a, unit -> unit) GtkSignal.t ->
@@ -290,12 +290,12 @@ and misc_ops : Gtk.widget obj ->
   end
 
 (** @gtkdoc gtk GtkWidget *)
-and widget : ([> Gtk.widget] as 'a) obj ->
+and widget : ([> Gtk.widget] as 'a) Gobject.obj ->
   object
     inherit gtkobj
-    val obj : 'a obj
+    val obj : 'a Gobject.obj
     method app_paintable : bool
-    method as_widget : Gtk.widget obj
+    method as_widget : Gtk.widget Gobject.obj
     method can_default : bool
     method can_focus : bool
     method coerce : widget
@@ -326,7 +326,7 @@ and widget : ([> Gtk.widget] as 'a) obj ->
     method name : string
     method no_show_all : bool
     method opacity : float
-    method parent : Gtk.container Gtk.obj option
+    method parent : Gtk.container Gobject.obj option
     method receives_default : bool
     method scale_factor : int
     method sensitive : bool
@@ -354,7 +354,7 @@ and widget : ([> Gtk.widget] as 'a) obj ->
     method set_name : string -> unit
     method set_no_show_all : bool -> unit
     method set_opacity : float -> unit
-    method set_parent : Gtk.container Gtk.obj option -> unit
+    method set_parent : Gtk.container Gobject.obj option -> unit
     method set_receives_default : bool -> unit
     method set_sensitive : bool -> unit
     method set_style : Gtk.style -> unit
@@ -376,7 +376,7 @@ and widget : ([> Gtk.widget] as 'a) obj ->
   end
 
 (** @gtkdoc gtk GtkWidget *)
-and misc_signals : Gtk.widget obj ->
+and misc_signals : Gtk.widget Gobject.obj ->
   object ('b)
     inherit gtkobj_signals
     method destroy : callback:(unit -> unit) -> GtkSignal.id
@@ -417,7 +417,7 @@ and drag_context :
 
 (** @gtkdoc gtk gtk-Drag-and-Drop *)
 and drag_signals :
-  Gtk.widget obj ->
+  Gtk.widget Gobject.obj ->
   object ('a)
     method after : 'a
     method beginning :
@@ -444,7 +444,7 @@ and drag_signals :
   end
 
 (** @gtkdoc gtk GtkWidget *)
-class ['a] widget_impl : ([> Gtk.widget] as 'a) obj ->
+class ['a] widget_impl : ([> Gtk.widget] as 'a) Gobject.obj ->
   object
     inherit widget
     inherit ['a] objvar
@@ -458,22 +458,22 @@ class type widget_signals =
   end
 
 (** @gtkdoc gtk GtkWidget *)
-class widget_signals_impl : ([> Gtk.widget] as 'a) obj ->
+class widget_signals_impl : ([> Gtk.widget] as 'a) Gobject.obj ->
   object
     inherit ['a] gobject_signals
     inherit widget_signals
   end
 
 (** @gtkdoc gtk GtkWidget *)
-class widget_full : ([> Gtk.widget] as 'a) obj ->
+class widget_full : ([> Gtk.widget] as 'a) Gobject.obj ->
   object
     inherit widget
-    val obj : 'a obj
+    val obj : 'a Gobject.obj
     method connect : widget_signals
   end
 
 (** @gtkdoc gtk GtkWidget *)
-val as_widget : widget -> Gtk.widget obj
+val as_widget : widget -> Gtk.widget Gobject.obj
 
 val pack_return :
     (#widget as 'a) ->

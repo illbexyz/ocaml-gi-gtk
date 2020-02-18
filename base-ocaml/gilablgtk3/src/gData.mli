@@ -29,7 +29,7 @@ open Gtk
 (** {3 GtkAdjustement} *)
 
 (** @gtkdoc gtk GtkAdjustment *)
-class adjustment_signals : [> adjustment] obj ->
+class adjustment_signals : [> adjustment] Gobject.obj ->
   object
     inherit GObj.gtkobj_signals
     method changed : callback:(unit -> unit) -> GtkSignal.id
@@ -44,11 +44,11 @@ class adjustment_signals : [> adjustment] obj ->
 
 (** A GtkObject representing an adjustable bounded value
    @gtkdoc gtk GtkAdjustment *)
-class adjustment : Gtk.adjustment obj ->
+class adjustment : Gtk.adjustment Gobject.obj ->
   object
     inherit GObj.gtkobj
-    val obj : Gtk.adjustment obj
-    method as_adjustment : Gtk.adjustment obj
+    val obj : Gtk.adjustment Gobject.obj
+    method as_adjustment : Gtk.adjustment Gobject.obj
     method clamp_page : lower:float -> upper:float -> unit
     method connect : adjustment_signals
     method set_value : float -> unit
@@ -82,7 +82,7 @@ val adjustment :
   ?step_incr:float ->
   ?page_incr:float -> ?page_size:float -> unit -> adjustment
 
-val as_adjustment : adjustment -> Gtk.adjustment obj
+val as_adjustment : adjustment -> Gtk.adjustment Gobject.obj
 val conv_adjustment : adjustment Gobject.data_conv
 val conv_adjustment_option : adjustment option Gobject.data_conv
 
