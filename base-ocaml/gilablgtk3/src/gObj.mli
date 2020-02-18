@@ -440,13 +440,11 @@ and drag_signals :
   end
 
 (** @gtkdoc gtk GtkWidget *)
-(*
 class ['a] widget_impl : ([> Gtk.widget] as 'a) Gobject.obj ->
   object
     inherit widget
-    inherit ['a] objvar
+    (*inherit ['a] objvar*)
   end
-*)
 
 (** @gtkdoc gtk GtkWidget *)
 class type widget_signals =
