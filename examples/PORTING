@@ -93,6 +93,9 @@
 13. kaimono.ml: FileChooserDialog (interface not implemented?)
 14. Many XXX in Lablgtk3Compat.factory
 15. nihongo.ml: type mismatch
+16. application/browser.ml:
+     - FileChooser?
+     - #create_tag
 
 GText.{view,buffer} ==> ??? (several files in too_hard_to_port)
 socket.ml: what the hell is this example trying to do?
@@ -108,6 +111,7 @@ socket.ml: what the hell is this example trying to do?
    AboutDialog authors not implemented (TCArray)
    TextView (APIStruct) isn't implemented yet
    UIManager.add_ui_from_string not implemented (* "Methods throwing exceptions are not implemented yet" *) (visible in action.ml)
+1.5 TextBuffer.create_tag is not generated and no comment at all in the .ml file. What happened?
 2. Inheritance from interfaces not implemented (e.g. Entry is an Editable)
 3. Additional constructors not implemented (e.g. Buttong.new_with_mnemonic)
 4. Adjustments only exist at the low level
