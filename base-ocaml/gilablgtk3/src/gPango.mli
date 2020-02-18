@@ -57,7 +57,6 @@ val font_description_from_string : string -> font_description
 class layout :
   Pango.layout ->
   object
-    val obj : Pango.layout
     method as_layout : Pango.layout
     method context_changed : unit
     method copy : layout

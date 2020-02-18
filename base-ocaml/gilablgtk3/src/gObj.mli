@@ -36,7 +36,6 @@ end
 
 class gobject_ops : 'a Gobject.obj ->
   object
-    val obj : 'a Gobject.obj
     method get_oid : int
     method get_type : string
     method disconnect : GtkSignal.id -> unit
@@ -50,7 +49,6 @@ class gobject_ops : 'a Gobject.obj ->
 
 class ['a] gobject_signals : 'a Gobject.obj ->
   object ('b)
-    val obj : 'a Gobject.obj
     val after : bool
     method after : 'b
     method private connect :
@@ -61,16 +59,16 @@ class ['a] gobject_signals : 'a Gobject.obj ->
 
 (** {3 GtkObject} *)
 
+(*
 class type ['a] objvar = object
-  val obj : 'a Gobject.obj
   (* needed for pre 3.10
   method private obj : 'a Gobject.obj
   *)
 end
+*)
 
 class gtkobj : 'a Gobject.obj ->
   object
-    val obj : 'a Gobject.obj
     method get_oid : int
   end
 
@@ -217,7 +215,6 @@ class drag_ops : Gtk.widget Gobject.obj ->
 and misc_ops : Gtk.widget Gobject.obj ->
   object
     inherit gobject_ops
-    val obj : Gtk.widget Gobject.obj
     method activate : unit -> bool
     method add_accelerator : 'a.
       sgn:('a, unit -> unit) GtkSignal.t ->
@@ -293,7 +290,6 @@ and misc_ops : Gtk.widget Gobject.obj ->
 and widget : ([> Gtk.widget] as 'a) Gobject.obj ->
   object
     inherit gtkobj
-    val obj : 'a Gobject.obj
     method app_paintable : bool
     method as_widget : Gtk.widget Gobject.obj
     method can_default : bool
@@ -444,11 +440,13 @@ and drag_signals :
   end
 
 (** @gtkdoc gtk GtkWidget *)
+(*
 class ['a] widget_impl : ([> Gtk.widget] as 'a) Gobject.obj ->
   object
     inherit widget
     inherit ['a] objvar
   end
+*)
 
 (** @gtkdoc gtk GtkWidget *)
 class type widget_signals =
@@ -468,7 +466,6 @@ class widget_signals_impl : ([> Gtk.widget] as 'a) Gobject.obj ->
 class widget_full : ([> Gtk.widget] as 'a) Gobject.obj ->
   object
     inherit widget
-    val obj : 'a Gobject.obj
     method connect : widget_signals
   end
 

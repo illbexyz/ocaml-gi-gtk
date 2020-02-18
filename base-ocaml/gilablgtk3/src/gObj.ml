@@ -49,8 +49,8 @@ module Cairo = Gdk.Cairo
 
 (* GObject *)
 
-class ['a] gobject_signals obj = object
-  val obj : 'a obj = obj
+class ['a] gobject_signals (obj : 'a obj) = object
+  (*val obj : 'a obj = obj*)
   val after = false
   method after = {< after = true >}
   method private connect : 'b. ('a,'b) GtkSignal.t -> callback:'b -> _ =
@@ -60,7 +60,6 @@ class ['a] gobject_signals obj = object
 end
 
 class gobject_ops obj = object
-  val obj = obj
   method get_oid = get_oid obj
   method get_type = Type.name (get_type obj)
   method disconnect = GtkSignal.disconnect obj
@@ -75,11 +74,12 @@ end
 
 (* GtkObject *)
 
+(*
 class type ['a] objvar =
   object val obj : 'a obj end
+*)
 
 class gtkobj obj = object
-  val obj = obj
   method get_oid = get_oid obj
 end
 
@@ -124,7 +124,7 @@ class event_signals obj = object (self)
 end
 
 class event_ops obj = object
-  val obj = (obj :> Gtk.widget obj)
+  (*val obj = (obj :> Gtk.widget obj)*)
   method add = Widget.add_events obj
   method connect = new event_signals obj
   method send : Gdk.Tags.event_type Gdk.event -> bool = Widget.event obj
@@ -203,7 +203,6 @@ class drag_signals obj = object (self)
 end
 
 and drag_ops obj = object
-  val obj = obj
   method connect = new drag_signals obj
   method dest_set ?(flags=[`ALL]) ?(actions=[]) targets =
     DnD.dest_set obj ~flags ~actions ~targets:(Array.of_list targets)
@@ -356,7 +355,7 @@ end
 
 and widget obj = object (self)
   inherit gtkobj obj
-  inherit OgtkBaseProps.widget_props
+  inherit OgtkBaseProps.widget_props obj
   method as_widget = (obj :> Gtk.widget obj)
   method misc = new misc_ops (obj :> Gtk.widget obj)
   method drag = new drag_ops (unsafe_cast obj : Gtk.widget obj)

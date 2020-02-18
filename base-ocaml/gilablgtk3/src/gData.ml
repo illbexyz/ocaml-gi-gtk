@@ -37,7 +37,7 @@ end
 
 class adjustment obj = object (self)
   inherit gtkobj obj
-  inherit adjustment_props
+  inherit adjustment_props obj
   method as_adjustment : Gtk.adjustment obj = obj
   method connect = new adjustment_signals obj
   method clamp_page = Adjustment.clamp_page obj

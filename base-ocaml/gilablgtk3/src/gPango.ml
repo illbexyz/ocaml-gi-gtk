@@ -54,7 +54,6 @@ let font_description_from_string s = new font_description (from_string s)
 open Context
 
 class layout obj = object
-  val obj = obj
   method as_layout = obj
   method copy = new layout (Layout.copy obj)
   method get_context = new context (Layout.get_context obj)

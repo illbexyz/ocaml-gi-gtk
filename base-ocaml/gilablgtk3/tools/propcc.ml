@@ -874,8 +874,7 @@ let process_file f =
                mname (if typ = "unit" then "() " else "") (camlizeM name) mname);
            *)
            (* post 3.10 *)
-           out "@ @[<hv2>class virtual %s_props = object" (camlize name);
-           out "@ val virtual obj : _ obj";
+           out "@ @[<hv2>class %s_props obj = object" (camlize name);
            List.iter wr_props
              ~f:(fun (pname, mlname, gtype, _) ->
                 out "@ @[<hv2>method set_%s =@ set %a obj@]" mlname

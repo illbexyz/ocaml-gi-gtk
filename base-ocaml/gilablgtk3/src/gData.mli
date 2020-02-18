@@ -47,7 +47,6 @@ class adjustment_signals : [> adjustment] Gobject.obj ->
 class adjustment : Gtk.adjustment Gobject.obj ->
   object
     inherit GObj.gtkobj
-    val obj : Gtk.adjustment Gobject.obj
     method as_adjustment : Gtk.adjustment Gobject.obj
     method clamp_page : lower:float -> upper:float -> unit
     method connect : adjustment_signals
