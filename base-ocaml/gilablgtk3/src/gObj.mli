@@ -472,7 +472,7 @@ val as_widget : widget -> Gtk.widget Gobject.obj
 
 val pack_return :
     (#widget as 'a) ->
-    packing:(widget -> unit) option -> show:bool option -> 'a
+    packing:('a -> unit) option -> show:bool option -> 'a
     (* To use in initializers to provide a ?packing: option *)
 
 val conv_widget : widget Gobject.data_conv

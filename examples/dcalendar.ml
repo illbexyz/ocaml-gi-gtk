@@ -158,8 +158,7 @@ let create_GUI () =
   styles.(s_planned) <- style;
 
   let vbox = VBoxG.v_box ~packing: win#add () in
-  let packing = vbox#add in
-  let toolbar = ToolbarG.toolbar ~toolbar_style: `TEXT ~packing () in
+  let toolbar = ToolbarG.toolbar ~toolbar_style: `TEXT ~packing:vbox#add () in
 
   let prev = ToolButtonG.tool_button ~label: "Prev" () in
   prev#set_tooltip_text "Show previous month";
@@ -171,7 +170,7 @@ let create_GUI () =
   
   let calendar =
     TableG.table ~homogeneous: true ~n_rows: 7 ~n_columns: 7
-      ~border_width: 10 ~row_spacing: 2 ~column_spacing: 2 ~packing () in
+      ~border_width: 10 ~row_spacing: 2 ~column_spacing: 2 ~packing:vbox#add () in
 
   Array.iteri
     ~f: (fun i wday ->
@@ -182,9 +181,9 @@ let create_GUI () =
   let buttons =
     Array.init 31 ~f: (fun i -> new date_button i calendar) in
 
-  let date_view = LabelG.label ~justify: `CENTER ~packing () in
+  let date_view = LabelG.label ~justify: `CENTER ~packing:vbox#add () in
 
-  let text = TextViewG.text_view ~editable:true ~width:70 ~height:50 ~packing () in
+  let text = TextViewG.text_view ~editable:true ~width:70 ~height:50 ~packing:vbox#add () in
 
   (* Controls part *)
 

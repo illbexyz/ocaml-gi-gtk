@@ -400,6 +400,6 @@ let conv_widget =
 
 
 let pack_return self ~packing ~show =
-  may packing ~f:(fun f -> (f (self :> widget) : unit));
+  may packing ~f:(fun f -> ((f self) : unit));
   if show <> Some false then self#misc#show ();
   self
