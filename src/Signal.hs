@@ -42,15 +42,18 @@ import           Util                           ( parenthesize
                                                 , ucFirst
                                                 , prime
                                                 )
+import           Debug.Trace
 
 argsTypeRep :: [Arg] -> ExcCodeGen [Text]
 argsTypeRep = mapM (\arg -> ocamlDataConv (mayBeNull arg) (argType arg))
 
 ocamlMarshaller :: [Arg] -> Text -> Text -> ExcCodeGen Text
 ocamlMarshaller args sigName onName = case args of
-  []    -> return "marshal_unit"
-  args' -> do
-    let sigName' = "\"" <> ucFirst onName <> "::" <> sigName <> "\""
+  [] -> return "marshal_unit"
+  _  -> do
+    when (sigName == "insert_text") $ traceShowM args
+    let args'    = filter (\arg -> direction arg == DirectionIn) args
+        sigName' = "\"" <> ucFirst onName <> "::" <> sigName <> "\""
         len      = length args'
         marsh    = "fun f -> marshal" <> T.pack (show len)
     argTypes <- argsTypeRep args'
