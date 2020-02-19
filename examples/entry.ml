@@ -35,8 +35,9 @@ let main () =
   entry#set_text "Hello";
   (* Appending text now requires getting the underlying buffer, and
    * entry#buffer is not exposed in the bindings yet *)
-  (*entry#append_text " world";*)
-  (*XXX entry#select_region ~start:0 ~stop:entry#text_length;*)
+  (new EntryBufferG.entry_buffer entry#buffer)#set_text
+   ((new EntryBufferG.entry_buffer entry#buffer)#text ^ " world");
+  entry#ieditable#select_region 0 entry#text_length;
 
   let hbox = HBoxG.h_box ~packing: vbox#add () in
 

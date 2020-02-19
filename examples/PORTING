@@ -78,7 +78,6 @@
 
 ============= TODO (XXX) ==================
 1. radiobutton.ml: #get_group
-2. entry.ml: #select_region
 3. button.ml: ~use_mnemonic ~stock
 4. about.ml: ~authors
 8. seppala.ml: add_accel_group type mismatch
