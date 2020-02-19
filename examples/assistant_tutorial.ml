@@ -18,11 +18,11 @@ open GIGtk
 
 (* If there is text in the GtkEntry, set the page as complete. Otherwise,
   stop the user from progressing the next page. *)
-let entry_changed assistant entry () = 
+let entry_changed (assistant : #AssistantG.assistant) entry () = 
   let text = entry#text in
-  let num = assistant#current_page in
-  let page = assistant#nth_page num in
-  assistant#set_page_complete page (String.length (text) > 0)
+  let num = assistant#get_current_page in
+  let page = assistant#get_nth_page num in
+  assistant#set_page_complete (Option.get page) (String.length (text) > 0)
 
 (* If the check button is toggled, set the page as complete. Otherwise,
    stop the user from progressing the next page. *)
@@ -133,7 +133,7 @@ it is time to leave!" ()
  (* Update whether pages 2 through 4 are complete based upon whether there is
     text in the GtkEntry, the check button is active, or the progress bar
     is completely filled. *)
-  (*XXX entry#connect#changed ~callback:(entry_changed assistant entry);*)
+  entry#connect#changed ~callback:(entry_changed assistant entry);
   page_2#connect#toggled ~callback:(button_toggled page_2 assistant);
   button#connect#clicked ~callback:(button_clicked button assistant progress);
   assistant#connect#cancel ~callback:(assistant_cancel assistant);

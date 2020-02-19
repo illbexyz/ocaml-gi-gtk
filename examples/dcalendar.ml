@@ -189,7 +189,7 @@ let create_GUI () =
   (* Controls part *)
 
   let save_text () =
-    let data = (*XXX text#buffer#get_text ()*)"XXX TODO" in
+    let data = (new TextBufferG.text_buffer text#buffer)#text in
     let key = (date.year, date.mon, date.mday) in
     Hashtbl.remove schedule key;
     if data <> "" then
@@ -198,15 +198,13 @@ let create_GUI () =
     else buttons.(date.mday - 1)#unset_plan in
 
   let restore_text () =
-(*XXX
     try
-      text#buffer#set_text
+      (new TextBufferG.text_buffer text#buffer)#set_text
  	(Hashtbl.find schedule (date.year, date.mon, date.mday));
       ()
     with Not_found -> 
-      let start,stop = text#buffer#bounds in
-      text#buffer#delete ~start ~stop
-*) ()
+      (*XXX let start,stop = (new TextBufferG.text_buffer text#buffer)#bounds in
+      (new TextBufferG.text_buffer text#buffer)#delete start stop*) ()
   in
 
   let update_date_view () =

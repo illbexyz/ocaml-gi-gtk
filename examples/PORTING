@@ -70,8 +70,7 @@
    same for counter.exe: maybe wrong default somewhere?
 2. output of about.exe: it seems strange
 3. output of assistant.exe: it is correct?
-4. assistant_tutorial is surely not working properly because
-   of XXX
+4. assistant_tutorial: is it working properly?
 5. cgets.ml: what should it do?
 6. signal_override.ml: what should it do?
 7. dcalendar.ml: test after implementation finished
@@ -85,10 +84,8 @@
 8. seppala.ml: add_accel_group type mismatch
 9. expander.ml: type mismatch (used Obj.magic)
 9. events2.ml: type mismatch (used Obj.magic)
-10. assistant_tutorial.ml: Entry is not Editable
-11. entry2.ml: Entry is not Editable
-    dcalendar.ml: TextView is not Editable
-12. events2.ml: (APIStruct) isn't implemented yet
+11. dcalendar.ml: (APIStruct) isn't implemented yet
+    events2.ml: (APIStruct) isn't implemented yet
     events.ml: (APIStruct) isn't implemented yet
 13. kaimono.ml: FileChooserDialog (interface not implemented?)
 14. Many XXX in Lablgtk3Compat.factory
@@ -112,7 +109,6 @@ socket.ml: what the hell is this example trying to do?
    TextView (APIStruct) isn't implemented yet
    UIManager.add_ui_from_string not implemented (* "Methods throwing exceptions are not implemented yet" *) (visible in action.ml)
 1.5 TextBuffer.create_tag is not generated and no comment at all in the .ml file. What happened?
-2. Inheritance from interfaces not implemented (e.g. Entry is an Editable)
 3. Additional constructors not implemented (e.g. Buttong.new_with_mnemonic)
 4. Adjustments only exist at the low level
    File "counter.ml", line 28, characters 37-40:
