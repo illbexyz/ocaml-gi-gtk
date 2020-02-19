@@ -6,7 +6,6 @@ module Inheritance
   , fullInterfaceSignalList
   , fullObjectMethodList
   , fullInterfaceMethodList
-  , instanceTree
   )
 where
 
@@ -21,29 +20,11 @@ import           API
 import           Code                           ( findAPIByName
                                                 , CodeGen
                                                 , commentLine
+                                                , instanceTree
                                                 )
 import           Fixups                         ( dropMovedItems )
 import           Util                           ( tshow )
 
--- | Find the parent of a given object when building the
--- instanceTree. For the purposes of the binding we do not need to
--- distinguish between GObject.Object and GObject.InitiallyUnowned.
-getParent :: API -> Maybe Name
-getParent (APIObject o) = rename $ objParent o
- where
-  rename :: Maybe Name -> Maybe Name
-  rename (Just (Name "GObject" "InitiallyUnowned")) =
-    Just (Name "GObject" "Object")
-  rename x = x
-getParent _ = Nothing
-
--- | Compute the (ordered) list of parents of the current object.
-instanceTree :: Name -> CodeGen [Name]
-instanceTree n = do
-  api <- findAPIByName n
-  case getParent api of
-    Just p  -> (p :) <$> instanceTree p
-    Nothing -> return []
 
 -- A class for qualities of an object/interface that it inherits from
 -- its ancestors. Properties and Signals are two classes of interest.

@@ -31,8 +31,8 @@ import           Code                           ( CodeGen
                                                 , getFreshTypeVariable
                                                 , currentNS
                                                 , findAPIByName
+                                                , instanceTree
                                                 )
-import           Inheritance                    ( instanceTree )
 import           Naming
 import           QualifiedNaming                ( nsOCamlClass )
 import           TypeRep
@@ -100,9 +100,9 @@ showMethodInArg (ClassType       isOption  tvar  n) = do
   currNS <- currentNS
   return
     $  addOption isOption
-    $  "(#"
-    <> nsOCamlType currNS n
-    <> "_o as '"
+    $  "("
+    <> nsOCamlO currNS n
+    <> " as '"
     <> tvar
     <> ")"
 

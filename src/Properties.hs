@@ -24,7 +24,6 @@ import           Code
 import           GObject
 import           Inheritance                    ( fullObjectPropertyList
                                                 , fullInterfacePropertyList
-                                                , instanceTree
                                                 )
 import           Naming
 import           QualifiedNaming                ( qualifiedSymbol )

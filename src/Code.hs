@@ -29,6 +29,7 @@ module Code
   , cline
   , gline
   , hline
+  , tline
   , commentLine
   , blank
   , gblank
@@ -49,7 +50,9 @@ module Code
   , currentModule
   , currentNS
   , addCDep
-  , addType
+  , getCDeps
+  , addTypeFile
+  , instanceTree
   )
 where
 
@@ -61,14 +64,10 @@ import           Data.Monoid                    ( Monoid(..)
 import           Control.Monad.Reader
 import           Control.Monad.State.Strict
 import           Control.Monad.Except
-import qualified Data.Foldable                 as F
-import           Data.Maybe                     ( fromMaybe
-                                                , catMaybes
-                                                )
+import           Data.Maybe                     ( fromMaybe )
 import qualified Data.Map.Strict               as M
 import           Data.Sequence                  ( ViewL((:<))
                                                 , viewl
-                                                , (|>)
                                                 )
 import qualified Data.Sequence                 as Seq
 import qualified Data.Semigroup                as Sem
@@ -92,32 +91,24 @@ import           Data.GI.CodeGen.ProjectInfo    ( authors
                                                 , maintainers
                                                 )
 
-import           API                            ( API
-                                                , Name(..)
-                                                , Type(..)
-                                                )
+import           API
 import {-# SOURCE #-} CtoHaskellMap             ( cToHaskellMap
                                                 , Hyperlink
                                                 )
 import           ModulePath                     ( ModulePath(..)
                                                 , dotModulePath
                                                 , (/.)
-                                                , addNamePrefix
                                                 , modulePathNS
                                                 , moduleName
                                                 )
 import           Naming                         ( ocamlIdentifier
                                                 , ocamlIdentifierNs
-                                                , nsOCamlIdentifier
+                                                , nsOCamlType
                                                 )
-import           TopologicalSort                ( getOrderedTypes )
 import           Util                           ( tshow
                                                 , terror
-                                                , padTo
                                                 , utf8WriteFile
-                                                , upFirst
                                                 )
-import           Debug.Trace
 
 -- | The generated `Code` is a sequence of `CodeToken`s.
 newtype Code = Code (Seq.Seq CodeToken)
@@ -188,7 +179,7 @@ data ModuleInfo = ModuleInfo {
     , gCode      :: Code       -- ^ OOP OCaml code
     , cCode      :: Code       -- ^ .c stubs' code
     , hCode      :: Code       -- ^ .h stubs' code
-    , types      :: Set.Set (Name, Maybe Name)
+    , tCode      :: Code       -- ^ code for the type declaration module 
     , submodules :: M.Map Text ModuleInfo -- ^ Indexed by the relative
                                           -- module name.
     , moduleDeps :: Deps -- ^ Set of dependencies for this module.
@@ -209,9 +200,9 @@ emptyModule m = ModuleInfo { modulePath       = m
                            , moduleCode       = emptyCode
                            , bootCode         = emptyCode
                            , cCode            = emptyCode
+                           , tCode            = emptyCode
                            , hCode            = emptyCode
                            , gCode            = emptyCode
-                           , types            = Set.empty
                            , submodules       = M.empty
                            , moduleDeps       = Set.empty
                            , cDeps            = Set.empty
@@ -272,9 +263,9 @@ runCodeGen
   :: BaseCodeGen e a
   -> CodeGenConfig
   -> (CGState, ModuleInfo)
-  -> (Either e (a, ModuleInfo))
-runCodeGen cg cfg state = dropCGState
-  <$> runExcept (runStateT (runReaderT cg cfg) state)
+  -> Either e (a, ModuleInfo)
+runCodeGen cg cfg state_ = dropCGState
+  <$> runExcept (runStateT (runReaderT cg cfg) state_)
  where
   dropCGState :: (a, (CGState, ModuleInfo)) -> (a, ModuleInfo)
   dropCGState (x, (_, m)) = (x, m)
@@ -285,9 +276,9 @@ cleanInfo :: ModuleInfo -> ModuleInfo
 cleanInfo info = info { moduleCode       = emptyCode
                       , submodules       = M.empty
                       , cCode            = emptyCode
+                      , tCode            = emptyCode
                       , hCode            = emptyCode
                       , gCode            = emptyCode
-                      , types            = Set.empty
                       , bootCode         = emptyCode
                       , moduleExports    = Seq.empty
                       , qualifiedImports = Set.empty
@@ -338,9 +329,9 @@ mergeInfoState oldState newState =
       newImports = qualifiedImports oldState <> qualifiedImports newState
       newCCode   = cCode oldState <> cCode newState
       newHCode   = hCode oldState <> hCode newState
+      newTCode   = tCode oldState <> tCode newState
       newGCode   = gCode oldState <> gCode newState
       newBoot    = bootCode oldState <> bootCode newState
-      newTypes   = Set.union (types oldState) (types newState)
       newDocs    = sectionDocs oldState <> sectionDocs newState
   in  oldState { moduleDeps       = newDeps
                , cDeps            = newCDeps
@@ -349,6 +340,7 @@ mergeInfoState oldState newState =
                , qualifiedImports = newImports
                , bootCode         = newBoot
                , cCode            = newCCode
+               , tCode            = newTCode
                , hCode            = newHCode
                , gCode            = newGCode
                , sectionDocs      = newDocs
@@ -364,10 +356,13 @@ mergeInfo oldInfo newInfo =
 -- module.
 addSubmodule
   :: Text -> ModuleInfo -> (CGState, ModuleInfo) -> (CGState, ModuleInfo)
-addSubmodule modName submodule (cgs, current) =
+addSubmodule mName submoduleInfo (cgs, current) =
   ( cgs
   , current
-    { submodules = M.insertWith mergeInfo modName submodule (submodules current)
+    { submodules = M.insertWith mergeInfo
+                                mName
+                                submoduleInfo
+                                (submodules current)
     }
   )
 
@@ -376,13 +371,13 @@ addSubmodule modName submodule (cgs, current) =
 -- code generator generated no code and the module does not have
 -- submodules.
 submodule' :: Text -> BaseCodeGen e () -> BaseCodeGen e ()
-submodule' modName cg = do
+submodule' mName cg = do
   cfg          <- ask
   (_, oldInfo) <- get
-  let info = emptyModule (modulePath oldInfo /. modName)
+  let info = emptyModule (modulePath oldInfo /. mName)
   case runCodeGen cg cfg (emptyCGState, info) of
     Left  e           -> throwError e
-    Right (_, smInfo) -> modify' (addSubmodule modName smInfo)
+    Right (_, smInfo) -> modify' (addSubmodule mName smInfo)
 
 -- | Run the given CodeGen in order to generate a submodule (specified
 -- an an ordered list) of the current module.
@@ -468,10 +463,10 @@ genCode cfg apis mPath cg = snd $ evalCodeGen cfg apis mPath cg
 
 -- | Mark the given dependency as used by the module.
 registerNSDependency :: Text -> CodeGen ()
-registerNSDependency name = do
+registerNSDependency depName = do
   deps <- getDeps
-  unless (Set.member name deps) $ do
-    let newDeps = Set.insert name deps
+  unless (Set.member depName deps) $ do
+    let newDeps = Set.insert depName deps
     modify' $ \(cgs, s) -> (cgs, s { moduleDeps = newDeps })
 
 -- | Return the transitive set of dependencies, i.e. the union of
@@ -583,6 +578,10 @@ tellHCode :: CodeToken -> CodeGen ()
 tellHCode c =
   modify' (\(cgs, s) -> (cgs, s { hCode = hCode s <> codeSingleton c }))
 
+tellTCode :: CodeToken -> CodeGen ()
+tellTCode c =
+  modify' (\(cgs, s) -> (cgs, s { tCode = tCode s <> codeSingleton c }))
+
 -- | Print out a (newline-terminated) line.
 line :: Text -> CodeGen ()
 line = tellCode . Line
@@ -590,6 +589,9 @@ line = tellCode . Line
 -- | Print out a (newline-terminated) line in the C stubs' file
 cline :: Text -> CodeGen ()
 cline l = cBoot (line l)
+
+tline :: Text -> CodeGen ()
+tline = tellTCode . Line
 
 -- | Print out a (newline-terminated) line in the .h stubs' file
 hline :: Text -> CodeGen ()
@@ -655,48 +657,90 @@ cBoot cg = do
   modify' (\(cgs, s) -> (cgs, s { cCode = cCode s <> code }))
   return x
 
-addType :: Name -> Maybe Name -> CodeGen ()
-addType n parentName = modify'
-  (\(cgs, s) -> (cgs, s { types = Set.insert (n, parentName) (types s) }))
-
-typeLines :: [(Name, Maybe Name)] -> Text
-typeLines s = T.unlines $ uncurry textToOCamlType <$> s
+-- | Find the parent of a given object when building the
+-- instanceTree. For the purposes of the binding we do not need to
+-- distinguish between GObject.Object and GObject.InitiallyUnowned.
+getParent' :: API -> Maybe Name
+getParent' (APIObject o) = rename $ objParent o
  where
-  textToOCamlType :: Name -> Maybe Name -> Text
-  textToOCamlType n@(Name "GObject" "Object") _ = typeDeclText n <> "[`giu]"
-  textToOCamlType n@(Name "Gtk" "Widget") _ =
-    typeDeclText n <> "[`giu | `widget]"
-  textToOCamlType n Nothing =
-    typeDeclText n <> "[`" <> ocamlIdentifierNs n <> "]"
-  textToOCamlType n (Just (Name "GObject" "Object")) =
-    typeDeclText n <> "[`giu | `" <> ocamlIdentifierNs n <> "]"
-  textToOCamlType n@(Name ns _) (Just pn@(Name pNs _)) | ns == pNs =
-    typeDeclText n
-      <> "["
-      <> ocamlIdentifier pn
-      <> " | `"
-      <> ocamlIdentifierNs n
-      <> "]"
-  textToOCamlType n@(Name ns _) (Just pn) =
-    typeDeclText n
-      <> "["
-      <> nsOCamlIdentifier ns pn
-      <> " | `"
-      <> ocamlIdentifierNs n
-      <> "]"
+  rename :: Maybe Name -> Maybe Name
+  rename (Just (Name "GObject" "InitiallyUnowned")) =
+    Just (Name "GObject" "Object")
+  rename x = x
+getParent' _ = Nothing
 
-  typeDeclText :: Name -> Text
-  typeDeclText n = "type " <> ocamlIdentifier n <> " = "
+instanceTree :: Name -> CodeGen [Name]
+instanceTree n = do
+  api <- findAPIByName n
+  case getParent' api of
+    Just p  -> (p :) <$> instanceTree p
+    Nothing -> return []
 
-typeAs :: [Name] -> Text
-typeAs names = T.unlines $ nameToClassType <$> names
- where
-  nameToClassType n = T.unlines
-    [ "class type " <> ocamlId <> "_o = object"
-    , "  method as_" <> ocamlId <> " : " <> ocamlId <> " Gobject.obj"
-    , "end"
-    ]
-    where ocamlId = ocamlIdentifier n
+addTypeFile :: Name -> CodeGen ()
+addTypeFile n = do
+  api <- findAPIByName n
+  case api of
+    APIConst     _c    -> return ()
+    APIFunction  _f    -> return ()
+    APICallback  _c    -> return ()
+    APIEnum      _enum -> return ()
+    APIFlags     _f    -> return ()
+    APIInterface _i    -> do
+      tline $ textToOCamlType n Nothing []
+      tline ""
+      tline $ nameToClassType n
+    APIObject o -> do
+      parents <- instanceTree n
+      case parents of
+        [] -> tline $ textToOCamlType n Nothing (objInterfaces o)
+        (parent : _) ->
+          tline $ textToOCamlType n (Just parent) (objInterfaces o)
+      tline ""
+      tline $ nameToClassType n
+    APIStruct _s -> tline $ textToOCamlType n Nothing []
+    APIUnion  _u -> tline $ textToOCamlType n Nothing []
+
+-- typeLines :: [(Name, Maybe Name)] -> Text
+-- typeLines s = T.unlines $ uncurry textToOCamlType <$> s
+
+textToOCamlType :: Name -> Maybe Name -> [Name] -> Text
+textToOCamlType (Name "GObject" "Object") _ _ = typeDeclText "[`giu]"
+textToOCamlType (Name "Gtk"     "Widget") _ _ = typeDeclText "[`giu | `widget]"
+textToOCamlType n Nothing ifaces =
+  typeDeclText $ "[`" <> ocamlIdentifierNs n <> ifacesTypes ifaces <> "]"
+textToOCamlType n (Just (Name "GObject" "Object")) ifaces =
+  typeDeclText $ "[`giu | `" <> ocamlIdentifierNs n <> ifacesTypes ifaces <> "]"
+textToOCamlType n@(Name ns _) (Just pn@(Name pNs _)) ifaces | ns == pNs =
+  typeDeclText
+    $  "["
+    <> nsOCamlType ns pn
+    <> " | `"
+    <> ocamlIdentifierNs n
+    <> ifacesTypes ifaces
+    <> "]"
+textToOCamlType n@(Name ns _) (Just pn) ifaces =
+  typeDeclText
+    $  "["
+    <> nsOCamlType ns pn
+    <> " | `"
+    <> ocamlIdentifierNs n
+    <> ifacesTypes ifaces
+    <> "]"
+
+ifacesTypes :: [Name] -> Text
+ifacesTypes [] = ""
+ifacesTypes xs = " | `" <> T.intercalate " | `" (map ocamlIdentifierNs xs)
+
+typeDeclText :: Text -> Text
+typeDeclText t = "type t = " <> t
+
+nameToClassType :: Name -> Text
+nameToClassType n = T.unlines
+  [ "class type " <> ocamlId <> "_o = object"
+  , "  method as_" <> ocamlId <> " : t Gobject.obj"
+  , "end"
+  ]
+  where ocamlId = ocamlIdentifier n
 
 -- | Add documentation for a given section.
 addSectionFormattedDocs :: HaddockSection -> Text -> CodeGen ()
@@ -705,56 +749,28 @@ addSectionFormattedDocs section docs = modify' $ \(cgs, s) ->
 
 -- | Return a text representation of the `Code`.
 codeToText :: Code -> Text
-codeToText (Code seq_) = LT.toStrict . B.toLazyText $ genCode 0 (viewl seq_)
+codeToText (Code seq_) = LT.toStrict . B.toLazyText $ genCode' 0 (viewl seq_)
  where
-  genCode :: Int -> ViewL CodeToken -> B.Builder
-  genCode _ Seq.EmptyL = mempty
-  genCode n (Line s :< rest) =
-    B.fromText (paddedLine n s) <> genCode n (viewl rest)
-  genCode n (Indent (Code seq) :< rest) =
-    genCode (n + 1) (viewl seq) <> genCode n (viewl rest)
-  genCode n (Group (Code seq) :< rest) =
-    genCode n (viewl seq) <> genCode n (viewl rest)
-  genCode n (IncreaseIndent :< rest) = genCode (n + 1) (viewl rest)
+  genCode' :: Int -> ViewL CodeToken -> B.Builder
+  genCode' _ Seq.EmptyL = mempty
+  genCode' n (Line s :< rest) =
+    B.fromText (paddedLine n s) <> genCode' n (viewl rest)
+  genCode' n (Indent (Code seq') :< rest) =
+    genCode' (n + 1) (viewl seq') <> genCode' n (viewl rest)
+  genCode' n (Group (Code seq') :< rest) =
+    genCode' n (viewl seq') <> genCode' n (viewl rest)
+  genCode' n (IncreaseIndent :< rest) = genCode' (n + 1) (viewl rest)
 
 -- | Pad a line to the given number of leading spaces, and add a
 -- newline at the end.
 paddedLine :: Int -> Text -> Text
 paddedLine n s = T.replicate (n * 4) " " <> s <> "\n"
 
--- | Put a (padded) comma at the end of the text.
-comma :: Text -> Text
-comma s = padTo 40 s <> ","
-
 -- | A subsection name, with an optional anchor name.
 data Subsection = Subsection { subsectionTitle  :: Text
                              , subsectionAnchor :: Maybe Text
                              , subsectionDoc    :: Maybe Text
                              } deriving (Eq, Show, Ord)
-
--- | A subsection with an anchor given by the title and @prefix:title@
--- anchor, and the given documentation.
-subsecWithPrefix :: NamedSection -> Text -> Maybe Text -> Subsection
-subsecWithPrefix mainSection title doc = Subsection
-  { subsectionTitle  = title
-  , subsectionAnchor = Just (prefix <> ":" <> title)
-  , subsectionDoc    = doc
-  }
- where
-  prefix = case mainSection of
-    MethodSection   -> "method"
-    PropertySection -> "attr"
-    SignalSection   -> "signal"
-    EnumSection     -> "enum"
-    FlagSection     -> "flag"
-
--- | User-facing name in the Haddocks for the given main section.
-mainSectionName :: NamedSection -> Text
-mainSectionName MethodSection   = "Methods"
-mainSectionName PropertySection = "Properties"
-mainSectionName SignalSection   = "Signals"
-mainSectionName EnumSection     = "Enumerations"
-mainSectionName FlagSection     = "Flags"
 
 -- | Standard fields for every module.
 standardFields :: Text
@@ -773,11 +789,11 @@ moduleHaddock (Just description) =
 -- | Format the comment with the module documentation.
 formatHaddockComment :: Text -> Text
 formatHaddockComment doc =
-  let lines = case T.lines doc of
+  let commentLines = case T.lines doc of
         [] -> []
         (first : rest) ->
           ("(* " <> first <> " *)") : map (\x -> "(* " <> x <> " *)") rest
-  in  T.unlines lines
+  in  T.unlines commentLines
 
 -- | Code for loading the needed dependencies. One needs to give the
 -- prefix for the namespace being currently generated, modules with
@@ -825,35 +841,30 @@ dotWithPrefix :: ModulePath -> Text
 dotWithPrefix mp = dotModulePath mp
 
 type CFiles = [FilePath]
-type OCamlTypes = Set.Set (Name, Maybe Name)
 
-type GenOutput = StateT (CFiles, OCamlTypes) IO
+type GenOutput = StateT CFiles IO
 
 addCFile :: FilePath -> GenOutput ()
-addCFile file = modify (\(cFiles, ocamlTypes) -> (file : cFiles, ocamlTypes))
-
-addOutTypes :: Set.Set (Name, Maybe Name) -> GenOutput ()
-addOutTypes types =
-  modify (\(cFiles, ocamlTypes) -> (cFiles, Set.union types ocamlTypes))
+addCFile file = modify (file :)
 
 -- | Write to disk the code for a module, under the given base
 -- directory. Does not write submodules recursively, for that use
 -- `writeModuleTree`.
 writeModuleInfo
   :: Bool -> Maybe FilePath -> [Text] -> ModuleInfo -> GenOutput ()
-writeModuleInfo verbose dirPrefix _dependencies minfo = do
+writeModuleInfo isVerbose dirPrefix _dependencies minfo = do
   let _submodulePaths = map modulePath (M.elems (submodules minfo))
       -- We reexport any submodules.
       _submoduleExports = map dotWithPrefix _submodulePaths
       _pkgRoot = ModulePath (take 1 (modulePathToList $ modulePath minfo))
       nspace = T.pack $ getLibName dirPrefix
-      fname = modulePathToFilePath dirPrefix (modulePath minfo) ".ml"
+      fname = modulePathToFilePath dirPrefix (modulePath minfo) ""
       dirname = takeDirectory fname
       code = codeToText (moduleCode minfo)
       _deps = importDeps _pkgRoot (Set.toList $ qualifiedImports minfo)
       haddock = moduleHaddock (M.lookup ToplevelSection (sectionDocs minfo))
 
-  when verbose $ liftIO $ putStrLn
+  when isVerbose $ liftIO $ putStrLn
     ((T.unpack . dotWithPrefix . modulePath) minfo ++ " -> " ++ fname)
 
   liftIO $ createDirectoryIfMissing True dirname
@@ -861,8 +872,12 @@ writeModuleInfo verbose dirPrefix _dependencies minfo = do
   --                                prelude, imports, deps, code])
 
   unless (isCodeEmpty $ moduleCode minfo) $ liftIO $ utf8WriteFile
-    fname
+    (fname <> ".ml")
     (T.unlines [haddock, code])
+
+  unless (isCodeEmpty $ tCode minfo) $ liftIO $ utf8WriteFile
+    (fname <> "T.ml")
+    (T.unlines [genTStubs minfo])
 
   -- The header file is generated even when hCode is empty
   let hPrefix    = fromMaybe "" dirPrefix </> "include"
@@ -886,9 +901,10 @@ writeModuleInfo verbose dirPrefix _dependencies minfo = do
     let gModuleFile = modulePathToFilePath dirPrefix gFileModulePath "G.ml"
     liftIO $ utf8WriteFile gModuleFile (T.unlines [genGModule minfo])
 
-  unless (Set.null (types minfo)) $ addOutTypes $ types minfo
+genTStubs :: ModuleInfo -> Text
+genTStubs minfo = codeToText (tCode minfo)
 
--- | Generate the .c file for the given module.
+-- | Generate the .h file for the given module.
 genHStubs :: ModuleInfo -> Text
 genHStubs minfo = codeToText (hCode minfo)
 
@@ -954,19 +970,19 @@ getLibName Nothing     = ""
 -- the given base directory. It returns the list of written modules.
 writeModuleTree'
   :: Bool -> Maybe FilePath -> [Text] -> ModuleInfo -> GenOutput [Text]
-writeModuleTree' verbose dirPrefix dependencies minfo = do
+writeModuleTree' verbose_ dirPrefix dependencies minfo = do
   submodulePaths <- concat <$> forM
     (M.elems (submodules minfo))
-    (writeModuleTree' verbose dirPrefix dependencies)
-  writeModuleInfo verbose dirPrefix dependencies minfo
+    (writeModuleTree' verbose_ dirPrefix dependencies)
+  writeModuleInfo verbose_ dirPrefix dependencies minfo
   return (dotWithPrefix (modulePath minfo) : submodulePaths)
 
 writeModuleTree
   :: Bool -> Maybe FilePath -> ModuleInfo -> [Text] -> IO ([Text], [FilePath])
-writeModuleTree verbose dirPrefix minfo dependencies = do
-  (modules, (cFiles, ocamlTypes)) <- runStateT
-    (writeModuleTree' verbose dirPrefix dependencies minfo)
-    ([], Set.empty)
+writeModuleTree verbose_ dirPrefix minfo dependencies = do
+  (modules, cFiles) <- runStateT
+    (writeModuleTree' verbose_ dirPrefix dependencies minfo)
+    []
   let
     prefix'     = fromMaybe "" dirPrefix
     libName     = getLibName dirPrefix
@@ -976,7 +992,7 @@ writeModuleTree verbose dirPrefix minfo dependencies = do
       modules'
     dirFileTuple =
       map (\cFile -> (takeDirectory cFile, T.pack $ takeBaseName cFile)) cFiles
-    cFilesMap = foldl (\map (key, file) -> M.insertWith (++) key [file] map)
+    cFilesMap = foldl (\fMap (key, file) -> M.insertWith (++) key [file] fMap)
                       M.empty
                       dirFileTuple
   forM_
@@ -986,14 +1002,6 @@ writeModuleTree verbose dirPrefix minfo dependencies = do
       let cFilenames = fromMaybe [] (M.lookup path cFilesMap)
       genDuneFile (T.pack libName) path cFilenames dependencies
     )
-
-  unless (Set.null ocamlTypes) $ do
-    let typesFile   = prefix' </> upFirst libName </> "Types.ml"
-        sortedTypes = getOrderedTypes ocamlTypes
-        typesText   = typeLines sortedTypes
-        typesAs     = typeAs $ fst <$> Set.toList ocamlTypes
-
-    liftIO $ utf8WriteFile typesFile (T.unlines [typesText, typesAs])
 
   return (modules, Set.toList modulePaths)
 

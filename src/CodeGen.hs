@@ -54,11 +54,9 @@ import           Code
 import           Callable                       ( genCCallableWrapper
                                                 , callableOCamlTypes
                                                 )
-import           Inheritance                    ( instanceTree )
 import           Signal                         ( genSignal )
 import           Naming
 import           QualifiedNaming                ( submoduleLocation )
-import           Debug.Trace
 
 
 genFunction :: Name -> Function -> CodeGen ()
@@ -99,11 +97,11 @@ genStructCasts n s = do
 -- | Generate wrapper for structures.
 genStruct :: Name -> Struct -> CodeGen ()
 genStruct n s = unless (ignoreStruct n s) $ do
-  let name' = upperName n
+  -- let name' = upperName n
   -- writeHaddock DocBeforeSymbol "Memory-managed wrapper type."
 
   -- addSectionDocumentation ToplevelSection (structDocumentation s)
-  addType n Nothing
+  addTypeFile n
 
   genStructCasts n s
 
@@ -171,7 +169,7 @@ genUnion n u = do
 
   -- addSectionDocumentation ToplevelSection (unionDocumentation u)
 
-  addType n Nothing
+  addTypeFile n
 
   genUnionCasts n u
 

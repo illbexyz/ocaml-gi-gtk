@@ -7,6 +7,7 @@ where
 
 import           Data.Text                      ( Text )
 import qualified Data.Text                     as T
+import qualified Data.Set                      as Set
 import           Control.Monad                  ( forM_
                                                 , when
                                                 , unless
@@ -17,7 +18,6 @@ import           Data.GI.GIR.BasicTypes         ( Type(TInterface) )
 import           API
 import           Code
 import           GObject
-import           Inheritance                    ( instanceTree )
 import           Method                         ( genMethod )
 import           Naming
 import           QualifiedNaming                ( nsOCamlClass )
@@ -30,6 +30,7 @@ import           Signal                         ( genSignal
 import           Files                          ( excludeFiles
                                                 , noCheckMacro
                                                 , noCType
+                                                , buggedIfaces
                                                 )
 
 isSetterOrGetter :: Object -> Method -> Bool
@@ -62,7 +63,7 @@ genSignalClass n o = do
 
   let ocamlName = ocamlIdentifier n
 
-  gline $ "and " <> ocamlName <> "_signals obj = object (self)"
+  gline $ "class " <> ocamlName <> "_signals obj = object (self)"
 
   -- TODO: The default case should be the commented one but it makes sense 
   --       only when every lib can be generated, otherwise the parent class
@@ -81,6 +82,22 @@ genSignalClass n o = do
             -- _                       -> parentClass <> "_signals" 
 
       gline $ "  inherit " <> parentSignal <> " obj"
+      forM_ (objInterfaces o) $ \iface ->
+        unless
+            (  null (objSignals o)
+            || elem iface (Set.union buggedIfaces excludeFiles)
+            )
+          $ do
+              ifaceClass <- nsOCamlClass iface
+              api        <- findAPIByName iface
+              case api of
+                APIInterface i ->
+                  unless (null $ ifSignals i)
+                    $  gline
+                    $  "  inherit! "
+                    <> ifaceClass
+                    <> "_signals obj"
+                _ -> error "this should be an interface"
 
   forM_ (objSignals o) $ \s -> genGSignal s n
   gline "end"
@@ -148,11 +165,7 @@ genObject n o = do
       let objectName = name n
           ocamlName  = escapeOCamlReserved $ camelCaseToSnakeCase objectName
 
-      parents <- instanceTree n
-
-      case parents of
-        [] -> addType n Nothing
-        _  -> addType n (Just $ head parents)
+      addTypeFile n
 
       addCDep (namespace n <> name n)
       forM_ (objCType o)
@@ -168,6 +181,8 @@ genObject' n o ocamlName = do
       objectName = name n
 
   genCObjectTypeInit o n
+
+  genSignalClass n o
 
   gline $ "class " <> ocamlName <> "_skel obj = object (self)"
 
@@ -187,6 +202,16 @@ genObject' n o ocamlName = do
             _                         -> "GObj.gtkobj"
             -- _                       -> parentClass <> "_skel"
       gline $ "  inherit " <> parentSkelClass <> " obj"
+      forM_ (objInterfaces o) $ \iface ->
+        unless (elem iface (Set.union buggedIfaces excludeFiles)) $ do
+          ifaceClass <- nsOCamlClass iface
+          gline
+            $  "  method i"
+            <> ocamlIdentifier iface
+            <> " = new "
+            <> ifaceClass
+            <> "_skel obj"
+          -- gline $ "  inherit " <> ifaceClass <> "_skel obj"
 
   gline
     $  "  method as_"
@@ -252,8 +277,6 @@ genObject' n o ocamlName = do
   gline "end"
   gblank
 
-  genSignalClass n o
-
   gline $ "and " <> ocamlName <> " obj = object (self)"
   gline $ "  inherit " <> ocamlName <> "_skel obj"
   gline $ "  method connect = new " <> ocamlName <> "_signals obj"
@@ -270,7 +293,7 @@ genObjectConstructor n ocamlName = do
   let makeParamsParents = filter (isMakeParamsParent currNS) $ reverse parents
       mkParentsNum      = length makeParamsParents
 
-  gline $ "let " <> ocamlName <> " = "
+  gline $ "let " <> ocamlName <> " = begin"
 
   forM_ (zip makeParamsParents [0 ..])
     $ \(p, idx) -> gline $ makeParamsCont p idx
@@ -290,6 +313,7 @@ genObjectConstructor n ocamlName = do
     <> ".create pl))"
     <> packShowLabels parents
     <> closedParentheses makeParamsParents
+  gline "end"
  where
   isMakeParamsParent :: Text -> Name -> Bool
   isMakeParamsParent _ (Name "GObject" "Object") = False
@@ -320,9 +344,10 @@ genInterface n iface = do
   let name'     = upperName n
       ocamlName = escapeOCamlReserved $ camelCaseToSnakeCase (name n)
 
+  isGO <- apiIsGObject n (APIInterface iface)
   -- addSectionDocumentation ToplevelSection (ifDocumentation iface)
 
-  addType n Nothing
+  addTypeFile n
   addCDep (namespace n <> name n)
 
   case (ifCType iface, getIfCheckMacro iface) of
@@ -333,6 +358,14 @@ genInterface n iface = do
     _ -> return ()
 
   unless (n `elem` excludeFiles) $ do
+    -- Generate the signal class only for GObjects
+    when isGO $ do
+      gline $ "class " <> ocamlName <> "_signals obj = object (self)"
+      gline $ "  inherit [_] GObj.gobject_signals obj"
+      forM_ (ifSignals iface) $ \s -> genGSignal s n
+      gline "end"
+      gblank
+
     gline $ "class " <> ocamlName <> "_skel obj = object (self)"
     gline
       $  "  method as_"
@@ -341,8 +374,6 @@ genInterface n iface = do
       <> nsOCamlType (namespace n) n
       <> " Gobject.obj)"
     gblank
-
-    isGO <- apiIsGObject n (APIInterface iface)
 
     when isGO $ do
       -- Properties
@@ -395,14 +426,6 @@ genInterface n iface = do
 
     gline "end"
     gblank
-
-    -- Generate the signal class only for GObjects
-    when isGO $ do
-      gline $ "and " <> ocamlName <> "_signals obj = object (self)"
-      gline $ "  inherit [_] GObj.gobject_signals obj"
-      forM_ (ifSignals iface) $ \s -> genGSignal s n
-      gline "end"
-      gblank
 
     gline $ "and " <> ocamlName <> " obj = object (self)"
     gline $ "  inherit " <> ocamlName <> "_skel obj"

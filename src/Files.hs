@@ -2,6 +2,7 @@ module Files
     ( excludeFiles
     , noCheckMacro
     , noCType
+    , buggedIfaces
     )
 where
 
@@ -17,12 +18,20 @@ noCType = S.fromList [Name "Gtk" "HeaderBarAccessible"] -- Its type isn't includ
 noCheckMacro :: Set Name
 noCheckMacro = S.fromList [Name "Pango" "Coverage"]
 
+buggedIfaces :: Set Name
+buggedIfaces = S.fromList
+    [ Name "Gtk" "TreeModel"                  -- Strange type error
+    , Name "Gtk" "CellLayout"                 -- Dependency cycle
+    , Name "Gtk" "StyleProvider"              -- Dependency cycle
+    ]
+
 excludeFiles :: Set Name
 excludeFiles = S.fromList
     [ Name "Gtk"       "HeaderBarAccessible"  -- Its type isn't included in <gtk/gtk-a11y.h>
     , Name "Gtk"       "EntryIconAccessible"  -- Bug: The GIR Parser doesn't return its CType (bug in the parser)
-    , Name "Gtk"       "TreeModelFilter"      -- Need to generate interface
+    -- , Name "Gtk"       "TreeModelFilter"      -- Need to generate interface
     , Name "Gtk"       "CellAccessibleParent" -- The get_cell_extents method uses an integer pointer which is parsed as an int
+    , Name "Gtk"       "TreeViewAccessible"   -- Depends on CellAccessibleParent
     , Name "Gtk"       "Widget"               -- We use the lablgtk one
     , Name "Pango"     "Engine"
     , Name "Pango"     "EngineShape"

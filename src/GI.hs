@@ -7,7 +7,9 @@ module GI
 where
 
 import           Control.Monad
-import           Data.Maybe                     ( fromMaybe )
+import           Data.Maybe                     ( fromMaybe
+                                                , fromJust
+                                                )
 import           Data.Text                      ( Text )
 import qualified Data.Text                     as T
 import qualified Data.Map                      as M
@@ -20,7 +22,12 @@ import           System.FilePath
 import           Data.GI.CodeGen.CabalHooks     ( TaggedOverride(..) )
 import           Data.GI.CodeGen.LibGIRepository
                                                 ( setupTypelibSearchPath )
-import           Data.Bifunctor                 ( bimap )
+import           Data.Bifunctor                 ( bimap
+                                                , first
+                                                )
+import           Data.List                      ( elemIndex
+                                                , partition
+                                                )
 
 import           API                            ( loadGIRInfo
                                                 , API
@@ -42,9 +49,6 @@ import           CodeGen                        ( genModule )
 import           Dune
 import           ModulePath                     ( toModulePath
                                                 , ModulePath(..)
-                                                )
-import           Naming                         ( escapeOCamlReserved
-                                                , camelCaseToSnakeCase
                                                 )
 import           Util                           ( utf8ReadFile
                                                 , utf8WriteFile
@@ -158,54 +162,94 @@ genBindings verbosity Library { GI.name = libName, version, overridesFile } =
 
 resolveRecursion :: FilePath -> [Text] -> IO ()
 resolveRecursion dirPrefix files = do
-  parsedClassesDecls <- forM files $ \file -> do
+  parsedDecls <- forM files $ \file -> do
     fileContent <- utf8ReadFile (dirPrefix </> T.unpack file <> ".ml")
 
     let (_opens , rest) = parseOpens fileContent
-        (classes, decl) = parseClasses rest
+        (classes, _   ) = parseClasses rest
 
-    return (classes, decl)
+    return classes
 
-  let classesRaw = map fst parsedClassesDecls
-      classesAnd =
-        head classesRaw <> T.concat (drop 1 $ map classToAnd classesRaw)
-      classes = removeRefs files classesAnd
-
-      decls   = T.concat $ map snd parsedClassesDecls
-
-  let newFilesContent = map fileToContent files
-
-  utf8WriteFile (dirPrefix </> "Recursion.ml") (T.unlines [classes, decls])
+  let allDecls        = concat parsedDecls
+      classes         = cTextToText files allDecls
+      -- classes         = ""
+      newFilesContent = map cTextToRecursion parsedDecls
+      -- decls           = T.concat $ map snd parsedDecls
+  utf8WriteFile (dirPrefix </> "Recursion.ml") classes
   forM_ (zip files newFilesContent) $ \(file, content) ->
     utf8WriteFile (dirPrefix </> T.unpack file <> ".ml") content
-
  where
-  classToAnd :: Text -> Text
-  classToAnd = T.replace "class " "and "
+  classToAnd :: Decl -> Decl
+  classToAnd ct = ct { classText = T.replace "class " "and " (classText ct) }
 
-  removeRefs :: [Text] -> Text -> Text
-  removeRefs fs classes =
-    foldl (\acc moduleName -> T.replace (moduleName <> ".") "" acc) classes fs
+  removeRefs :: [Text] -> Decl -> Decl
+  removeRefs fs cText = foldl
+    (\acc moduleName ->
+      acc { classText = T.replace (moduleName <> ".") "" (classText acc) }
+    )
+    cText
+    fs
 
-  fileToContent :: Text -> Text
-  fileToContent x = do
-    let removeG   = fst $ T.splitAt (T.length x - 1) x
-        ocamlName = escapeOCamlReserved $ camelCaseToSnakeCase removeG
+  cTextToText :: [Text] -> [Decl] -> Text
+  cTextToText _  []     = ""
+  cTextToText fs ctexts = do
+    let (signals, rest) = partition
+          (\Decl { className } -> "_signals" `T.isSuffixOf` className)
+          ctexts
+        (lets, skels) = partition ((== Let) . declType) rest
+        skels'        = head skels : drop 1 (map classToAnd skels)
     T.unlines
-      [ "class " <> ocamlName <> "_skel = Recursion." <> ocamlName <> "_skel"
-      , "class "
-      <> ocamlName
-      <> "_signals = Recursion."
-      <> ocamlName
-      <> "_signals"
-      , "class " <> ocamlName <> " = Recursion." <> ocamlName
-      , "let " <> ocamlName <> " = Recursion." <> ocamlName
-      ]
+      $  (classText <$> signals)
+      <> (classText . removeRefs fs <$> skels')
+      <> (classText . removeRefs fs <$> lets)
+
+  cTextToRecursion :: [Decl] -> Text
+  cTextToRecursion cTexts = T.unlines $ map inner cTexts
+   where
+    inner Decl { declType = Class, className }
+      | "_skel" `T.isSuffixOf` className
+      = "class " <> className <> " = Recursion." <> className
+      | "_signals" `T.isSuffixOf` className
+      = "class " <> className <> " = Recursion." <> className
+      | otherwise
+      = "class " <> className <> " = Recursion." <> className
+    inner Decl { declType = Let, className } =
+      "let " <> className <> " = Recursion." <> className
 
 parseOpens :: Text -> (Text, Text)
-parseOpens t | "open " `T.isPrefixOf` t =
-  join bimap T.unlines (splitAt 2 $ T.lines t)
-parseOpens t = ("", t)
+parseOpens t
+  | "open " `T.isPrefixOf` t = join bimap T.unlines (splitAt 2 $ T.lines t)
+  | otherwise                = ("", t)
 
-parseClasses :: Text -> (Text, Text)
-parseClasses = T.breakOn "let "
+data DeclType = Class | Let deriving (Eq, Show)
+data Decl = Decl { declType :: DeclType, className :: Text, classText :: Text } deriving (Show)
+
+parseClasses :: Text -> ([Decl], Text)
+parseClasses = parseClasses' []
+ where
+  parseClasses' :: [Decl] -> Text -> ([Decl], Text)
+  parseClasses' acc t = do
+    let (mbCText, rest) = parseClass t
+    case mbCText of
+      Nothing        -> (acc, rest)
+      Just classText -> parseClasses' (acc ++ [classText]) rest
+
+parseClass :: Text -> (Maybe Decl, Text)
+parseClass t
+  | "class " `T.isPrefixOf` t = handleClass
+    (fromJust $ T.stripPrefix "class " t)
+  | "and " `T.isPrefixOf` t = handleClass (fromJust $ T.stripPrefix "and " t)
+  | "let " `T.isPrefixOf` t = handleLet (fromJust $ T.stripPrefix "let " t)
+  | otherwise = (Nothing, t)
+ where
+  handleClass txt = first
+    (Just . Decl Class (T.strip . fst $ T.breakOn "obj " txt))
+    (parseClass' $ T.lines t)
+  handleLet txt = first
+    (Just . Decl Let (T.strip . fst $ T.breakOn " = begin" txt))
+    (parseClass' $ T.lines t)
+
+  parseClass' :: [Text] -> (Text, Text)
+  parseClass' ts = do
+    let idx = maybe 0 (+ 1) (elemIndex "end" ts)
+    bimap T.unlines (T.stripStart . T.unlines) (splitAt idx ts)

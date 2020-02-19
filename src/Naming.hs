@@ -12,8 +12,8 @@ module Naming
   , camelCaseToSnakeCase
   , ocamlIdentifier
   , ocamlIdentifierNs
-  , nsOCamlIdentifier
   , nsOCamlType
+  , nsOCamlO
   , signalOCamlName
   , mlGiPrefix
   , enumVal
@@ -37,13 +37,8 @@ import qualified Data.Text                     as T
 import qualified Data.Char                     as C
 
 import           API
-import           ModulePath                     ( ModulePath
-                                                , (/.)
-                                                , toModulePath
-                                                )
 import           Util                           ( lcFirst
                                                 , ucFirst
-                                                , modifyQualified
                                                 )
 
 
@@ -157,15 +152,14 @@ ocamlIdentifierNs :: Name -> Text
 ocamlIdentifierNs (Name ns nm) =
   escapeOCamlReserved $ camelCaseToSnakeCase (ns <> nm)
 
-nsOCamlIdentifier :: Text -> Name -> Text
-nsOCamlIdentifier nspace n@(Name ns nm) | nspace == ns = ocamlIdentifier n
-nsOCamlIdentifier nspace n@(Name ns nm) =
-  "GI" <> ns <> ".Types." <> ocamlIdentifier n
-
 nsOCamlType :: Text -> Name -> Text
-nsOCamlType currNs n@(Name ns _) | currNs == ns = "Types." <> ocamlIdentifier n
-nsOCamlType currNs n@(Name ns nm) =
-  "GI" <> ns <> ".Types." <> ocamlIdentifier n
+nsOCamlType currNs (Name ns nm) | currNs == ns = nm <> "T.t"
+                                | otherwise = "GI" <> ns <> "." <> nm <> "T.t"
+
+nsOCamlO :: Text -> Name -> Text
+nsOCamlO currNs n@(Name ns nm)
+  | currNs == ns = "#" <> nm <> "T." <> ocamlIdentifier n <> "_o"
+  | otherwise    = "#GI" <> ns <> "." <> nm <> "T." <> ocamlIdentifier n <> "_o"
 
 signalOCamlName :: Text -> Text
 signalOCamlName = escapeOCamlReserved . hyphensToUnderscores
