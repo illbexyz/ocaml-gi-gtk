@@ -31,7 +31,7 @@ excludeFiles = S.fromList
     , Name "Gtk"       "EntryIconAccessible"  -- Bug: The GIR Parser doesn't return its CType (bug in the parser)
     , Name "Gtk"       "CellAccessibleParent" -- The get_cell_extents method uses an integer pointer which is parsed as an int
     , Name "Gtk"       "TreeViewAccessible"   -- Depends on CellAccessibleParent
-    , Name "Gtk"       "Widget"               -- We use the lablgtk one
+    -- , Name "Gtk"       "Widget"               -- We use the lablgtk one
     , Name "Gtk"       "FileChooserButton"    -- Using wrong conversion macro for gtk_file_chooser_button_new_with_dialog
     , Name "Pango"     "Engine"
     , Name "Pango"     "EngineShape"

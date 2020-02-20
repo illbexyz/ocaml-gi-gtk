@@ -471,7 +471,7 @@ class widget_full : ([> Gtk.widget] as 'a) Gobject.obj ->
 val as_widget : widget -> Gtk.widget Gobject.obj
 
 val pack_return :
-    (#widget as 'a) ->
+    (< misc : < show : unit -> unit; .. >; .. > as 'a) (*was: (#widget as 'a)*) ->
     packing:('a -> unit) option -> show:bool option -> 'a
     (* To use in initializers to provide a ?packing: option *)
 

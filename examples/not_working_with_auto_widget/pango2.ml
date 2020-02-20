@@ -23,13 +23,10 @@
 
 open GIGtk
 
-let expose (drawing_area : DrawingAreaG.drawing_area) (cr : unit) =
-(*XXX
-  let allocation = drawing_area#get_allocation in
+let expose drawing_area cr =
+  let allocation = drawing_area#misc#allocation in
   let width = float allocation.Gtk.width in
   let height = float allocation.Gtk.height in
-*) let width = 150. in let height = 150. in
-  let cr = Obj.magic cr in
   (* Draw a background rectangle: *)
   Cairo.rectangle cr 0. 0. ~w:width ~h:height;
   Cairo.set_source_rgb cr 1. 1. 1.;
@@ -47,15 +44,15 @@ let expose (drawing_area : DrawingAreaG.drawing_area) (cr : unit) =
   Cairo.set_source_rgb cr 0. 0. 0.;
   Cairo_pango.update_layout cr layout;
   Cairo_pango.show_layout cr layout;
-  (*XXX true*) ()
+  true
 
 let () =
   let _ = GMain.init () in
-  let w = WindowG.window ~title:"Pango demo2" ~width_request:500 ~height_request:400 () in
+  let w = WindowG.window ~title:"Pango demo2" ~width:500 ~height:400 () in
   ignore(w#connect#destroy ~callback:GMain.quit);
 
   let d = DrawingAreaG.drawing_area ~packing:w#add () in
-  ignore(d#connect#draw ~callback:(expose d));
+  ignore(d#misc#connect#draw ~callback:(expose d));
 
   w#misc#show ();
   GMain.main()

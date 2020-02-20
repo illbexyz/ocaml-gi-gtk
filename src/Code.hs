@@ -705,7 +705,7 @@ addTypeFile n = do
 
 textToOCamlType :: Name -> Maybe Name -> [Name] -> Text
 textToOCamlType (Name "GObject" "Object") _ _ = typeDeclText "[`giu]"
-textToOCamlType (Name "Gtk"     "Widget") _ _ = typeDeclText "[`giu | `widget]"
+-- textToOCamlType (Name "Gtk"     "Widget") _ _ = typeDeclText "[`giu | `widget]"
 textToOCamlType n Nothing ifaces =
   typeDeclText $ "[`" <> ocamlIdentifierNs n <> ifacesTypes ifaces <> "]"
 textToOCamlType n (Just (Name "GObject" "Object")) ifaces =
@@ -891,7 +891,8 @@ writeModuleInfo isVerbose dirPrefix _dependencies minfo = do
 
   unless (isCodeEmpty $ cCode minfo) $ do
     let cStubsFile = modulePathToFilePath dirPrefix (modulePath minfo) ".c"
-        deps' = filter (/= "Widget") (Set.toList $ cDeps minfo)
+        -- deps' = filter (/= "Widget") (Set.toList $ cDeps minfo)
+        deps' = Set.toList $ cDeps minfo
         deps = T.unlines $ fmap (\d -> "#include \"GI" <> d <> ".h\"") deps'
     addCFile cStubsFile
     liftIO $ utf8WriteFile cStubsFile (T.unlines [deps, genCStubs minfo])

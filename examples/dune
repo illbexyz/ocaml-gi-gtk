@@ -1,4 +1,5 @@
 (executables
- (names about assistant assistant_tutorial buttons cairo_demo calc calendar cgets counter dcalendar dialog_thread drawing entry entry2 eventbox events events2 expander fifteen fixpoint gioredirect giotest hello kaimono label link_button nihongo notebook pango1 pango2 progressbar radiobuttons rpn scrolledwin seppala signal_override spin)
+ ; (names about assistant assistant_tutorial buttons cairo_demo calc calendar cgets counter dcalendar dialog_thread drawing entry entry2 eventbox events events2 expander fifteen fixpoint gioredirect giotest hello kaimono label link_button nihongo notebook pango1 pango2 progressbar radiobuttons rpn scrolledwin seppala signal_override spin)
+ (names hello pango2)
  (flags (:standard \ -strict-sequence) -w -3-6-7-10-24-26-27-33-35)
  (libraries GIGtk))

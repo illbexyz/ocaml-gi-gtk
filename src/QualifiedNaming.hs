@@ -71,7 +71,7 @@ escapedArgName arg
   = escapeOCamlReserved . lcFirst . underscoresToCamelCase . argCName $ arg
 
 nsOCamlClass :: Name -> CodeGen Text
-nsOCamlClass (  Name "Gtk" "Widget") = return "GObj.widget"
+-- nsOCamlClass (  Name "Gtk" "Widget") = return "GObj.widget"
 -- nsOCamlClass (  Name "Gdk" "Window") = return "GWindow.window"
 nsOCamlClass n@(Name ns    nm      ) = do
   currNs  <- currentNS

@@ -78,7 +78,7 @@ genSignalClass n o = do
     (parent : _) -> do
       parentClass <- nsOCamlClass parent
       let parentSignal = case head parents of
-            Name "Gtk"       "Widget" -> "GObj.widget_signals_impl"
+            -- Name "Gtk"       "Widget" -> "GObj.widget_signals_impl"
             Name "GObject"   "Object" -> "[_] GObj.gobject_signals"
             Name "Gtk"       _        -> parentClass <> "_signals"
             Name "GtkSource" _        -> parentClass <> "_signals"
@@ -199,7 +199,7 @@ genObject' n o ocamlName = do
     (parent : _) -> do
       parentClass <- nsOCamlClass parent
       let parentSkelClass = case parent of
-            Name "Gtk"       "Widget" -> "['a] GObj.widget_impl"
+            -- Name "Gtk"       "Widget" -> "['a] GObj.widget_impl"
             Name "GObject"   "Object" -> "GObj.gtkobj"
             Name "Gtk"       _        -> parentClass <> "_skel"
             Name "GtkSource" _        -> parentClass <> "_skel"
@@ -330,7 +330,7 @@ genObjectConstructor' constrDecl constrCreate n = do
     indentBy (idx + 1) <> "fun pl -> " <> makeParams parent <> " pl ~cont:("
 
   makeParams :: Name -> Text
-  makeParams (Name "Gtk" "Widget") = "GtkBase.Widget.size_params"
+  -- makeParams (Name "Gtk" "Widget") = "GtkBase.Widget.size_params"
   makeParams (Name _     nm      ) = nm <> ".make_params"
 
   packShowLabels :: [Name] -> Text

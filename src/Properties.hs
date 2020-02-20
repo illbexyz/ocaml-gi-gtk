@@ -71,7 +71,7 @@ genPropertyGetter getter classe prop = do
         then getter <> "_" <> ocamlIdentifier classe
         else getter
   gline
-    $  "  method "
+    $  "  method get_"
     <> getterDecl
     <> " = Gobject.get "
     <> name classe
