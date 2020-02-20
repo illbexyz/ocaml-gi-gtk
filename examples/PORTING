@@ -99,7 +99,15 @@ socket.ml: what the hell is this example trying to do?
 ============= TOO HARD ==================
 1. action.ml: methods throwing exceptions not implemented yet
 
+============= Documents ==================
+1. inheritance in OCaml does not respect late binding
+   (assuming Glib to have late binding; I think this is the case
+   at least for interfaces)
+
 ============= Bugs ==================
+-inf  rename "interface" foo back to foo_skel, but use "new foo_skel" when
+      upgrading a low level obj to an high level one
+
 -2. (dcalendar.exe:1551223): Gtk-WARNING **: 14:25:00.462: Negative content width -18 (allocation 16, extents 17x17) while allocating gadget (node button, owner GtkButton)
 -1. (cgets.exe:1421601): Gdk-WARNING **: 02:22:59.657: ../../../../../gdk/wayland/gdkselection-wayland.c:275: error reading selection buffer: Operation was cancelled
 0. (scrolledwin.exe:1306065): Gtk-CRITICAL **: 21:35:13.609: gtk_widget_grab_default: assertion 'gtk_widget_get_can_default (widget)' failed

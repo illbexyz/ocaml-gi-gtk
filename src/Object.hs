@@ -94,7 +94,7 @@ genSignalClass n o = do
                 APIInterface i ->
                   unless (null $ ifSignals i)
                     $  gline
-                    $  "  inherit! "
+                    $  "  inherit "
                     <> ifaceClass
                     <> "_signals obj"
                 _ -> error "this should be an interface"
@@ -210,7 +210,7 @@ genObject' n o ocamlName = do
             <> ocamlIdentifier iface
             <> " = new "
             <> ifaceClass
-            <> "_skel obj"
+            <> " obj" -- "_skel obj"
           -- gline $ "  inherit " <> ifaceClass <> "_skel obj"
 
   gline
@@ -360,13 +360,14 @@ genInterface n iface = do
   unless (n `elem` excludeFiles) $ do
     -- Generate the signal class only for GObjects
     when isGO $ do
-      gline $ "class " <> ocamlName <> "_signals obj = object (self)"
-      gline $ "  inherit [_] GObj.gobject_signals obj"
+      gline $ "class virtual " <> ocamlName <> "_signals obj = object (self)"
+      gline $ "  method private virtual connect : 'b. ('a,'b) GtkSignal.t -> callback:'b -> GtkSignal.id"
+      -- gline $ "  inherit [_] GObj.gobject_signals obj"
       forM_ (ifSignals iface) $ \s -> genGSignal s n
       gline "end"
       gblank
 
-    gline $ "class " <> ocamlName <> "_skel obj = object (self)"
+    gline $ "class " <> ocamlName <> " obj = object (self)" -- "_skel obj = object (self)"
     gline
       $  "  method as_"
       <> ocamlName
@@ -427,8 +428,8 @@ genInterface n iface = do
     gline "end"
     gblank
 
-    gline $ "and " <> ocamlName <> " obj = object (self)"
-    gline $ "  inherit " <> ocamlName <> "_skel obj"
-    when isGO $ gline $ "  method connect = new " <> ocamlName <> "_signals obj"
-    gline "end"
-    gblank
+    -- gline $ "and " <> ocamlName <> " obj = object (self)"
+    -- gline $ "  inherit " <> ocamlName <> "_skel obj"
+    -- when isGO $ gline $ "  method connect = new " <> ocamlName <> "_signals obj"
+    -- gline "end"
+    -- gblank
