@@ -117,6 +117,21 @@ socket.ml: what the hell is this example trying to do?
    TextView (APIStruct) isn't implemented yet
    UIManager.add_ui_from_string not implemented (* "Methods throwing exceptions are not implemented yet" *) (visible in action.ml)
 3. Additional constructors not implemented (e.g. Buttong.new_with_mnemonic)
+   let button_new_with_mnemonic mnemonic = begin
+    GtkBase.Widget.size_params [] ~cont:(
+      fun pl -> Container.make_params pl ~cont:(
+        fun pl -> Bin.make_params pl ~cont:(
+          fun pl -> Button.make_params pl ~cont:(
+            fun pl ?packing ?show () -> GObj.pack_return (
+              let o = Button.new_with_mnemonic mnemonic in
+              GtkObject._ref_sink o ;
+              Gobject.set_params o pl ;
+              new button o
+              ) ~packing ~show))))
+  end
+
+  To test it: in buttons.ml look for XXX and change to:
+  let button = ButtonG.button_new_with_mnemonic "_Coucou" ~packing:(Lablgtk3Compat.pack hbox ~padding:5) () in
 4. Adjustments only exist at the low level
    File "counter.ml", line 28, characters 37-40:
    28 | let sc = HScaleG.h_scale ~adjustment:adj ~draw_value:false

@@ -3,6 +3,7 @@ module Method
   )
 where
 
+import           GObject
 import           Data.Text                      ( Text )
 import qualified Data.Text                     as T
 import           Data.Maybe                     ( mapMaybe )
@@ -172,10 +173,10 @@ fixMethodArgs c = c { args = args'', returnType = returnType' }
 -- For constructors we want to return the actual type of the object,
 -- rather than a generic superclass (so Gtk.labelNew returns a
 -- Gtk.Label, rather than a Gtk.Widget)
--- fixConstructorReturnType :: Bool -> Name -> Callable -> Callable
--- fixConstructorReturnType returnsGObject cn c = c { returnType = returnType' }
---  where
---   returnType' = if returnsGObject then Just (TInterface cn) else returnType c
+fixConstructorReturnType :: Bool -> Name -> Callable -> Callable
+fixConstructorReturnType returnsGObject cn c = c { returnType = returnType' }
+ where
+  returnType' = if returnsGObject then Just (TInterface cn) else returnType c
 
 isMethodAlsoAProp :: Name -> Text -> CodeGen Bool
 isMethodAlsoAProp cn mName = do
@@ -201,7 +202,11 @@ isMethodInParents cn mName = do
   return $ True `elem` parentsHasProp
 
 genMethod :: Name -> Method -> ExcCodeGen ()
-genMethod _ Method { methodType = Constructor } = return ()
+genMethod cn Method { methodName = mn, methodSymbol = sym, methodCallable = c, methodType = Constructor }
+  = do
+      returnsGObject <- maybe (return False) isGObject (returnType c)
+      let c' = fixConstructorReturnType returnsGObject cn c
+      genCCallableWrapper mn sym c'
 genMethod cn Method { methodName = mn, methodSymbol = sym, methodCallable = c, methodType = t }
   = do
     isAProp <- isMethodAlsoAProp cn (name mn)
