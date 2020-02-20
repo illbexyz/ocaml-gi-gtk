@@ -99,10 +99,11 @@ socket.ml: what the hell is this example trying to do?
 ============= TOO HARD ==================
 1. action.ml: methods throwing exceptions not implemented yet
 
-============= Documents ==================
+============= Document ==================
 1. inheritance in OCaml does not respect late binding
    (assuming Glib to have late binding; I think this is the case
    at least for interfaces)
+2. methods with introspectable="0" in Gir (e.g. methods expecting varargs) like TextBuffer.create_tag are not generated
 
 ============= Bugs ==================
 -inf  rename "interface" foo back to foo_skel, but use "new foo_skel" when
@@ -115,7 +116,6 @@ socket.ml: what the hell is this example trying to do?
    AboutDialog authors not implemented (TCArray)
    TextView (APIStruct) isn't implemented yet
    UIManager.add_ui_from_string not implemented (* "Methods throwing exceptions are not implemented yet" *) (visible in action.ml)
-1.5 TextBuffer.create_tag is not generated and no comment at all in the .ml file. What happened?
 3. Additional constructors not implemented (e.g. Buttong.new_with_mnemonic)
 4. Adjustments only exist at the low level
    File "counter.ml", line 28, characters 37-40:
