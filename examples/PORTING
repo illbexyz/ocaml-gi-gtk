@@ -106,6 +106,9 @@ socket.ml: what the hell is this example trying to do?
 2. methods with introspectable="0" in Gir (e.g. methods expecting varargs) like TextBuffer.create_tag are not generated
 
 ============= Bugs ==================
++inf  we use an Obj.magic to help the type checker in case of methods calling new on the class
+      being defined. It should be got rid of (probably by defining the recursive class types in advance)
+
 -2. (dcalendar.exe:1551223): Gtk-WARNING **: 14:25:00.462: Negative content width -18 (allocation 16, extents 17x17) while allocating gadget (node button, owner GtkButton)
 -1. (cgets.exe:1421601): Gdk-WARNING **: 02:22:59.657: ../../../../../gdk/wayland/gdkselection-wayland.c:275: error reading selection buffer: Operation was cancelled
 0. (scrolledwin.exe:1306065): Gtk-CRITICAL **: 21:35:13.609: gtk_widget_grab_default: assertion 'gtk_widget_get_can_default (widget)' failed

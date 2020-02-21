@@ -31,6 +31,7 @@ import           Code                           ( CodeGen
                                                 , gline
                                                 , getFreshTypeVariable
                                                 , currentNS
+                                                , currentModule
                                                 , findAPIByName
                                                 , instanceTree
                                                 )
@@ -287,9 +288,16 @@ genMethod cn Method { methodName = mn, methodSymbol = sym, methodCallable = c, m
       _  -> "fun " <> T.intercalate " " vars <> " -> "
 
   methodBody :: [Text] -> Text -> MethodArgs -> CodeGen Text
-  methodBody _ mName mArgs@(_, _, Class False n) = do
+  methodBody _ mName mArgs@(_, _, Class False n@(Name ns nm)) = do
     ocamlClass <- getOCamlClass n
-    return $ "new " <> ocamlClass <> " (" <> boundMethod mName mArgs <> ")"
+    currNs  <- currentNS
+    currMod <- currentModule
+    return $ case (currNs == ns, currMod == nm) of
+     (True , True) ->
+       -- ugly patch to help OCaml's type-checker
+       "new " <> ocamlClass <> " (Obj.magic (" <> boundMethod mName mArgs <> "))"
+     (_, _) ->
+       "new " <> ocamlClass <> " (" <> boundMethod mName mArgs <> ")"
   methodBody _ mName mArgs@(_, _, Class True n) = do
     ocamlClass <- getOCamlClass n
     return
