@@ -23,7 +23,7 @@
 
 open GIGtk
 
-let expose (drawing_area : DrawingAreaG.drawing_area) (cr : unit) =
+let expose (drawing_area : DrawingAreaG.drawing_area) cr =
 (*XXX
   let allocation = drawing_area#get_allocation in
   let width = float allocation.Gtk.width in
@@ -47,7 +47,7 @@ let expose (drawing_area : DrawingAreaG.drawing_area) (cr : unit) =
   Cairo.set_source_rgb cr 0. 0. 0.;
   Cairo_pango.update_layout cr layout;
   Cairo_pango.show_layout cr layout;
-  (*XXX true*) ()
+  true
 
 let () =
   let _ = GMain.init () in

@@ -18,7 +18,7 @@ let button = ButtonG.button ~label:"Hello World" ~packing: window#add ()
 
 let main () =
   window#connect#delete_event
-    ~callback:(fun _ -> prerr_endline "Delete event occured"(*; true*));
+    ~callback:(fun _ -> prerr_endline "Delete event occured"; true);
   window#connect#destroy ~callback:GMain.quit;
   button#connect#clicked ~callback:(fun () -> prerr_endline "Hello World");
   button#connect#clicked ~callback:(fun () -> window#destroy);
