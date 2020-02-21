@@ -47,17 +47,24 @@ import           Debug.Trace
 argsTypeRep :: [Arg] -> ExcCodeGen [Text]
 argsTypeRep = mapM (\arg -> ocamlDataConv (mayBeNull arg) (argType arg))
 
-ocamlMarshaller :: [Arg] -> Text -> Text -> ExcCodeGen Text
-ocamlMarshaller args sigName onName = case args of
+ocamlMarshaller :: [Arg] -> Maybe Type -> Text -> Text -> ExcCodeGen Text
+ocamlMarshaller args out sigName onName = case args of
   [] -> return "marshal_unit"
   _  -> do
     when (sigName == "insert_text") $ traceShowM args
     let args'    = filter (\arg -> direction arg == DirectionIn) args
         sigName' = "\"" <> ucFirst onName <> "::" <> sigName <> "\""
         len      = length args'
-        marsh    = "fun f -> marshal" <> T.pack (show len)
-    argTypes <- argsTypeRep args'
-    return $ T.intercalate " " (marsh : argTypes ++ [sigName', "f"])
+    case out of
+     Nothing -> do
+        let marsh    = "fun f -> marshal" <> T.pack (show len)
+        argTypes <- argsTypeRep args'
+        return $ T.intercalate " " (marsh : argTypes ++ [sigName', "f"])
+     Just ret -> do
+        let marsh    = "fun f -> marshal" <> T.pack (show len) <> "_ret"
+        argTypes <- argsTypeRep args'
+        retty <- ocamlDataConv False ret
+        return $ T.intercalate " " (marsh : ("~ret:" <> retty) : argTypes ++ [sigName', "f"])
 
 -- | The prototype of the callback on the OCaml side (what users of
 -- the binding will see)
@@ -82,11 +89,12 @@ genOCamlCallbackPrototype subsec cb _htype classe expose _doc = do
   -- writeDocumentation DocBeforeSymbol doc
 
   -- ret <- hOutType cb hOutArgs
+  let ret = returnType cb
   let
     classType = "`"
       <> escapeOCamlReserved (camelCaseToSnakeCase (currNS <> "_" <> classe))
 
-  marshaller <- ocamlMarshaller hInArgs subsec classe
+  marshaller <- ocamlMarshaller hInArgs ret subsec classe
 
   line
     $  "let "
