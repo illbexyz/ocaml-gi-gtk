@@ -49,5 +49,5 @@ let main =
 
   let l = LabelG.label ~use_markup:true ~label:"This is the <b>GtkFrame</b>'s content" ~packing:f#add () in
 
-  w#misc#show () ;
+  w#show ;
   GMain.main ()

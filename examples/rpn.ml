@@ -38,7 +38,7 @@ let main () =
   (* BackSpace, Clear, All Clear, Quit *) 
   let table0 = TableG.table ~n_rows:1 ~n_columns:4 ~packing:vbx#add () in
   let bs_clicked _ = begin
-    let txt = entry#text in
+    let txt = entry#get_text in
     let len = String.length txt in 
     if len <= 1 then
       entry#set_text "0"
@@ -47,7 +47,7 @@ let main () =
   let c_clicked _ = entry#set_text("0") in
   let ac_clicked _ = S.clear stack; entry#set_text("0") in
   let labels0 = [("BS", bs_clicked) ; ("C", c_clicked);
-		 ("AC", ac_clicked); ("Quit", window#destroy)] in
+		 ("AC", ac_clicked); ("Quit", fun () -> window#destroy)] in
   let rec loop0 labels n =
     match labels 
     with  [] -> ()
@@ -63,11 +63,11 @@ let main () =
   let table1 = TableG.table ~n_rows:4 ~n_columns:5 ~packing:vbx#add () in
   let labels1 = ["7"; "8"; "9"; "4"; "5"; "6"; "1"; "2"; "3"; "0"] in
   let numClicked n _ =
-     let txt = entry#text in
+     let txt = entry#get_text in
      if (txt = "0") then
        entry#set_text n
      else begin
-       entry#set_text (entry#text ^ n) (* entry#append_text n *)
+       entry#set_text (entry#get_text ^ n) (* entry#append_text n *)
      end in
   let rec loop1 labels n =
     match labels with [] -> ()
@@ -81,9 +81,9 @@ let main () =
 
   (* Period *)
   let periodClicked _ = 
-     let txt = entry#text in
+     let txt = entry#get_text in
      if not (String.contains txt '.') then
-       entry#set_text (entry#text ^ ".") (* entry#append_text "." *)
+       entry#set_text (entry#get_text ^ ".") (* entry#append_text "." *)
   in
   (ButtonG.button ~label:" . "
      ~packing:(Lablgtk3Compat.attach table1 ~left:1 ~top:3 ~expand:`BOTH) ())
@@ -91,7 +91,7 @@ let main () =
 
   (* Enter (Push) *)
   let enterClicked _ =
-     let txt = entry#text in
+     let txt = entry#get_text in
      let n = float_of_string txt in begin
        S.push n stack;
        entry#set_text "0"
@@ -102,16 +102,16 @@ let main () =
 
   (* Operators *)
   let op2Clicked op _ =
-    let n1 = float_of_string (entry#text) in
+    let n1 = float_of_string (entry#get_text) in
     let n2 = S.pop stack in
     entry#set_text (string_of_float (op n2 n1)) 
   in
   let op1Clicked op _ =
-    let n1 = float_of_string (entry#text) in
+    let n1 = float_of_string (entry#get_text) in
     entry#set_text (string_of_float (op n1)) 
   in
   let modClicked _ =
-    let n1 = int_of_string (entry#text) in
+    let n1 = int_of_string (entry#get_text) in
     let n2 = truncate (S.pop stack) in
     entry#set_text (string_of_int (n2 mod n1))
   in
@@ -134,7 +134,7 @@ let main () =
   loop2 labels2 0;
 
   (* show all and enter event loop *)
-  window#misc#show ();
+  window#show ;
   GMain.main ()
 
 let _ = Printexc.print main()

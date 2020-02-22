@@ -13,7 +13,7 @@ open GIGtk
 let main () =
   GMain.init ();
   let window = DialogG.dialog ~title: "dialog"
-      ~border_width: 10 ~width: 300 ~height: 300 () in
+      ~border_width: 10 ~width_request: 300 ~height_request: 300 () in
   window#connect#destroy ~callback:GMain.quit;
 
   let scrolled_window = ScrolledWindowG.scrolled_window
@@ -37,8 +37,8 @@ let main () =
   let button =
     ButtonG.button ~label: "close" ~packing: button_box#add () in
   button#connect#clicked ~callback: GMain.quit;
-  button#misc#grab_default ();
-  window#misc#show ();
+  button#grab_default ;
+  window#show ;
   GMain.main ()
 
 let _ = main ()

@@ -41,9 +41,9 @@ let main () =
 
   let button = ButtonG.button ~label: "close" ~packing: box3#add () in
   button#connect#clicked ~callback:GMain.quit;
-  button#misc#grab_default ();
+  button#grab_default ;
 
-  window#misc#show ();
+  window#show ;
 
   GMain.main ()
 

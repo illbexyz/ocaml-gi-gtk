@@ -38,7 +38,7 @@ let main () =
                   ~expand:`NONE ~fill:`X ~shrink:`BOTH) in
   button#connect#clicked ~callback:GMain.quit;
 
-  window#misc#show ();
+  window#show ;
   GMain.main ()
 
 let _ = main ()

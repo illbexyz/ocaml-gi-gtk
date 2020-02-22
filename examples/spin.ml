@@ -24,9 +24,9 @@ let run () =
   w#add_button (GtkStock.convert_id `OK) (encode `OK);
   w#add_button (GtkStock.convert_id `CANCEL) (encode `CANCEL);
   w#set_default_response (encode `OK);
-  let on_ok () = Format.printf "Ok...@." ; w#destroy () in
+  let on_ok () = Format.printf "Ok...@." ; w#destroy in
   match decode w#run with
     | `OK -> on_ok ()
-    | `DELETE_EVENT | `CANCEL -> w#destroy ()
+    | `DELETE_EVENT | `CANCEL -> w#destroy
 
 let () = run ()

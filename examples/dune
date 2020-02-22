@@ -30,8 +30,14 @@
    notebook
    ; pango1
    pango2
+   progressbar
    ; ----
-   ; progressbar radiobuttons rpn scrolledwin seppala signal_override spin
+   radiobuttons
+   rpn
+   scrolledwin
+   ; seppala
+   signal_override
+   spin
    )
  (flags (:standard \ -strict-sequence) -w -3-6-7-10-24-26-27-33-35)
  (libraries GIGtk))

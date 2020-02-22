@@ -18,12 +18,12 @@ let main () =
  let accel_group = GtkData.AccelGroup.create () in
  (*XXX main_window#add_accel_group accel_group;*)
  let quit_button = ButtonG.button ~label:"Quit" ~packing:main_window#add () in
- quit_button#misc#add_accelerator
+ quit_button#add_accelerator
    ~sgn:(*GtkButtonProps.*)Button.S.activate
    ~group:accel_group
    ~modi:[`CONTROL] GdkKeysyms._q;
  ignore (quit_button#connect#clicked ~callback:destroy);
- main_window#misc#show ();
+ main_window#show ;
  GMain.main ()
 
 let () = main ()
