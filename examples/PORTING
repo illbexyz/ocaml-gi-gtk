@@ -156,6 +156,8 @@ this behaviour. Moreover one cannot add the buttons later to MessageDialogs*)
    visible in dialog_thread.ml
 9. Obj.magic needed to cast types of external libraries (e.g. Cairo)
    visible in drawing.ml, fifteen.ml, etc.
+10. AccelMaskG: does it make sense? all methods seem to be static,
+    i.e. AccelMask since to be the one to use. Visible in Lablgtk3Compat.ml
 
 ============== APIStruct implementation =========
 simple example CellArea::get_cell_allocation, APIStruct GdkRectangle

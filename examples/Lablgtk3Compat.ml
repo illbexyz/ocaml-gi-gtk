@@ -186,7 +186,7 @@ end
 class ['a] factory
     ?(accel_group=AccelGroupG.accel_group ())
     ?(accel_path="<DEFAULT ROOT>/")
-    ?(accel_modi=[`CONTROL])
+    ?(accel_modi=[`CONTROL_MASK])
     ?(accel_flags=[`VISIBLE]) (menu_shell : 'a) =
   object (self)
     val menu_shell : #MenuShellG.menu_shell = menu_shell
@@ -196,11 +196,11 @@ class ['a] factory
     val accel_path = accel_path
     method menu = menu_shell
     method accel_group = group
-    method private bind ?(modi=m) ?key ?callback (item : #MenuItemG.menu_item) label =
+    method private bind ?(modi=m) ?(key=0) ?callback (item : #MenuItemG.menu_item) label =
       menu_shell#append item;
       let accel_path = accel_path ^ label ^ "/" in
       (* Default accel path value *)
-      GtkData.AccelMap.add_entry accel_path ?key ~modi:m;
+      AccelMap.add_entry accel_path key m;
       (* Register this accel path *)
       item#set_accel_path (Some accel_path) (Some accel_group);
       Gaux.may callback ~f:(fun callback -> item#connect#activate ~callback)

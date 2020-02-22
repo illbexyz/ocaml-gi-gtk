@@ -142,6 +142,7 @@ type color =
 
 val color : color -> Gdk.color
 
+(*
 (** @gtkdoc gtk GtkStyle *)
 class style : Gtk.style ->
   object ('a)
@@ -173,7 +174,6 @@ class style : Gtk.style ->
     method text : Gtk.Tags.state_type -> Gdk.color
   end
 
-(*
 (** @gtkdoc gtk gtk-Selections *)
 class selection_data :
   Gtk.selection_data ->
