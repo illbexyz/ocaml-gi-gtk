@@ -22,7 +22,7 @@ let main () =
   window#connect#destroy ~callback:GMain.quit;
   button#connect#clicked ~callback:(fun () -> prerr_endline "Hello World");
   button#connect#clicked ~callback:(fun () -> window#destroy);
-  window#misc#show ();
+  window#show;
   GMain.main ()
 
 let _ = Printexc.print main ()

@@ -171,6 +171,7 @@ class style : Gtk.style ->
     method text : Gtk.Tags.state_type -> Gdk.color
   end
 
+(*
 (** @gtkdoc gtk gtk-Selections *)
 class selection_data :
   Gtk.selection_data ->
@@ -469,11 +470,14 @@ class widget_full : ([> Gtk.widget] as 'a) Gobject.obj ->
 
 (** @gtkdoc gtk GtkWidget *)
 val as_widget : widget -> Gtk.widget Gobject.obj
+*)
 
 val pack_return :
-    (< misc : < show : unit -> unit; .. >; .. > as 'a) (*was: (#widget as 'a)*) ->
+    (< show : unit; ..> as 'a) (*was: (#widget as 'a)*) ->
     packing:('a -> unit) option -> show:bool option -> 'a
     (* To use in initializers to provide a ?packing: option *)
 
+(*
 val conv_widget : widget Gobject.data_conv
 val conv_widget_option : widget option Gobject.data_conv
+*)

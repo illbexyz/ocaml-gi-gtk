@@ -49,6 +49,7 @@ val quit : unit -> unit
 
 (** Global structures *)
 
+(*
 val selection : GData.clipboard
 val clipboard : GData.clipboard
 
@@ -57,6 +58,7 @@ module Grab : sig
   val remove : #GObj.widget -> unit
   val get_current : unit -> GObj.widget
 end
+*)
 
 module Event : sig
   val get_current_time : unit -> int32     (** May return GDK_CURRENT_TIME *)

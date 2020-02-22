@@ -25,7 +25,7 @@ let show () =
       ()
   in
   ignore (dialog#connect#response 
-            ~callback:(fun _ -> dialog#misc#show ()
+            ~callback:(fun _ -> dialog#show
                        ));
 
   ignore (dialog#run)

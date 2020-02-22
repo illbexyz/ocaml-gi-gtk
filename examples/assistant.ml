@@ -29,7 +29,7 @@ let main () =
   button#connect#activate_link
     (fun () -> Format.printf "Got url '%s'@." button#get_uri;   button#set_uri "AGAIN");
   assistant#connect#close GMain.quit;
-  assistant#misc#show ();
+  assistant#show;
   GMain.main ()
 
 let _ = main ()

@@ -110,8 +110,8 @@ let print_widget ppf (o : #WidgetG.widget) =
 class ['a] memo () = object
   val tbl : (int, 'a) Hashtbl.t = Hashtbl.create 7
   method add (obj : 'a) = Hashtbl.add tbl obj#get_oid obj
-  method find (obj : widget) = Hashtbl.find tbl obj#get_oid
-  method remove (obj : widget) = Hashtbl.remove tbl obj#get_oid
+  method find (obj : WidgetG.widget) = Hashtbl.find tbl obj#get_oid
+  method remove (obj : WidgetG.widget) = Hashtbl.remove tbl obj#get_oid
 end
 
 let signal_id = ref 0

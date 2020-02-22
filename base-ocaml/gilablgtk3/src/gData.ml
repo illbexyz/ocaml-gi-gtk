@@ -22,6 +22,7 @@
 
 (* $Id$ *)
 
+(*
 open Gaux
 open Gobject
 open Gtk
@@ -128,3 +129,4 @@ end
 let clipboard selection = new clipboard ~selection
 
 let as_clipboard clip = clip#as_clipboard
+*)

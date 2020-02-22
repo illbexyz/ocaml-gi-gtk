@@ -57,5 +57,5 @@ let () =
   let d = DrawingAreaG.drawing_area ~packing:w#add () in
   ignore(d#connect#draw ~callback:(expose d));
 
-  w#misc#show ();
+  w#show;
   GMain.main()

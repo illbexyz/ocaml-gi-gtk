@@ -22,6 +22,7 @@
 
 (* $Id$ *)
 
+(*
 open Gtk
 
 (** Non-Widgets objects carrying data *)
@@ -113,3 +114,4 @@ class clipboard : selection:Gdk.atom ->
 (** @gtkdoc gtk gtk-Clipboards *)
 val clipboard : Gdk.atom -> clipboard
 val as_clipboard : clipboard -> Gtk.clipboard
+*)

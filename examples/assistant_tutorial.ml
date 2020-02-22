@@ -27,7 +27,7 @@ let entry_changed (assistant : #AssistantG.assistant) entry () =
 (* If the check button is toggled, set the page as complete. Otherwise,
    stop the user from progressing the next page. *)
 let button_toggled toggle (assistant : #AssistantG.assistant) () = 
-  let active = toggle#active in
+  let active = toggle#get_active in
   assistant#set_page_complete toggle active
 
 
@@ -56,20 +56,19 @@ let button_clicked button (assistant : #AssistantG.assistant) progress () =
 (* If the dialog is cancelled, delete it from memory and then clean up after
    the Assistant structure. *)
 let assistant_cancel assistant () = 
-  assistant#destroy ()
+  assistant#destroy
     
 (* This function is where you would apply the changes and destroy 
    the assistant. *)
 let assistant_close assistant () = 
   prerr_endline "You would apply your changes now!";
-  assistant#destroy ()
+  assistant#destroy
 
 
 
 let main () =
   GMain.init ();
-  let assistant = AssistantG.assistant () in
-  assistant#set_size_request ~width:450 ~height:300 ();
+  let assistant = AssistantG.assistant ~width_request:450 ~height_request:300 () in
   assistant#set_title "GtkAssistant Example";
   assistant#connect#destroy (fun () -> exit 0);
   let page_0 = LabelG.label ~label:"This is an example of a GtkAssistant. By
