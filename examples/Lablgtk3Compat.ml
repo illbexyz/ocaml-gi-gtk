@@ -104,8 +104,8 @@ struct
 open StdLabels
 open GObj
 
-let print_widget ppf (o : #widget) = 
-    Format.fprintf ppf "<%s@@0x%x>" o#misc#get_type o#get_oid
+let print_widget ppf (o : #WidgetG.widget) = 
+    Format.fprintf ppf "<%s@@0x%x>" (Gobject.Type.name (Gobject.get_type o#as_widget)) o#get_oid
 
 class ['a] memo () = object
   val tbl : (int, 'a) Hashtbl.t = Hashtbl.create 7
@@ -202,7 +202,7 @@ class ['a] factory
       (* Default accel path value *)
       GtkData.AccelMap.add_entry accel_path ?key ~modi:m;
       (* Register this accel path *)
-      GtkBase.Widget.set_accel_path item#as_widget accel_path (Obj.magic accel_group#as_accel_group)(*XXX Bad type mismatch*);
+      item#set_accel_path (Some accel_path) (Some accel_group);
       Gaux.may callback ~f:(fun callback -> item#connect#activate ~callback)
     method add_item ?key ?callback ?submenu label =
       let item = MenuItemG.menu_item  (*~use_mnemonic:true*)(*XXX REQUIRES ALT. CONSTRUCTOR*) ~label () in
@@ -212,12 +212,12 @@ class ['a] factory
     method add_check_item ?active ?key ?callback label =
       let item = CheckMenuItemG.check_menu_item ~label (*~use_mnemonic:true*)(*XXX*) ?active () in
       self#bind (item : CheckMenuItemG.check_menu_item :> MenuItemG.menu_item) label ?key
-        ?callback:(Gaux.may_map callback ~f:(fun f () -> f item#active));
+        ?callback:(Gaux.may_map callback ~f:(fun f () -> f item#get_active));
       item
     method add_radio_item ?group ?active ?key ?callback label =
       let item = RadioMenuItemG.radio_menu_item ~label (*~use_mnemonic:true*)(*XXX*) ?group ?active () in
       self#bind (item : RadioMenuItemG.radio_menu_item :> MenuItemG.menu_item) label ?key
-        ?callback:(Gaux.may_map callback ~f:(fun f () -> f item#active));
+        ?callback:(Gaux.may_map callback ~f:(fun f () -> f item#get_active));
       item
     method add_separator () = SeparatorMenuItemG.separator_menu_item ~packing:menu_shell#append ()
     method add_submenu ?key (label : string) =

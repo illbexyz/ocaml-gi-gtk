@@ -19,7 +19,7 @@ open GIGtk
 (* If there is text in the GtkEntry, set the page as complete. Otherwise,
   stop the user from progressing the next page. *)
 let entry_changed (assistant : #AssistantG.assistant) entry () = 
-  let text = entry#text in
+  let text = entry#get_text in
   let num = assistant#get_current_page in
   let page = assistant#get_nth_page num in
   assistant#set_page_complete (Option.get page) (String.length (text) > 0)
@@ -35,7 +35,7 @@ let button_toggled toggle (assistant : #AssistantG.assistant) () =
   set the page as complete when the progress bar is filled. *)
 let button_clicked button (assistant : #AssistantG.assistant) progress () = 
   let percent = ref 0.0 in
-  button#misc#set_sensitive false;
+  button#set_sensitive false;
   while (!percent <= 100.0) do
     let message = Printf.sprintf "%.0f%% Complete" !percent in
     progress#set_fraction (!percent /. 100.0);
@@ -69,7 +69,7 @@ let assistant_close assistant () =
 let main () =
   GMain.init ();
   let assistant = AssistantG.assistant () in
-  assistant#misc#set_size_request ~width:450 ~height:300 ();
+  assistant#set_size_request ~width:450 ~height:300 ();
   assistant#set_title "GtkAssistant Example";
   assistant#connect#destroy (fun () -> exit 0);
   let page_0 = LabelG.label ~label:"This is an example of a GtkAssistant. By
@@ -103,9 +103,9 @@ it is time to leave!" ()
   let button = ButtonG.button ~label:"Click me!" () in
   let progress = ProgressBarG.progress_bar () in
   let hbox = HBoxG.h_box ~homogeneous:false ~spacing:5 () in
-  Lablgtk3Compat.pack hbox ~expand:true ~fill:false ~padding:5 progress#coerce;
-  Lablgtk3Compat.pack hbox ~expand:false ~fill:false ~padding:5 button#coerce;
-  page_3#add hbox#coerce;
+  Lablgtk3Compat.pack hbox ~expand:true ~fill:false ~padding:5 progress;
+  Lablgtk3Compat.pack hbox ~expand:false ~fill:false ~padding:5 button;
+  page_3#add hbox;
 
   (* Add five pages to the GtkAssistant dialog. *)
   Lablgtk3Compat.append_page assistant
@@ -139,7 +139,7 @@ it is time to leave!" ()
   assistant#connect#cancel ~callback:(assistant_cancel assistant);
   assistant#connect#close ~callback:(assistant_close assistant);
 
-  assistant#misc#show ();
+  assistant#show;
   GMain.main ()
 
 
