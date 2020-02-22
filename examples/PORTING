@@ -92,6 +92,7 @@
 16. application/browser.ml:
      - FileChooser?
      - #create_tag
+17. dialog_thread: bugged (see below)
 
 GText.{view,buffer} ==> ??? (several files in too_hard_to_port)
 socket.ml: what the hell is this example trying to do?

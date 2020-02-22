@@ -36,9 +36,9 @@ this behaviour. Moreover one cannot add the buttons later to MessageDialogs*)
         ~buttons:`YES_NO () in
     match decode dialog#run with
       `YES -> prerr_endline "Yes"; GMain.quit ()
-    | `NO -> prerr_endline "No"; dialog#destroy ()
-    | `DELETE_EVENT -> prerr_endline "Delete"; dialog#destroy ());
-  window#misc#show ();
+    | `NO -> prerr_endline "No"; dialog#destroy
+    | `DELETE_EVENT -> prerr_endline "Delete"; dialog#destroy);
+  window#show;
   GtkThread.main ()
 
 let _ = Printexc.print main ()

@@ -89,28 +89,28 @@ class date_button i (calendar : TableG.table) =
     method widget = widget
     method focus_on =
       date.mday <- mday;
-      widget#misc#set_style styles.(s_focused)
+      widget#set_style styles.(s_focused)
     method focus_off =
-      widget#misc#set_style styles.(if have_plan then s_planned else s_normal)
+      widget#set_style styles.(if have_plan then s_planned else s_normal)
     method set_plan =
       have_plan <- true;
-      widget#misc#set_style styles.(s_planned)
+      widget#set_style styles.(s_planned)
     method unset_plan =
       have_plan <- false;
-      widget#misc#set_style styles.(s_normal)
+      widget#set_style styles.(s_normal)
 	
     method show wday0 =
       if not show then
       	let top = (mday + wday0) / 7 + 1
       	and left = (mday + wday0) mod 7 in
-      	Lablgtk3Compat.attach calendar ~left ~top ~expand:`BOTH widget#coerce;
-      	widget#misc#show ();
+      	Lablgtk3Compat.attach calendar ~left ~top ~expand:`BOTH widget;
+      	widget#show;
 	show <- true
 	    
     method hide =
       if show then
-      	(widget#misc#hide ();
-	 calendar#remove widget#coerce;
+      	(widget#hide;
+	 calendar#remove widget;
 	 show <- false)
   end
 
@@ -143,7 +143,7 @@ let create_GUI () =
   win#event#connect#delete
     ~callback: (fun _ -> GMain.quit (); false);
 
-  let style = win#misc#style#copy in
+  let style = win#get_style#copy in
   styles.(s_normal) <- style;
   
   let style = style#copy in

@@ -9,7 +9,9 @@
    calendar
    ; cgets
    counter
-   ; dcalendar dialog_thread drawing entry entry2 eventbox events events2 expander fifteen fixpoint gioredirect giotest
+   ; dcalendar
+   dialog_thread
+   ; drawing entry entry2 eventbox events events2 expander fifteen fixpoint gioredirect giotest
    hello
    ; kaimono label link_button nihongo notebook pango1
    pango2
