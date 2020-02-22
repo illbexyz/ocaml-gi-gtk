@@ -16,6 +16,7 @@ import           Control.Monad                  ( forM_
 import           Data.GI.GIR.BasicTypes         ( Type(TInterface) )
 
 import           API
+import           Callable                       ( canGenerateCallable )
 import           Code
 import           GObject
 import           Method                         ( genMethod )
@@ -32,6 +33,7 @@ import           Files                          ( excludeFiles
                                                 , noCType
                                                 , buggedIfaces
                                                 )
+import           Util                           ( indentBy )
 
 isSetterOrGetter :: Object -> Method -> Bool
 isSetterOrGetter o m =
@@ -283,17 +285,26 @@ genObject' n o ocamlName = do
   gline "end"
   gblank
 
-  genObjectConstructor n ocamlName
+  genDefaultObjectConstructor n ocamlName
 
-genObjectConstructor :: Name -> Text -> CodeGen ()
-genObjectConstructor n ocamlName = do
+  let constructors = filter
+        (\m -> methodType m == Constructor && name (methodName m) /= "new")
+        (objMethods o)
+  forM_ constructors $ \c -> do
+    canGenerate <- canGenerateCallable (methodCallable c)
+    when canGenerate $ do
+      genAdditionalObjectConstructor n ocamlName c
+      gblank
+
+genObjectConstructor' :: Text -> Text -> Name -> CodeGen ()
+genObjectConstructor' constrDecl constrCreate n = do
   currNS  <- currentNS
   parents <- instanceTree n
 
   let makeParamsParents = filter (isMakeParamsParent currNS) $ reverse parents
       mkParentsNum      = length makeParamsParents
 
-  gline $ "let " <> ocamlName <> " = begin"
+  gline $ "let " <> constrDecl <> " = begin"
 
   forM_ (zip makeParamsParents [0 ..])
     $ \(p, idx) -> gline $ makeParamsCont p idx
@@ -305,20 +316,11 @@ genObjectConstructor n ocamlName = do
     else "fun pl () -> ("
 
   gline
-    $  indentBy (mkParentsNum + 3)
-    <> "new "
-    <> ocamlName
-    <> " ("
-    <> name n
-    <> ".create pl))"
+    $  constrCreate
     <> packShowLabels parents
     <> closedParentheses makeParamsParents
   gline "end"
  where
-  isMakeParamsParent :: Text -> Name -> Bool
-  isMakeParamsParent _ (Name "GObject" "Object") = False
-  isMakeParamsParent currNS (Name ns _) | currNS /= ns = False
-                                        | otherwise    = True
   makeParamsCont :: Name -> Int -> Text
   makeParamsCont parent 0 = indentBy 1 <> makeParams parent <> " [] ~cont:("
   makeParamsCont parent idx =
@@ -333,11 +335,55 @@ genObjectConstructor n ocamlName = do
     | Name "Gtk" "Widget" `elem` parents = " ~packing ~show"
     | otherwise                          = ""
 
-  indentBy :: Int -> Text
-  indentBy idx = T.replicate idx "  "
-
   closedParentheses :: [Name] -> Text
   closedParentheses makeParents = T.replicate (length makeParents + 1) ")"
+
+
+isMakeParamsParent :: Text -> Name -> Bool
+isMakeParamsParent _ (Name "GObject" "Object") = False
+isMakeParamsParent currNS (Name ns _) | currNS /= ns = False
+                                      | otherwise    = True
+
+genDefaultObjectConstructor :: Name -> Text -> CodeGen ()
+genDefaultObjectConstructor n ocamlName = do
+  currNS  <- currentNS
+  parents <- instanceTree n
+  let makeParamsParents = filter (isMakeParamsParent currNS) $ reverse parents
+      mkParentsNum      = length makeParamsParents
+      creator =
+        indentBy (mkParentsNum + 3)
+          <> "new "
+          <> ocamlName
+          <> " ("
+          <> name n
+          <> ".create pl))"
+  genObjectConstructor' ocamlName creator n
+
+genAdditionalObjectConstructor :: Name -> Text -> Method -> CodeGen ()
+genAdditionalObjectConstructor n@(Name _ nm) ocamlClassName m = do
+  currNS  <- currentNS
+  parents <- instanceTree n
+  let
+    ind        = indentBy (mkParentsNum + 3)
+    constrName = ocamlIdentifier $ methodName m
+    argsTextList =
+      escapeOCamlReserved . camelCaseToSnakeCase . argCName <$> args
+        (methodCallable m)
+    argsText = case argsTextList of
+      [] -> "()"
+      _  -> T.intercalate " " argsTextList
+    constrWithArgs    = constrName <> " " <> argsText
+    makeParamsParents = filter (isMakeParamsParent currNS) $ reverse parents
+    mkParentsNum      = length makeParamsParents
+    creator' =
+      [ "let o = " <> nm <> "." <> constrWithArgs <> " in"
+      , "GtkObject._ref_sink o;"
+      , "Gobject.set_params o pl;"
+      ]
+    -- The last line is separated because we don't want the newline here
+    lastLine = ind <> "new " <> ocamlClassName <> " o)"
+    creator  = T.unlines ((ind <>) <$> creator') <> lastLine
+  genObjectConstructor' constrWithArgs creator n
 
 genInterface :: Name -> Interface -> CodeGen ()
 genInterface n iface = do
@@ -361,7 +407,8 @@ genInterface n iface = do
     -- Generate the signal class only for GObjects
     when isGO $ do
       gline $ "class virtual " <> ocamlName <> "_signals obj = object (self)"
-      gline $ "  method private virtual connect : 'b. ('a,'b) GtkSignal.t -> callback:'b -> GtkSignal.id"
+      gline
+        $ "  method private virtual connect : 'b. ('a,'b) GtkSignal.t -> callback:'b -> GtkSignal.id"
       -- gline $ "  inherit [_] GObj.gobject_signals obj"
       forM_ (ifSignals iface) $ \s -> genGSignal s n
       gline "end"

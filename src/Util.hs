@@ -17,6 +17,7 @@ module Util
   , copyDirectory
   , removeDirectoryContents
   , upFirst
+  , indentBy
   )
 where
 
@@ -151,3 +152,6 @@ upFirst s = zipWith inner s [0 .. length s - 1]
  where
   inner c 0 = toUpper c
   inner c _ = c
+
+indentBy :: Int -> Text
+indentBy idx = T.replicate idx "  "

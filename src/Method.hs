@@ -203,7 +203,7 @@ isMethodInParents cn mName = do
 
 genMethod :: Name -> Method -> ExcCodeGen ()
 genMethod cn Method { methodName = mn, methodSymbol = sym, methodCallable = c, methodType = Constructor }
-  = do
+  = when (name mn /= "new") $ do
       returnsGObject <- maybe (return False) isGObject (returnType c)
       let c' = fixConstructorReturnType returnsGObject cn c
       genCCallableWrapper mn sym c'

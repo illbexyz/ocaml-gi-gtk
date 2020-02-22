@@ -9,6 +9,7 @@ module Callable
   , callableHOutArgs
   , callableOCamlTypes
   , genMlMacro
+  , canGenerateCallable
   )
 where
 
@@ -37,6 +38,16 @@ import           Util
 
 import           Text.Show.Pretty               ( ppShow )
 
+-- | We can't generate a callable when:
+--   - one of its args can't be converted
+--   - it throws an exception
+-- TODO: remove the exception throwing part once we can handle it
+canGenerateCallable :: Callable -> CodeGen Bool
+canGenerateCallable cb = handleCGExc (\_ -> return False) $ do
+  _ <- callableOCamlTypes cb
+  forM_ (args cb) $ \a -> 
+    foreignArgConverter 0 a
+  return $ not $ callableThrows cb
 
 -- | Generate a foreign import for the given C symbol. Return the name
 -- of the corresponding Haskell identifier.
