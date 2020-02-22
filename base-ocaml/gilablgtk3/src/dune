@@ -4,7 +4,6 @@
 
 ; Maybe auto-generate?
 (include dune-enum.sexp)
-(include dune-prop.sexp)
 
 (rule
  (targets
