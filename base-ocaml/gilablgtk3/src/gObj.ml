@@ -86,6 +86,7 @@ end
 class type gtkobj_signals =
   object ('a) method after : 'a end
 
+(*
 (* Widget *)
 
 module Widget = GtkBase.Widget
@@ -129,6 +130,7 @@ class event_ops obj = object
   method connect = new event_signals obj
   method send : Gdk.Tags.event_type Gdk.event -> bool = Widget.event obj
 end
+*)
 
 let iter_setcol set style =
   List.iter ~f:(fun (state, col) -> set style state (color col))
@@ -156,6 +158,7 @@ class style st = object
 (*  method set_font = Style.set_font style*)
  end
 
+(*
 class selection_input (sel : Gtk.selection_data) = object
   val sel = sel
   method selection = Selection.selection sel
@@ -397,6 +400,7 @@ let conv_widget =
            | `OBJECT None -> raise Gpointer.Null
            | _ -> failwith "GObj.get_object");
     inj = (fun c -> `OBJECT (Some (unwrap_widget c))) }
+*)
 
 
 let pack_return self ~packing ~show =
