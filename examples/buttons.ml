@@ -29,7 +29,7 @@ let main () =
     (fun () -> prerr_endline "Hello again - cool button was pressed");
   xpm_label_box ~window:(window :> ContainerG.container) ~file:"test.xpm" ~text:"cool button"
     ~packing:button#add ();
-  let button = ButtonG.button (*XXX~use_mnemonic:true*) ~label:"_Coucou" ~packing:(Lablgtk3Compat.pack hbox ~padding:5) () in
+  let button = ButtonG.new_with_mnemonic "_Coucou" ~packing:(Lablgtk3Compat.pack hbox ~padding:5) () in
   button#connect#clicked ~callback:
     (fun () -> prerr_endline "Coucou");
   let button = ButtonG.button (*~stock:`HOME*) ~packing:(Lablgtk3Compat.pack hbox ~padding:5) () in

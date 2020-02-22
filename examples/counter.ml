@@ -36,7 +36,7 @@ let _ =
   incB#connect#clicked
     ~callback:(fun () -> adj#set_value (float(counter#get+1)));
   sc#connect#change_value
-    ~callback:(fun _ v -> Printf.printf "drag: %i\n%!" (truncate v));
+    ~callback:(fun _ v -> Printf.printf "drag: %i\n%!" (truncate v); false);
   adj#connect#value_changed
     ~callback:(fun () -> counter#set (truncate adj#value));
   counter#connect#changed ~callback:(fun n -> lbl#set_text (string_of_int n));
