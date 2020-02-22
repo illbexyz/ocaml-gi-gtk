@@ -111,7 +111,15 @@ showMethodOutArg :: MethodOutArg -> CodeGen Text
 showMethodOutArg (BasicOut t                   ) = return t
 showMethodOutArg (NonGtkClass _isOption _tvar t) = return t
 showMethodOutArg (Class isOption n             ) = do
-  ocamlClass <- nsOCamlClass n
+  api         <- findAPIByName n
+  ocamlClass' <- nsOCamlClass n
+  let
+    ocamlClass = case api of
+      APIObject    _ -> ocamlClass'
+      APIInterface _ -> ocamlClass' <> "_skel"
+      _ ->
+        error
+          "error in (showMethodOutArg): this name can only be an Object or an Interface"
   return $ addOption isOption ocamlClass
 
 tVarClassType :: MethodInArg -> Maybe Text
@@ -204,9 +212,9 @@ isMethodInParents cn mName = do
 genMethod :: Name -> Method -> ExcCodeGen ()
 genMethod cn Method { methodName = mn, methodSymbol = sym, methodCallable = c, methodType = Constructor }
   = when (name mn /= "new") $ do
-      returnsGObject <- maybe (return False) isGObject (returnType c)
-      let c' = fixConstructorReturnType returnsGObject cn c
-      genCCallableWrapper mn sym c'
+    returnsGObject <- maybe (return False) isGObject (returnType c)
+    let c' = fixConstructorReturnType returnsGObject cn c
+    genCCallableWrapper mn sym c'
 genMethod cn Method { methodName = mn, methodSymbol = sym, methodCallable = c, methodType = t }
   = do
     isAProp <- isMethodAlsoAProp cn (name mn)
@@ -264,10 +272,10 @@ genMethod cn Method { methodName = mn, methodSymbol = sym, methodCallable = c, m
 
   methodBody :: [Text] -> Text -> MethodArgs -> CodeGen Text
   methodBody _ mName mArgs@(_, _, Class False n) = do
-    ocamlClass <- nsOCamlClass n
+    ocamlClass <- getOCamlClass n
     return $ "new " <> ocamlClass <> " (" <> boundMethod mName mArgs <> ")"
   methodBody _ mName mArgs@(_, _, Class True n) = do
-    ocamlClass <- nsOCamlClass n
+    ocamlClass <- getOCamlClass n
     return
       $  "Option.map (new "
       <> ocamlClass
@@ -275,6 +283,17 @@ genMethod cn Method { methodName = mn, methodSymbol = sym, methodCallable = c, m
       <> boundMethod mName mArgs
       <> ")"
   methodBody _ mName mArgs = return $ boundMethod mName mArgs
+
+  getOCamlClass :: Name -> CodeGen Text
+  getOCamlClass n = do
+    ocamlClass <- nsOCamlClass n
+    api        <- findAPIByName n
+    return $ case api of
+      APIObject    _ -> ocamlClass
+      APIInterface _ -> ocamlClass <> "_skel"
+      _ ->
+        error
+          "Error in (getOCamlClass): this name can only be an Object or an Interface"
 
   boundMethod :: Text -> MethodArgs -> Text
   boundMethod mName (headArg, inArgs, outArg) = do

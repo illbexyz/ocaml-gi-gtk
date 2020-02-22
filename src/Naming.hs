@@ -141,6 +141,7 @@ escapeOCamlReserved "new"    = "new_"
 escapeOCamlReserved "open"   = "open_"
 escapeOCamlReserved "match"  = "match_"
 escapeOCamlReserved "and"    = "and_"
+escapeOCamlReserved "method" = "method_"
 escapeOCamlReserved t        = do
   let (nums, text) = T.span C.isNumber t
   text <> nums

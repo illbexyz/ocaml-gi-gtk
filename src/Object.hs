@@ -33,7 +33,9 @@ import           Files                          ( excludeFiles
                                                 , noCType
                                                 , buggedIfaces
                                                 )
-import           Util                           ( indentBy )
+import           Util                           ( indentBy
+                                                , noLast
+                                                )
 
 isSetterOrGetter :: Object -> Method -> Bool
 isSetterOrGetter o m =
@@ -212,7 +214,7 @@ genObject' n o ocamlName = do
             <> ocamlIdentifier iface
             <> " = new "
             <> ifaceClass
-            <> " obj" -- "_skel obj"
+            <> "_skel obj" -- "_skel obj"
           -- gline $ "  inherit " <> ifaceClass <> "_skel obj"
 
   gline
@@ -315,8 +317,9 @@ genObjectConstructor' constrDecl constrCreate n = do
     then "fun pl ?packing ?show () -> GObj.pack_return ("
     else "fun pl () -> ("
 
+  gline constrCreate
   gline
-    $  constrCreate
+    $  indentBy (mkParentsNum + 3)
     <> packShowLabels parents
     <> closedParentheses makeParamsParents
   gline "end"
@@ -331,9 +334,8 @@ genObjectConstructor' constrDecl constrCreate n = do
   makeParams (Name _     nm      ) = nm <> ".make_params"
 
   packShowLabels :: [Name] -> Text
-  packShowLabels parents
-    | Name "Gtk" "Widget" `elem` parents = " ~packing ~show"
-    | otherwise                          = ""
+  packShowLabels parents | Name "Gtk" "Widget" `elem` parents = "~packing ~show"
+                         | otherwise                          = ""
 
   closedParentheses :: [Name] -> Text
   closedParentheses makeParents = T.replicate (length makeParents + 1) ")"
@@ -375,14 +377,23 @@ genAdditionalObjectConstructor n@(Name _ nm) ocamlClassName m = do
     constrWithArgs    = constrName <> " " <> argsText
     makeParamsParents = filter (isMakeParamsParent currNS) $ reverse parents
     mkParentsNum      = length makeParamsParents
-    creator' =
-      [ "let o = " <> nm <> "." <> constrWithArgs <> " in"
-      , "GtkObject._ref_sink o;"
-      , "Gobject.set_params o pl;"
-      ]
-    -- The last line is separated because we don't want the newline here
-    lastLine = ind <> "new " <> ocamlClassName <> " o)"
-    creator  = T.unlines ((ind <>) <$> creator') <> lastLine
+    creator'          = if returnMayBeNull $ methodCallable m
+      then
+        [ "let o_opt = " <> nm <> "." <> constrWithArgs <> " in"
+        , "Option.map (fun o ->"
+        , "  GtkObject._ref_sink o;"
+        , "  Gobject.set_params o pl;"
+        , "  new " <> ocamlClassName <> " o"
+        , ") o_opt)"
+        ]
+      else
+        [ "let o = " <> nm <> "." <> constrWithArgs <> " in"
+        , "GtkObject._ref_sink o;"
+        , "Gobject.set_params o pl;"
+        , "new " <> ocamlClassName <> " o)"
+        ]
+    creator =
+      T.unlines ((ind <>) <$> noLast creator') <> (ind <> last creator')
   genObjectConstructor' constrWithArgs creator n
 
 genInterface :: Name -> Interface -> CodeGen ()
@@ -414,7 +425,7 @@ genInterface n iface = do
       gline "end"
       gblank
 
-    gline $ "class " <> ocamlName <> " obj = object (self)" -- "_skel obj = object (self)"
+    gline $ "class " <> ocamlName <> "_skel obj = object (self)" -- "_skel obj = object (self)"
     gline
       $  "  method as_"
       <> ocamlName
