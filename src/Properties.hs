@@ -32,15 +32,20 @@ import           Util
 
 isPropertyInParents :: Name -> Text -> CodeGen Bool
 isPropertyInParents cn pName = do
+  let pName' = hyphensToUnderscores pName
   parents        <- instanceTree cn
   parentsHasProp <- forM parents $ \parentName -> do
     api <- findAPIByName parentName
     return $ case api of
       APIObject o -> do
-        let parentPropNames   = (propName <$> objProperties o)
-            parentMethodNames = (name . methodName <$> objMethods o)
-            parentNames       = parentPropNames ++ parentMethodNames
-        pName `elem` parentNames
+        let parentPropNames =
+              hyphensToUnderscores . propName <$> objProperties o
+            parentPropGetters = ("get_" <>) <$> parentPropNames
+            parentPropSetters = ("set_" <>) <$> parentPropNames
+            parentPropNames'  = parentPropGetters ++ parentPropSetters
+            parentMethodNames = name . methodName <$> objMethods o
+            parentNames       = parentPropNames' ++ parentMethodNames
+        pName' `elem` parentNames
       _ -> False
   return $ True `elem` parentsHasProp
 
