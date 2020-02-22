@@ -16,8 +16,8 @@ let xpm_label_box ~(window : #ContainerG.container)
   let box = HBoxG.h_box ~border_width: 2 ?packing ~show:false () in
   let image = ImageG.image ~file ~packing:(Lablgtk3Compat.pack box ~padding:3) () in
   LabelG.label ~label:text ~packing:(Lablgtk3Compat.pack box ~padding:3) ();
-  if show then box#misc#show ();
-  new GObj.widget_full box#as_widget
+  if show then box#show;
+  box
 
 let main () =
   GMain.init ();
@@ -35,7 +35,7 @@ let main () =
   let button = ButtonG.button (*~stock:`HOME*) ~packing:(Lablgtk3Compat.pack hbox ~padding:5) () in
   button#connect#clicked ~callback:
     (fun () -> prerr_endline "Stock buttons look nice");
-  window#misc#show ();
+  window#show;
   GMain.main ()
 
 let _ = main ()
