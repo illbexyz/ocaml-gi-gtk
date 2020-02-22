@@ -17,11 +17,11 @@ let _ =
   let window = WindowG.window () in
   window#connect#destroy ~callback:GMain.quit;
 
-  let text = TextViewG.text_view ~width:200 ~height:100 ~packing:window#add () in
-  text#event#connect#button_press ~callback:
+  let text = TextViewG.text_view ~width_request:200 ~height_request:100 ~packing:window#add () in
+  text#connect#button_press_event ~callback:
     begin fun ev ->
-      GdkEvent.Button.button ev = 3 &&
-      GdkEvent.get_type ev = `BUTTON_PRESS &&
+      GdkEvent.Button.button (Obj.magic ev)(*XXX*) = 3 &&
+      GdkEvent.get_type (Obj.magic ev)(*XXX*) = `BUTTON_PRESS &&
       begin
 	let win = match text#get_window_text_view `WIDGET with
 	  | None -> assert false
@@ -35,5 +35,5 @@ let _ =
 	true;
       end
     end;
-  window#misc#show ();
+  window#show;
   GMain.main ()

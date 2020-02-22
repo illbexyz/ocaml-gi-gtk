@@ -93,6 +93,7 @@
      - FileChooser?
      - #create_tag
 17. dialog_thread: bugged (see below)
+18. drawing.ml: Obj.magic for Cairo
 
 GText.{view,buffer} ==> ??? (several files in too_hard_to_port)
 socket.ml: what the hell is this example trying to do?
@@ -152,6 +153,8 @@ socket.ml: what the hell is this example trying to do?
 and the same used by C because "MessageDialogG.message_dialog ~buttons" expects
 this behaviour. Moreover one cannot add the buttons later to MessageDialogs*)
    visible in dialog_thread.ml
+9. Obj.magic needed to cast types of external libraries (e.g. Cairo)
+   visible in drawing.ml
 
 ============== APIStruct implementation =========
 simple example CellArea::get_cell_allocation, APIStruct GdkRectangle

@@ -31,11 +31,11 @@ let expose drawing_area cr =
 
 let () =
   GMain.init ();
-  let w = WindowG.window ~title:"Drawing demo" ~width:500 ~height:400 () in
+  let w = WindowG.window ~title:"Drawing demo" ~width_request:500 ~height_request:400 () in
   ignore(w#connect#destroy ~callback:GMain.quit);
 
   let d = DrawingAreaG.drawing_area ~packing:w#add () in
-  ignore(d#misc#connect#draw ~callback:(expose d));
+  ignore(d#connect#draw ~callback:(Obj.magic (expose d)))(*XXX Obj.magic for Cairo*);
 
-  w#misc#show();
+  w#show;
   GMain.main ()

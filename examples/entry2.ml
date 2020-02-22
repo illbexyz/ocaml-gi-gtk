@@ -15,7 +15,7 @@ let e = EntryG.entry ~packing:w#add ()
 let () =
   e#connect#after#insert_text
     (fun _ pos ->
-      if e#text_length > 5 then e#set_secondary_icon_stock (GtkStock.convert_id `DIALOG_WARNING)
+      if e#get_text_length > 5 then e#set_secondary_icon_stock (GtkStock.convert_id `DIALOG_WARNING)
       else e#set_secondary_icon_name "");
-  w#event#connect#delete (fun _ -> GMain.quit (); true);
+  w#connect#delete_event (fun _ -> GMain.quit (); true);
   GMain.main ()

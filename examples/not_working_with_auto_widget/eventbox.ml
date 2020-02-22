@@ -59,7 +59,7 @@ let string_of_event x =
 
 let _ =
   GMain.init ();
-  let w = WindowG.window ~width:200 ~height:200 () in
+  let w = WindowG.window ~width_request:200 ~height_request:200 () in
   w#connect#destroy ~callback:GMain.quit ;
 
   let eb = EventBoxG.event_box ~packing:w#add () in
@@ -85,5 +85,5 @@ let _ =
 	prerr_endline (string_of_event x);
 	false);
 
-  w#misc#show ();
+  w#show;
   GMain.main ()
