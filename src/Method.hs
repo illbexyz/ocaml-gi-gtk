@@ -197,15 +197,19 @@ isMethodAlsoAProp cn mName = do
 
 isMethodInParents :: Name -> Text -> CodeGen Bool
 isMethodInParents cn mName = do
-  let mName' = snd $ T.breakOnEnd "set_" mName
   parents        <- instanceTree cn
   parentsHasProp <- forM parents $ \parentName -> do
     api <- findAPIByName parentName
     return $ case api of
       APIObject o -> do
-        let parentPropNames   = propName <$> objProperties o
+        let parentPropNames =
+              hyphensToUnderscores . propName <$> objProperties o
+            parentPropGetters = ("get_" <>) <$> parentPropNames
+            parentPropSetters = ("set_" <>) <$> parentPropNames
+            parentPropNames'  = parentPropGetters ++ parentPropSetters
             parentMethodNames = name . methodName <$> objMethods o
-        mName `elem` parentMethodNames || mName' `elem` parentPropNames
+            parentNames       = parentPropNames' ++ parentMethodNames
+        mName `elem` parentNames
       _ -> False
   return $ True `elem` parentsHasProp
 
