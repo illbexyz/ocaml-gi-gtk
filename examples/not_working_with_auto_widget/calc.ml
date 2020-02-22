@@ -89,8 +89,8 @@ class calculator ?packing ?show () =
       let frame = FrameG.frame ~shadow_type:`IN ()
 	~packing:(Lablgtk3Compat.attach table ~left:0 ~top:0 ~right:4 ~expand:`BOTH) in
       let evbox = EventBoxG.event_box ~packing:frame#add () in
-      evbox#misc#set_style evbox#misc#style#copy;
-      evbox#misc#style#set_bg [`NORMAL,`WHITE];
+      evbox#set_style (new StyleG.style evbox#get_style)#copy#as_style;
+      (new StyleG.style evbox#get_style)#set_background [`NORMAL,`WHITE];
       LabelG.label ~justify:`RIGHT ~xalign:0.95 ~packing:evbox#add ()
     val table = table
 
@@ -118,7 +118,7 @@ let applet = new calculator ~packing: w#add ()
 
 let _ =
   w#connect#destroy ~callback: GMain.quit;
-  w#event#connect#key_press
+  w#connect#key_press_event
     ~callback:(fun ev -> applet#command (GdkEvent.Key.string ev); true);
-  w#misc#show ();
+  w#show;
   GMain.main ()
