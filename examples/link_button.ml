@@ -12,11 +12,21 @@ open GIGtk
 
 let main () =
   GMain.init ();
-  let w = WindowG.window ~border_width:2 ~show:true () in
-  w#misc#realize ();
-  let hbox = HBoxG.h_box ~packing:w#add () in
-  LabelG.label ~label:"hello <b>world</b>" ~use_markup:true ~packing:hbox#add ();
-  w#connect#destroy ~callback:GMain.quit;
+
+  let window = WindowG.window ~title: "Link button" ~border_width: 0 () in
+
+  let box = VBoxG.v_box ~packing: window#add () in
+
+  let button = LinkButtonG.link_button 
+    ~uri:"http://HELLO.ORG" 
+    ~label:"BYE" ~packing:box#add () 
+  in
+  button#set_uri "GHHHHH";
+  Format.printf "Got:%a@." Lablgtk3Compat.GUtil.print_widget (button :> WidgetG.widget);
+  button#connect#activate_link
+    (fun () -> Format.printf "Got url '%s'@." button#get_uri;   button#set_uri "AGAIN");
+  window#connect#destroy GMain.quit;
+  window#show ;
   GMain.main ()
 
-let () = main ()
+let _ = main ()

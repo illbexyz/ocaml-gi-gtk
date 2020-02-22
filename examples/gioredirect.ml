@@ -35,7 +35,7 @@ let channel_redirector channel callback =
 
 let () = 
   let _l = GMain.init () in
-  let w = WindowG.window ~width:300 ~height:200 () in
+  let w = WindowG.window ~width_request:300 ~height_request:200 () in
   let notebook = NotebookG.notebook ~packing:w#add () in
   let redirect channel name = 
     let buffer = TextBufferG.text_buffer () in
@@ -65,5 +65,5 @@ let () =
                          true)
   in
   let _ = w#connect#destroy GMain.quit in
-  w#misc#show ();
+  w#show ;
   GMain.main ()

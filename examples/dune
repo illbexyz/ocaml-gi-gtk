@@ -19,11 +19,18 @@
    events2
    ; expander
    fifteen
-   ; ----
-   ; fixpoint gioredirect giotest
+   fixpoint
+   gioredirect
+   giotest
    hello
-   ; kaimono label link_button nihongo notebook pango1
+   kaimono
+   label
+   link_button
+   ; nihongo
+   notebook
+   ; pango1
    pango2
+   ; ----
    ; progressbar radiobuttons rpn scrolledwin seppala signal_override spin
    )
  (flags (:standard \ -strict-sequence) -w -3-6-7-10-24-26-27-33-35)

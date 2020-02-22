@@ -15,7 +15,7 @@ let l = GMain.init ()
 
 let fd = Unix.stdin (* Unix.openfile "giotest.ml" [Unix.O_RDONLY] 0 *)
 let ch = GMain.Io.channel_of_descr fd
-let w = WindowG.window ~width:300 ~height:200 ()
+let w = WindowG.window ~width_request:300 ~height_request:200 ()
 let buffer = TextBufferG.text_buffer ()
 let text = TextViewG.text_view ~buffer:buffer#as_text_buffer ~packing:w#add ()
 
@@ -35,5 +35,5 @@ let () =
       else assert false
     end ;
   w#connect#destroy GMain.quit;
-  w#misc#show ();
+  w#show ;
   GMain.main ()

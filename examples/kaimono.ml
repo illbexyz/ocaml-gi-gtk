@@ -41,9 +41,9 @@ let factory = new Lablgtk3Compat.factory menubar
 let file_menu = factory#add_submenu "File"
 let edit_menu = factory#add_submenu "Edit"
 
-let sw = ScrolledWindowG.scrolled_window ~height:200 ~packing:vb#add
+let sw = ScrolledWindowG.scrolled_window ~height_request:200 ~packing:vb#add
     ~hscrollbar_policy:`AUTOMATIC ~vscrollbar_policy:`AUTOMATIC ()
-let vp = ViewportG.viewport ~width:340 ~shadow_type:`NONE ~packing:sw#add ()
+let vp = ViewportG.viewport ~width_request:340 ~shadow_type:`NONE ~packing:sw#add ()
 let table = TableG.table ~n_columns:4 ~n_rows:256 ~packing:vp#add ()
 let _ = table#set_focus_vadjustment vp#get_vadjustment
 
@@ -59,14 +59,13 @@ let entry_list = ref []
 let add_entry () =
   let entry =
     List.map [40;200;40;60]
-      ~f:(fun width -> EntryG.entry ~packing:add_to_table ~width ())
+      ~f:(fun width -> EntryG.entry ~packing:add_to_table ~width_request:width ())
   in entry_list := entry :: !entry_list
 
 let _ =
   List.iter2 ["Number";"Name";"Count";"Price"] [40;200;40;60] ~f:
     begin fun label width ->
-      let b = ButtonG.button ~label ~packing:add_to_table () in
-      b#misc#set_size_request ~width ()
+      ignore (ButtonG.button ~label ~packing:add_to_table ~width_request:width ())
     end;
   for i = 1 to 9 do add_entry () done
 
@@ -110,7 +109,7 @@ let save name =
     let oc = open_out name in
     List.iter (List.rev !entry_list) ~f:
       begin fun entry ->
-	let l = List.map entry ~f:(fun e -> e#text) in
+	let l = List.map entry ~f:(fun e -> e#get_text) in
 	if List.exists l ~f:((<>) "") then
 	  let rec loop = function
 	      [] -> ()
@@ -125,14 +124,14 @@ open GdkKeysyms
 
 let _ =
   w#connect#destroy ~callback:GMain.quit;
-  w#event#connect#key_press ~callback:
+  w#connect#key_press_event ~callback:
     begin fun ev ->
-      let key = GdkEvent.Key.keyval ev and adj = vp#get_vadjustment in
+      let key = GdkEvent.Key.keyval (Obj.magic ev)(*XXX*) and adj = vp#get_vadjustment in
       if key = _Page_Up then
-	adj#set_value (adj#value -. adj#page_increment)
+	adj#set_value (adj#get_value -. adj#get_page_increment)
       else if key = _Page_Down then
-	adj#set_value (min (adj#value +. adj#page_increment)
-			 (adj#upper -. adj#page_size));
+	adj#set_value (min (adj#get_value +. adj#get_page_increment)
+			 (adj#get_upper -. adj#get_page_size));
       false
     end;
   w#add_accel_group factory#accel_group;
@@ -142,8 +141,8 @@ let _ =
   ff#add_item ~key:_S "Save..."
     ~callback:(file_dialog ~title:"Save data" ~callback:save);
   ff#add_separator ();
-  ff#add_item ~key:_Q "Quit" ~callback:w#destroy;
+  ff#add_item ~key:_Q "Quit" ~callback:(fun () -> w#destroy);
   let ef = new Lablgtk3Compat.factory (edit_menu :> MenuShellG.menu_shell) ~accel_group:factory#accel_group in
   ef#add_item ~key:_A "Add line" ~callback:add_entry;
-  w#misc#show ();
+  w#show;
   GMain.main ()

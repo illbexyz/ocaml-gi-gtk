@@ -29,7 +29,7 @@ let main () =
     ~callback:(fun _ i -> prerr_endline ("Page switch to " ^ string_of_int i));
   button#connect#clicked ~callback:
     (fun () -> prerr_endline "Coucou");
-  window#misc#show ();
+  window#show ;
   GMain.main ()
 
 let _ = main ()
