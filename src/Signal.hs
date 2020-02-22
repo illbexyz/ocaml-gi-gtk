@@ -51,7 +51,6 @@ ocamlMarshaller :: [Arg] -> Maybe Type -> Text -> Text -> ExcCodeGen Text
 ocamlMarshaller args out sigName onName = case args of
   [] -> return "marshal_unit"
   _  -> do
-    when (sigName == "insert_text") $ traceShowM args
     let args'    = filter (\arg -> direction arg == DirectionIn) args
         sigName' = "\"" <> ucFirst onName <> "::" <> sigName <> "\""
         len      = length args'
