@@ -10,12 +10,12 @@ open GIGtk
 
 let setup_expander packing =
   let e = ExpanderG.expander ~packing () in
-  let pixbuf = e#misc#render_icon ~size:`DIALOG `DIALOG_INFO in
+  let pixbuf = e#render_icon (GtkStock.convert_id `DIALOG_INFO) `DIALOG in
   let icon = ImageG.image ~pixbuf:(Some ((*XXX*)Obj.magic pixbuf)) ~packing:e#add () in
   e#set_label "Show image" ;
   e#connect#after#activate (fun () ->
     e#set_label 
-      (if e#expanded then "Hide image" else "Show image"))
+      (if e#get_expanded then "Hide image" else "Show image"))
 
 let main () = 
   GMain.init ();
@@ -24,7 +24,7 @@ let main () =
 
   setup_expander w#add ;
 
-  w#misc#show () ;
+  w#show ;
   GMain.main ()
 
 let _ = main ()

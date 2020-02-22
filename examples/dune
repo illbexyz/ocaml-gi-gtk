@@ -17,8 +17,10 @@
    ; eventbox
    ; events
    events2
+   ; expander
+   fifteen
    ; ----
-   ; expander fifteen fixpoint gioredirect giotest
+   ; fixpoint gioredirect giotest
    hello
    ; kaimono label link_button nihongo notebook pango1
    pango2

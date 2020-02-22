@@ -154,7 +154,7 @@ and the same used by C because "MessageDialogG.message_dialog ~buttons" expects
 this behaviour. Moreover one cannot add the buttons later to MessageDialogs*)
    visible in dialog_thread.ml
 9. Obj.magic needed to cast types of external libraries (e.g. Cairo)
-   visible in drawing.ml
+   visible in drawing.ml, fifteen.ml, etc.
 
 ============== APIStruct implementation =========
 simple example CellArea::get_cell_allocation, APIStruct GdkRectangle

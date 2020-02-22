@@ -66,7 +66,7 @@ let _ =
     let j = i mod 4  in
     let k = i/4 in
     let frame =
-      FrameG.frame ~shadow_type:`OUT ~width:32 ~height:32
+      FrameG.frame ~shadow_type:`OUT ~width_request:32 ~height_request:32
 	~packing:(Lablgtk3Compat.attach tbl ~left:j ~top:k) () in
     if i < 15 then
       arr.(j).(k) <-
@@ -78,11 +78,11 @@ let pos = new position ~init_x:3 ~init_y:3 ~min_x:0 ~min_y:0 ~max_x:3 ~max_y:3
 open GdkKeysyms
 
 let _ =
-  window#event#connect#key_press ~callback:
+  window#connect#key_press_event ~callback:
     begin fun ev ->
       let (x0, y0) = pos#current in
       let wid0 = arr.(x0).(y0) in
-      let key = GdkEvent.Key.keyval ev in
+      let key = GdkEvent.Key.keyval (Obj.magic ev)(*XXX*) in
       if key = _q || key = _Escape then (GMain.quit (); exit 0) else
       let (x1, y1) =
 	if key = _h || key = _Left then 
@@ -102,7 +102,7 @@ let _ =
     end
 	      
 let main () = 
-  window#misc#show ();
+  window#show ;
   GMain.main ()
 
 let _ = main ()
