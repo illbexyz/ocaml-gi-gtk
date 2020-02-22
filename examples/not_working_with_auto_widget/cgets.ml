@@ -58,7 +58,7 @@ let main () =
   let btn = ButtonG.button ~label:"Get Targets" ~packing:window#add () in
   btn#connect#clicked ~callback:get_targets;
 
-  window#misc#show ();
+  window#show;
   GMain.main ()
 
 let _ = Printexc.print main ()

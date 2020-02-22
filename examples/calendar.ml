@@ -24,7 +24,7 @@ let main () =
       flush stdout
     end;
 
-  window#misc#show ();
+  window#show;
   GMain.main ()
 
 let _ = main ()

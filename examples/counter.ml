@@ -38,9 +38,9 @@ let _ =
   sc#connect#change_value
     ~callback:(fun _ v -> Printf.printf "drag: %i\n%!" (truncate v); false);
   adj#connect#value_changed
-    ~callback:(fun () -> counter#set (truncate adj#value));
+    ~callback:(fun () -> counter#set (truncate adj#get_value));
   counter#connect#changed ~callback:(fun n -> lbl#set_text (string_of_int n));
   counter#set 0;
   w#connect#destroy ~callback:GMain.quit;
-  w#misc#show ();
+  w#show;
   GMain.main ()
