@@ -20,6 +20,7 @@
 (*                                                                        *)
 (**************************************************************************)
 
+(*
 val to_pixels : Pango.units -> int
 val from_pixels : int -> Pango.units
 
@@ -107,3 +108,4 @@ and context :
     method set_font_description : font_description -> unit
     method set_language : string -> unit
   end
+*)

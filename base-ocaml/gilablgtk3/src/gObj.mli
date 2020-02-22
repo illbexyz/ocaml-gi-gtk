@@ -75,6 +75,7 @@ class gtkobj : 'a Gobject.obj ->
 class type gtkobj_signals =
   object ('a) method after : 'a end
 
+(*
 (** {3 GtkWidget} *)
 
 class event_signals : [> widget] Gobject.obj ->
@@ -129,6 +130,7 @@ class event_ops : [> widget] Gobject.obj ->
     method connect : event_signals
     method send : GdkEvent.any -> bool
   end
+*)
 
 (** @gtkdoc gdk gdk-Colormaps-and-Colors *)
 type color =

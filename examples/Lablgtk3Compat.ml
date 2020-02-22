@@ -223,5 +223,5 @@ class ['a] factory
     method add_submenu ?key (label : string) =
       let item = MenuItemG.menu_item (*~use_mnemonic:true*)(*XXX*) ~label () in
       self#bind item ?key label;
-      MenuG.menu ~packing:(fun m -> item#set_submenu (Obj.magic m#as_widget))(*XXX Type mismatch*) ()
+      MenuG.menu ~packing:(fun m -> item#set_submenu m#as_menu)(*XXX Type mismatch*) ()
 end
