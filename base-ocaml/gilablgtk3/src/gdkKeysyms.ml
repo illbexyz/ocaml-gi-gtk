@@ -22,7 +22,8 @@
 
 (* $Id$ *)
 
-open Gdk
+type keysym = int
+
 let _VoidSymbol : keysym = 0xffffff
 let _BackSpace : keysym = 0xff08
 let _Tab : keysym = 0xff09

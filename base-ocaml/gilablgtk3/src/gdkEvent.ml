@@ -20,6 +20,7 @@
 (*                                                                        *)
 (**************************************************************************)
 
+(*
 (* $Id$ *)
 
 open Gaux
@@ -31,7 +32,9 @@ external unsafe_copy : Gpointer.boxed -> [< event_type] event
 external copy : ([< event_type] as 'a) event -> 'a event
     = "ml_gdk_event_copy"
 external get_type : 'a event -> 'a = "ml_GdkEventAny_type"
+(*
 external get_window : 'a event -> window = "ml_GdkEventAny_window"
+*)
 external get_send_event : 'a event -> bool = "ml_GdkEventAny_send_event"
 type timed =
  [ `MOTION_NOTIFY
@@ -206,3 +209,4 @@ module WindowState = struct  type t = [ `WINDOW_STATE ] event
   let changed_mask ev = Convert.window_state (changed_mask ev)
   let new_window_state ev = Convert.window_state (new_window_state ev)
 end
+*)

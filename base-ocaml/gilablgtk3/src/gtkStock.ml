@@ -20,6 +20,7 @@
 (*                                                                        *)
 (**************************************************************************)
 
+(*
 (* $Id$ *)
 
 open Gobject
@@ -328,3 +329,4 @@ external list_ids : unit -> string list = "ml_gtk_stock_list_ids"
 external lookup : string -> item = "ml_gtk_stock_lookup"
 let lookup id = lookup (convert_id id)
 end
+*)

@@ -22,6 +22,7 @@
 
 (* $Id$ *)
 
+(*
 open Gobject
 
 type color
@@ -46,6 +47,7 @@ type device
 type display
 
 exception Error of string
+*)
 
 module Tags : sig
   (* gdkevents.h *)
@@ -227,6 +229,7 @@ module Tags : sig
     | `WHEEL | `DISTANCE | `ROTATION | `SLIDER ] *)
 end
 
+(*
 module Convert :
   sig
     val test_modifier : Tags.modifier -> int -> bool
@@ -463,3 +466,4 @@ end
 module Cairo : sig
   val create : window -> cairo
 end
+*)

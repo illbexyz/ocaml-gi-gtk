@@ -26,9 +26,11 @@ open Gtk
 
 (** {3 Colors} *)
 
+(*
 module Cairo : sig
   val create : Gdk.window -> Gdk.cairo
 end
+*)
 
 (** Base classes for objects and widgets *)
 
@@ -75,6 +77,7 @@ class gtkobj : 'a Gobject.obj ->
 class type gtkobj_signals =
   object ('a) method after : 'a end
 
+(*
 (** @gtkdoc gdk gdk-Colormaps-and-Colors *)
 type color =
   [ `COLOR of Gdk.color
@@ -84,6 +87,7 @@ type color =
   | `RGB of int * int * int]
 
 val color : color -> Gdk.color
+*)
 
 val pack_return :
  (< show : unit; ..> as 'a) ->

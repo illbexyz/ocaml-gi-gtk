@@ -197,6 +197,6 @@ module Rectangle = struct
 end
 
 ============= Notes ==================
-1. Widget.size_params is an exeption w.r.t. Widget.make_params
-   Consequence:use ~width in place of ~width_request.
-   Why??
+1. GtkStock, GdkEvent, GdkKeysyms: useful to write applications
+   They depend on gdk.ml
+   However, all the rest does not

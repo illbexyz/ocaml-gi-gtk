@@ -60,12 +60,14 @@ module Grab : sig
 end
 *)
 
+(*
 module Event : sig
   val get_current_time : unit -> int32     (** May return GDK_CURRENT_TIME *)
   val get_current : unit -> GdkEvent.any       (** May raise Gpointer.Null *)
   val get_widget : 'a Gdk.event -> widget Gobject.obj  (** May raise Gpointer.Null *)
   val propagate : [> `widget] Gobject.obj -> 'a Gdk.event -> unit
 end
+*)
 
 module Rc : sig
   val add_default_file : string -> unit

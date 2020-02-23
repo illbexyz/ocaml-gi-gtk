@@ -27,6 +27,7 @@ open Gaux
 open Gobject
 open Gtk
 
+(*
 type color = [
   | `COLOR of Gdk.color
   | `WHITE
@@ -42,8 +43,9 @@ let color (c : color) =
   | `BLACK -> Gdk.Color.color_parse "black"
   | `NAME s -> Gdk.Color.color_parse s
   | `RGB (r,g,b) -> Gdk.Color.color_parse (Printf.sprintf "#%04X%04X%04X" r g b)
+*)
 
-module Cairo = Gdk.Cairo
+(*module Cairo = Gdk.Cairo*)
 
 (* GObject *)
 

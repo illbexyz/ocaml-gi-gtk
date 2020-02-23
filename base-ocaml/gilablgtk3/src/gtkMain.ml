@@ -71,6 +71,7 @@ module Grab = struct
   external get_current : unit -> widget Gobject.obj= "ml_gtk_grab_get_current"
 end
 
+(*
 module Event = struct
   (* May return GDK_CURRENT_TIME *)
   external get_current_time : unit -> int32
@@ -84,6 +85,7 @@ module Event = struct
   external propagate : [> `widget] Gobject.obj -> 'a Gdk.event -> unit
     = "ml_gtk_propagate_event"
 end
+*)
 
 module Rc = struct
   external add_default_file : string -> unit = "ml_gtk_rc_add_default_file"
