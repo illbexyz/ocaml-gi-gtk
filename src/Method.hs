@@ -48,6 +48,7 @@ data MethodInArg = BasicIn Text Text
 data MethodOutArg = BasicOut Text
                   | Class Bool Name
                   | NonGtkClass Bool Text Text
+                  | TupleOut [MethodOutArg]
   deriving (Show)
 
 type MethodArgs = (MethodInArg, [MethodInArg], MethodOutArg)
@@ -88,6 +89,9 @@ methodOutTypeShow _currNS (ObjCon (TypeVarCon _tvar (RowCon Less (PolyCon (NameC
   = return $ Class False n
 methodOutTypeShow currNS t@(ObjCon (TypeVarCon tvar (RowCon Less (PolyCon (NameCon _)))))
   = return $ NonGtkClass False tvar (methodTypeShow currNS t)
+methodOutTypeShow currNS (TupleCon treps) = do
+  outArgs <- mapM (methodOutTypeShow currNS) treps
+  return $ TupleOut outArgs
 methodOutTypeShow currNS t = return $ BasicOut $ methodTypeShow currNS t
 
 addOption :: Bool -> Text -> Text
@@ -121,16 +125,24 @@ showMethodOutArg (Class isOption n             ) = do
         error
           "error in (showMethodOutArg): this name can only be an Object or an Interface"
   return $ addOption isOption ocamlClass
-
-tVarClassType :: MethodInArg -> Maybe Text
-tVarClassType (ClassType       _ var _) = Just var
-tVarClassType (NonGtkClassType _ var _) = Just var
-tVarClassType (BasicIn _var _         ) = Nothing
+showMethodOutArg (TupleOut mArgs) = do
+  argsText <- mapM showMethodOutArg mArgs
+  return $ "(" <> T.intercalate " * " argsText <> ")"
 
 extractClassVars :: MethodArgs -> [Text]
-extractClassVars (_, inArgs, NonGtkClass _ tvar _) =
-  mapMaybe tVarClassType inArgs ++ [tvar]
-extractClassVars (_, inArgs, _) = mapMaybe tVarClassType inArgs
+extractClassVars (_, inArgs, outArgs) = mapMaybe inArgTVars inArgs
+  ++ outArgTVars outArgs
+ where
+  inArgTVars :: MethodInArg -> Maybe Text
+  inArgTVars (ClassType       _ var _) = Just var
+  inArgTVars (NonGtkClassType _ var _) = Just var
+  inArgTVars (BasicIn _var _         ) = Nothing
+
+  outArgTVars :: MethodOutArg -> [Text]
+  outArgTVars (BasicOut _          ) = []
+  outArgTVars (Class _ _           ) = []
+  outArgTVars (NonGtkClass _ tvar _) = [tvar]
+  outArgTVars (TupleOut outArgs'   ) = concatMap outArgTVars outArgs'
 
 extractVars :: [MethodInArg] -> [Text]
 extractVars = concatMap inner

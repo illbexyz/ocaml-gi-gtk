@@ -29,7 +29,6 @@ excludeFiles :: Set Name
 excludeFiles = S.fromList
     [ Name "Gtk"       "HeaderBarAccessible"  -- Its type isn't included in <gtk/gtk-a11y.h>
     , Name "Gtk"       "EntryIconAccessible"  -- Bug: The GIR Parser doesn't return its CType (bug in the parser)
-    -- , Name "Gtk"       "TreeModelFilter"      -- Need to generate interface
     , Name "Gtk"       "CellAccessibleParent" -- The get_cell_extents method uses an integer pointer which is parsed as an int
     , Name "Gtk"       "TreeViewAccessible"   -- Depends on CellAccessibleParent
     , Name "Gtk"       "Widget"               -- We use the lablgtk one
@@ -64,6 +63,4 @@ excludeFiles = S.fromList
     , Name "Atk"       "Table"        -- Like above for ‘atk_table_get_selected_columns’
     , Name "Gdk"       "Window"       -- gtk_window_destroy_notify is found inside the GIR
                                       -- but it doesn't exist
-    , Name "Gdk"       "Device"       -- Methods returning an object inside a tuple aren't handled well
-    , Name "Gdk"       "Display"      -- Same as above
     ]

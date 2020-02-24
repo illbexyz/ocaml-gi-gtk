@@ -323,8 +323,8 @@ callableHOutArgs callable =
 
 callableOCamlTypes :: Callable -> ExcCodeGen [TypeRep]
 callableOCamlTypes c = do
-  inArgs' <- mapM argToTyperep $ callableHInArgs' c
-  outArgs <- mapM argToTyperep $ callableHOutArgs c
+  inArgs' <- mapM (argToTyperep haskellType) $ callableHInArgs' c
+  outArgs <- mapM (argToTyperep outParamOcamlType) $ callableHOutArgs c
   let inArgs = case inArgs' ++ outArgs of
         [] -> [TextCon "unit"]
         _  -> inArgs'
@@ -343,8 +343,8 @@ callableOCamlTypes c = do
   return $ inArgs ++ [outArgs']
 
  where
-  argToTyperep a = do
-    ocamlType <- haskellType $ argType a
+  argToTyperep converter a = do
+    ocamlType <- converter $ argType a
     return $ if mayBeNull a then OptionCon ocamlType else ocamlType
 
 -- | Invoke the given C function, taking care of errors.
