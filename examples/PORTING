@@ -116,6 +116,10 @@ socket.ml: what the hell is this example trying to do?
    it should be instead
    method get_path_at_pos : 'c. int -> int -> (bool * TreePathT.t option * ([> TreeViewColumnT.t] as 'c) Gobject.obj option * int * int) = 
     fun d e -> TreeView.get_path_at_pos obj d e
+
+  NOW IS:
+  (* Could not generate method IconView::create_drag_icon *)
+  (* Error was : Not implemented: "(outParamOcamlType) can't handle this type" *)
 1. RadioButtonG get_group not implemented (GSList *)
    AboutDialog authors not implemented (TCArray)
    TextView (APIStruct) isn't implemented yet
