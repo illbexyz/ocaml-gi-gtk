@@ -697,8 +697,8 @@ addTypeFile n = do
           tline $ textToOCamlType n (Just parent) (objInterfaces o)
       tline ""
       tline $ nameToClassType n
-    APIStruct _s -> tline $ textToOCamlType n Nothing []
-    APIUnion  _u -> tline $ textToOCamlType n Nothing []
+    APIStruct _s -> tline "type t"
+    APIUnion  _u -> tline "type t"
 
 -- typeLines :: [(Name, Maybe Name)] -> Text
 -- typeLines s = T.unlines $ uncurry textToOCamlType <$> s
