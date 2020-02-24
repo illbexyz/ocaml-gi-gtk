@@ -109,6 +109,13 @@ socket.ml: what the hell is this example trying to do?
 -2. (dcalendar.exe:1551223): Gtk-WARNING **: 14:25:00.462: Negative content width -18 (allocation 16, extents 17x17) while allocating gadget (node button, owner GtkButton)
 -1. (cgets.exe:1421601): Gdk-WARNING **: 02:22:59.657: ../../../../../gdk/wayland/gdkselection-wayland.c:275: error reading selection buffer: Operation was cancelled
 0. (scrolledwin.exe:1306065): Gtk-CRITICAL **: 21:35:13.609: gtk_widget_grab_default: assertion 'gtk_widget_get_can_default (widget)' failed
+0.5 universal type quantification in method types is generated correctly only for input types but not for output types.
+   E.g. (not visible in this branch):
+   method get_path_at_pos : int -> int -> (bool * TreePathT.t option * ([> TreeViewColumnT.t] as 'c) Gobject.obj option * int * int) = 
+    fun d e -> TreeView.get_path_at_pos obj d e
+   it should be instead
+   method get_path_at_pos : 'c. int -> int -> (bool * TreePathT.t option * ([> TreeViewColumnT.t] as 'c) Gobject.obj option * int * int) = 
+    fun d e -> TreeView.get_path_at_pos obj d e
 1. RadioButtonG get_group not implemented (GSList *)
    AboutDialog authors not implemented (TCArray)
    TextView (APIStruct) isn't implemented yet
