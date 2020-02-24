@@ -145,7 +145,42 @@ and the same used by C because "MessageDialogG.message_dialog ~buttons" expects
 this behaviour. Moreover one cannot add the buttons later to MessageDialogs*)
    visible in dialog_thread.ml
 
+============== APIStruct implementation =========
+simple example CellArea::get_cell_allocation, APIStruct GdkRectangle
 
+#define Make_Extractor(name,conv1,field,conv2) \
+CAMLprim value ml_##name##_##field (value val) \
+{ return conv2 ((conv1(val))->field); }
+
+#define GdkRectangle_val(val) ((GdkRectangle*)MLPointer_val(val))
+#define Val_GdkRectangle Val_pointer
+
+/* Rectangle */
+
+CAMLprim value ml_GdkRectangle (value x, value y, value width, value height)
+{
+    GdkRectangle rectangle;
+    rectangle.x = Int_val(x);
+    rectangle.y = Int_val(y);
+    rectangle.width = Int_val(width);
+    rectangle.height = Int_val(height);
+    return Val_copy(rectangle);
+}
+
+Make_Extractor (GdkRectangle, GdkRectangle_val, x, Val_int)
+Make_Extractor (GdkRectangle, GdkRectangle_val, y, Val_int)
+Make_Extractor (GdkRectangle, GdkRectangle_val, width, Val_int)
+Make_Extractor (GdkRectangle, GdkRectangle_val, height, Val_int)
+
+module Rectangle = struct
+  type t
+  external create : x:int -> y:int -> width:int -> height:int -> t
+      = "ml_GdkRectangle"
+  external x : t -> int = "ml_GdkRectangle_x"
+  external y : t -> int = "ml_GdkRectangle_y"
+  external width : t -> int = "ml_GdkRectangle_width"
+  external height : t -> int = "ml_GdkRectangle_height"
+end
 
 ============= Notes ==================
 1. Widget.size_params is an exeption w.r.t. Widget.make_params

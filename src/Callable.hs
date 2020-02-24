@@ -143,7 +143,7 @@ genMlMacro mn cSymbol callable = do
       cline $ macroName <> macroArgs <> ")"
 
   when (length inArgs > 5) $ do
-    let numArgs = T.pack $ show $ length $ args callable
+    let numArgs = T.pack $ show $ length $ inArgs
     cline $ "ML_bc" <> numArgs <> " (" <> mlGiPrefix mn cSymbol <> ")"
 
 -- Given a callable, return a list of (array, length) pairs, where in
