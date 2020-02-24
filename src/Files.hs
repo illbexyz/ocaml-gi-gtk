@@ -33,6 +33,7 @@ excludeFiles = S.fromList
     , Name "Gtk"       "CellAccessibleParent" -- The get_cell_extents method uses an integer pointer which is parsed as an int
     , Name "Gtk"       "TreeViewAccessible"   -- Depends on CellAccessibleParent
     , Name "Gtk"       "Widget"               -- We use the lablgtk one
+    , Name "Gtk"       "FileChooserButton"    -- Using wrong conversion macro for gtk_file_chooser_button_new_with_dialog
     , Name "Pango"     "Engine"
     , Name "Pango"     "EngineShape"
     , Name "Pango"     "EngineLang"
@@ -52,6 +53,8 @@ excludeFiles = S.fromList
     -- because of pointers in the CType
     , Name "Gio"       "MenuLinkIter"
     , Name "Gio"       "SimpleProxyResolver"
+    , Name "Gio"       "MenuModel"            -- Depends on MenuLinkIter
+    , Name "Gio"       "MenuItem"             -- Depends on MenuModel
     -- Bug: Unlike every other C in/out functions seen before, the ones in these
     -- three files doesn't pass every in argument before the out arguments
     -- Need to generate the C function without a macro
@@ -65,4 +68,13 @@ excludeFiles = S.fromList
                                       -- but it doesn't exist
     , Name "Gdk"       "Device"       -- Methods returning an object inside a tuple aren't handled well
     , Name "Gdk"       "Display"      -- Same as above
+    , Name "Gdk"       "DeviceManager"  -- Depends on Device
+    , Name "Gdk"       "DragContext"    -- Depends on Device
+    , Name "Gdk"       "Seat"           -- Depends on Device
+    , Name "Gdk"       "DisplayManager" -- Depends on Display
+    , Name "Gdk"       "Screen"         -- Depends on Window
+    , Name "Gdk"       "Visual"         -- Depends on Screen
+    -- 
+    , Name "Pango" "Layout"   -- pango_layout_set_markup_with_accel uses pointer
+    , Name "Pango" "Renderer" -- Depends on Layout
     ]

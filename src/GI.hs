@@ -142,6 +142,11 @@ genBindings verbosity Library { GI.name = libName, version, overridesFile } =
 
     putStrLn $ "Compiling " <> outputDir <> " using Dune..."
 
+    -- Need to compile twice to find all the cycles (no idea why)
+    mbDuneError' <- compile outputDir
+    forM_ mbDuneError' $ \duneError -> do
+      putStrLn "Dune's error message:\n"
+      putStrLn $ unlines $ map ("    " <>) $ lines duneError
     mbDuneError <- compile outputDir
     forM_ mbDuneError $ \duneError -> do
       let files = parseCycles duneError
@@ -180,12 +185,12 @@ resolveRecursion dirPrefix files = do
     utf8WriteFile (dirPrefix </> T.unpack file <> ".ml") content
  where
   classToAnd :: Decl -> Decl
-  classToAnd ct = ct { classText = T.replace "class " "and " (classText ct) }
+  classToAnd ct = ct { declText = T.replace "class " "and " (declText ct) }
 
   removeRefs :: [Text] -> Decl -> Decl
   removeRefs fs cText = foldl
     (\acc moduleName ->
-      acc { classText = T.replace (moduleName <> ".") "" (classText acc) }
+      acc { declText = T.replace (moduleName <> ".") "" (declText acc) }
     )
     cText
     fs
@@ -194,35 +199,39 @@ resolveRecursion dirPrefix files = do
   cTextToText _  []     = ""
   cTextToText fs ctexts = do
     let (signals, rest) = partition
-          (\Decl { className } -> "_signals" `T.isSuffixOf` className)
+          (\Decl { declName } -> "_signals" `T.isSuffixOf` declName)
           ctexts
         (lets, skels) = partition ((== Let) . declType) rest
         skels'        = head skels : drop 1 (map classToAnd skels)
     T.unlines
-      $  (classText <$> signals)
-      <> (classText . removeRefs fs <$> skels')
-      <> (classText . removeRefs fs <$> lets)
+      $  (declText <$> signals)
+      <> (declText . removeRefs fs <$> skels')
+      <> (declText . removeRefs fs <$> lets)
 
   cTextToRecursion :: [Decl] -> Text
   cTextToRecursion cTexts = T.unlines $ map inner cTexts
    where
-    inner Decl { declType = Class, className }
-      | "_skel" `T.isSuffixOf` className
-      = "class " <> className <> " = Recursion." <> className
-      | "_signals" `T.isSuffixOf` className
-      = "class " <> className <> " = Recursion." <> className
+    inner Decl { declType = Class True, declName } =
+      "class virtual " <> declName <> " = Recursion." <> declName
+    inner Decl { declType = Class False, declName }
+      | "_skel" `T.isSuffixOf` declName
+      = "class " <> declName <> " = Recursion." <> declName
+      | "_signals" `T.isSuffixOf` declName
+      = "class " <> declName <> " = Recursion." <> declName
       | otherwise
-      = "class " <> className <> " = Recursion." <> className
-    inner Decl { declType = Let, className } =
-      "let " <> className <> " = Recursion." <> className
+      = "class " <> declName <> " = Recursion." <> declName
+    inner Decl { declType = Let, declName } =
+      "let " <> declName <> " = Recursion." <> declName
 
 parseOpens :: Text -> (Text, Text)
 parseOpens t
   | "open " `T.isPrefixOf` t = join bimap T.unlines (splitAt 2 $ T.lines t)
   | otherwise                = ("", t)
 
-data DeclType = Class | Let deriving (Eq, Show)
-data Decl = Decl { declType :: DeclType, className :: Text, classText :: Text } deriving (Show)
+data DeclType = Class Bool  -- ^ is a virtual class
+              | Let
+              deriving (Eq, Show)
+data Decl = Decl { declType :: DeclType, declName :: Text, declText :: Text } deriving (Show)
 
 parseClasses :: Text -> ([Decl], Text)
 parseClasses = parseClasses' []
@@ -231,19 +240,24 @@ parseClasses = parseClasses' []
   parseClasses' acc t = do
     let (mbCText, rest) = parseClass t
     case mbCText of
-      Nothing        -> (acc, rest)
-      Just classText -> parseClasses' (acc ++ [classText]) rest
+      Nothing       -> (acc, rest)
+      Just declText -> parseClasses' (acc ++ [declText]) rest
 
 parseClass :: Text -> (Maybe Decl, Text)
 parseClass t
+  | "class virtual " `T.isPrefixOf` t = handleClass
+    True
+    (fromJust $ T.stripPrefix "class virtual " t)
   | "class " `T.isPrefixOf` t = handleClass
+    False
     (fromJust $ T.stripPrefix "class " t)
-  | "and " `T.isPrefixOf` t = handleClass (fromJust $ T.stripPrefix "and " t)
+  | "and " `T.isPrefixOf` t = (handleClass False)
+    (fromJust $ T.stripPrefix "and " t)
   | "let " `T.isPrefixOf` t = handleLet (fromJust $ T.stripPrefix "let " t)
   | otherwise = (Nothing, t)
  where
-  handleClass txt = first
-    (Just . Decl Class (T.strip . fst $ T.breakOn "obj " txt))
+  handleClass isVirtual txt = first
+    (Just . Decl (Class isVirtual) (T.strip . fst $ T.breakOn "obj " txt))
     (parseClass' $ T.lines t)
   handleLet txt = first
     (Just . Decl Let (T.strip . fst $ T.breakOn " = begin" txt))
