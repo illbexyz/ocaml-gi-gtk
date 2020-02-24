@@ -25,10 +25,16 @@ import           GObject
 import           Inheritance                    ( fullObjectPropertyList
                                                 , fullInterfacePropertyList
                                                 )
+import           Method                         ( MethodInArg(..)
+                                                , methodInTypeShow
+                                                )
 import           Naming
-import           QualifiedNaming                ( qualifiedSymbol )
+import           QualifiedNaming                ( qualifiedSymbol
+                                                , nsOCamlClass
+                                                )
 import           TypeRep
 import           Util
+import           Debug.Trace
 
 isPropertyInParents :: Name -> Text -> CodeGen Bool
 isPropertyInParents cn pName = do
@@ -228,28 +234,32 @@ genMakeParams className props = do
       -- A property may have failed to generate, so we're calling propTypeConverter,
       -- which is the function that may fail. So if a property has failed to generate,
       -- the constructor name won't be generated
-      constructorNames <- catMaybes <$> forM
+      constructorArgs <- catMaybes <$> forM
         constructors
         (\prop -> handleCGExc
           (\_err -> return Nothing)
-          (  propTypeConverter prop
-          >> return (Just $ escapeOCamlReserved $ propName prop)
+          (propTypeConverter prop >> do
+            currNS   <- currentNS
+            typeRep  <- haskellType $ propType prop
+            typeRep' <- methodInTypeShow currNS typeRep
+            return $ Just (prop, typeRep')
           )
         )
-
-      let underlinedConstrNames = map hyphensToUnderscores constructorNames
-          optionalArgs = "?" <> T.intercalate " ?" underlinedConstrNames
+      constrNames <- mapM (uncurry argToName) constructorArgs
+      let optionalArgs = "?" <> T.intercalate " ?" constrNames
       blank
       line $ "let make_params ~cont pl " <> optionalArgs <> " ="
       indent $ do
-        let numConstructors = length underlinedConstrNames
-            firstConstrs    = take (numConstructors - 1) underlinedConstrNames
-            lastConstr      = last underlinedConstrNames
+        let numConstructors = length constructorArgs
+            firstConstrs    = take (numConstructors - 1) constructorArgs
+            lastConstr      = last constructorArgs
         line "let pl = ("
         indent $ do
-          forM_ firstConstrs $ \cName -> line $ mayCons cName <> " ("
+          bohhh <- mapM (uncurry mayCons) firstConstrs
+          forM_ bohhh $ \t -> line $ t <> " ("
+          baaah <- uncurry mayCons lastConstr
           line
-            $  mayCons lastConstr
+            $  baaah
             <> " pl"
             <> T.pack (replicate numConstructors ')')
             <> " in"
@@ -266,7 +276,36 @@ genMakeParams className props = do
           ("Gtk", Name "Gtk" _           ) -> inheritedMake parent
           (_    , _                      ) -> emptyMake
  where
-  mayCons constrName = "may_cons P." <> constrName <> " " <> constrName
+  argToName :: Property -> MethodInArg -> CodeGen Text
+  argToName prop (BasicIn _ _) =
+    return $ escapeOCamlReserved $ hyphensToUnderscores $ propName prop
+  argToName prop (NonGtkClassType _ _ _) =
+    return $ escapeOCamlReserved $ hyphensToUnderscores $ propName prop
+  argToName _prop (ClassType _ _ n) = do
+    currNS <- currentNS
+    let ocamlClass = nsOCamlO currNS n
+    return $ "(" <> ocamlIdentifier n <> " : " <> ocamlClass <> " option)"
+
+  mayCons :: Property -> MethodInArg -> CodeGen Text
+  mayCons prop a@(BasicIn _ _) = do
+    pName <- argToName prop a
+    return $ "may_cons P." <> pName <> " " <> pName
+  mayCons prop a@(NonGtkClassType _ _ _) = do
+    pName <- argToName prop a
+    return $ "may_cons P." <> pName <> " " <> pName
+  mayCons prop (ClassType _ _ n) = do
+    let pName = escapeOCamlReserved $ hyphensToUnderscores $ propName prop
+        aName = ocamlIdentifier n
+    return
+      $  "may_cons P."
+      <> pName
+      <> " (Option.map (fun a -> a#as_"
+      <> aName
+      <> ") "
+      <> aName
+      <> ")"
+
+  -- mayCons prop  = "may_cons P." <> constrName <> " " <> constrName
   emptyMake = "let make_params ~cont pl = cont pl"
   inheritedMake parent = "let make_params = " <> name parent <> ".make_params"
   isConstructor prop = PropertyWritable `elem` propFlags prop

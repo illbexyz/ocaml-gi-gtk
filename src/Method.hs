@@ -1,5 +1,11 @@
 module Method
   ( genMethod
+  , typeRepsToMethodArgs
+  , methodInTypeShow
+  , methodOutTypeShow
+  , MethodArgs
+  , MethodInArg(..)
+  , MethodOutArg
   )
 where
 
