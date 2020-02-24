@@ -67,12 +67,12 @@ typeRepsToMethodArgs xs@(h : typeRepsTail) = do
   return $ Just (headArg, inArgs, retArg)
 
 methodInTypeShow :: Text -> TypeRep -> CodeGen MethodInArg
-methodInTypeShow _currNS (OptionCon (ObjCon (TypeVarCon tvar (RowCon More (PolyCon (NameCon n@(Name "Gtk" _)))))))
-  = return $ ClassType True tvar n
+methodInTypeShow currNS (OptionCon (ObjCon (TypeVarCon tvar (RowCon More (PolyCon (NameCon n@(Name ns _)))))))
+  | currNS == ns = return $ ClassType True tvar n
 methodInTypeShow currNS t@(OptionCon (ObjCon (TypeVarCon tvar (RowCon More (PolyCon (NameCon _))))))
   = return $ NonGtkClassType True tvar $ methodTypeShow currNS t
-methodInTypeShow _currNS (ObjCon (TypeVarCon tvar (RowCon More (PolyCon (NameCon n@(Name "Gtk" _))))))
-  = return $ ClassType False tvar n
+methodInTypeShow currNS (ObjCon (TypeVarCon tvar (RowCon More (PolyCon (NameCon n@(Name ns _))))))
+  | currNS == ns = return $ ClassType False tvar n
 methodInTypeShow currNS t@(ObjCon (TypeVarCon tvar (RowCon More (PolyCon (NameCon _)))))
   = return $ NonGtkClassType False tvar $ methodTypeShow currNS t
 methodInTypeShow currNS t = do
@@ -80,12 +80,12 @@ methodInTypeShow currNS t = do
   return $ BasicIn tvar $ methodTypeShow currNS t
 
 methodOutTypeShow :: Text -> TypeRep -> CodeGen MethodOutArg
-methodOutTypeShow _currNS (OptionCon (ObjCon (TypeVarCon _tvar (RowCon Less (PolyCon (NameCon n@(Name "Gtk" _)))))))
-  = return $ Class True n
+methodOutTypeShow currNS (OptionCon (ObjCon (TypeVarCon _tvar (RowCon Less (PolyCon (NameCon n@(Name ns _)))))))
+  | currNS == ns = return $ Class True n
 methodOutTypeShow currNS t@(OptionCon (ObjCon (TypeVarCon tvar (RowCon Less (PolyCon (NameCon _))))))
   = return $ NonGtkClass True tvar (methodTypeShow currNS t)
-methodOutTypeShow _currNS (ObjCon (TypeVarCon _tvar (RowCon Less (PolyCon (NameCon n@(Name "Gtk" _))))))
-  = return $ Class False n
+methodOutTypeShow currNS (ObjCon (TypeVarCon _tvar (RowCon Less (PolyCon (NameCon n@(Name ns _))))))
+  | currNS == ns = return $ Class False n
 methodOutTypeShow currNS t@(ObjCon (TypeVarCon tvar (RowCon Less (PolyCon (NameCon _)))))
   = return $ NonGtkClass False tvar (methodTypeShow currNS t)
 methodOutTypeShow currNS t = return $ BasicOut $ methodTypeShow currNS t

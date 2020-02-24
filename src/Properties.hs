@@ -259,16 +259,15 @@ genMakeParams className props = do
       currNS  <- currentNS
       case parents of
         []           -> line emptyMake
-        (parent : _) -> line $ case (currNS, parent) of
-          -- TODO: clean here
-          ("Gtk", Name "GObject" "Object") -> emptyMake
-          ("Gtk", Name "Gtk" "Widget"    ) -> emptyMake
-          ("Gtk", Name "Gtk" _           ) -> inheritedMake parent
-          (_    , _                      ) -> emptyMake
+        (parent : _) -> line $ case parent of
+          Name "GObject" "Object" -> emptyMake
+          Name "Gtk"     "Widget" -> emptyMake
+          _                       -> inheritedMake currNS parent
  where
   mayCons constrName = "may_cons P." <> constrName <> " " <> constrName
   emptyMake = "let make_params ~cont pl = cont pl"
-  inheritedMake parent = "let make_params = " <> name parent <> ".make_params"
+  inheritedMake currNS parent =
+    "let make_params = " <> nsOCamlFile currNS parent <> ".make_params"
   isConstructor prop = PropertyWritable `elem` propFlags prop
 
 genProperties :: Name -> [Property] -> [Text] -> CodeGen ()

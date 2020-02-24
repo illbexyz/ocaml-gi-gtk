@@ -12,6 +12,7 @@ module Naming
   , camelCaseToSnakeCase
   , ocamlIdentifier
   , ocamlIdentifierNs
+  , nsOCamlFile
   , nsOCamlType
   , nsOCamlO
   , signalOCamlName
@@ -142,6 +143,7 @@ escapeOCamlReserved "open"   = "open_"
 escapeOCamlReserved "match"  = "match_"
 escapeOCamlReserved "and"    = "and_"
 escapeOCamlReserved "method" = "method_"
+escapeOCamlReserved "virtual" = "virtual_"
 escapeOCamlReserved t        = do
   let (nums, text) = T.span C.isNumber t
   text <> nums
@@ -152,6 +154,10 @@ ocamlIdentifier (Name _ nm) = escapeOCamlReserved $ camelCaseToSnakeCase nm
 ocamlIdentifierNs :: Name -> Text
 ocamlIdentifierNs (Name ns nm) =
   escapeOCamlReserved $ camelCaseToSnakeCase (ns <> nm)
+
+nsOCamlFile :: Text -> Name -> Text
+nsOCamlFile currNs (Name ns nm) | currNs == ns = nm
+                                | otherwise = "GI" <> ns <> "." <> nm
 
 nsOCamlType :: Text -> Name -> Text
 nsOCamlType currNs (Name ns nm) | currNs == ns = nm <> "T.t"

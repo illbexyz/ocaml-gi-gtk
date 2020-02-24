@@ -30,16 +30,16 @@ data TypeRep = ListCon TypeRep
   deriving (Show, Eq)
 
 typeShow :: Text -> TypeRep -> Text
-typeShow currNS (ListCon   t          ) = typeShow currNS t <> " list"
-typeShow currNS (OptionCon t          ) = typeShow currNS t <> " option"
-typeShow currNS (ObjCon    t          ) = typeShow currNS t <> " Gobject.obj"
-typeShow currNS (RowCon     Less t    ) = "[< " <> typeShow currNS t <> "]"
-typeShow currNS (RowCon     More t    ) = "[> " <> typeShow currNS t <> "]"
-typeShow currNS (TypeVarCon var  t    ) = typeShow currNS t
-typeShow currNS (PolyCon t@(NameCon n)) = typeShow currNS t
-typeShow currNS (PolyCon t            ) = "`" <> typeShow currNS t
-typeShow currNS (NameCon n            ) = nsOCamlType currNS n
-typeShow currNS (TextCon text         ) = text
+typeShow currNS  (ListCon   t          ) = typeShow currNS t <> " list"
+typeShow currNS  (OptionCon t          ) = typeShow currNS t <> " option"
+typeShow currNS  (ObjCon    t          ) = typeShow currNS t <> " Gobject.obj"
+typeShow currNS  (RowCon     Less  t   ) = "[< " <> typeShow currNS t <> "]"
+typeShow currNS  (RowCon     More  t   ) = "[> " <> typeShow currNS t <> "]"
+typeShow currNS  (TypeVarCon _tvar t   ) = typeShow currNS t
+typeShow currNS  (PolyCon t@(NameCon _)) = typeShow currNS t
+typeShow currNS  (PolyCon t            ) = "`" <> typeShow currNS t
+typeShow currNS  (NameCon n            ) = nsOCamlType currNS n
+typeShow _currNS (TextCon text         ) = text
 typeShow currNS (TupleCon treps) =
   "(" <> T.intercalate " * " (typeShow currNS <$> treps) <> ")"
 
@@ -52,28 +52,30 @@ methodTypeShow currNS (RowCon Less t) = "[< " <> methodTypeShow currNS t <> "]"
 methodTypeShow currNS (RowCon More t) = "[> " <> methodTypeShow currNS t <> "]"
 methodTypeShow currNS (TypeVarCon var t) =
   "(" <> methodTypeShow currNS t <> " as '" <> var <> ")"
-methodTypeShow currNS (PolyCon t@(NameCon n)) = methodTypeShow currNS t
-methodTypeShow currNS (PolyCon t            ) = "`" <> methodTypeShow currNS t
-methodTypeShow currNS (NameCon n            ) = nsOCamlType currNS n
-methodTypeShow currNS (TextCon text         ) = text
+methodTypeShow currNS  (PolyCon t@(NameCon _)) = methodTypeShow currNS t
+methodTypeShow currNS  (PolyCon t            ) = "`" <> methodTypeShow currNS t
+methodTypeShow currNS  (NameCon n            ) = nsOCamlType currNS n
+methodTypeShow _currNS (TextCon text         ) = text
 methodTypeShow currNS (TupleCon treps) =
   "(" <> T.intercalate " * " (methodTypeShow currNS <$> treps) <> ")"
 
-getVars :: TypeRep -> [Text]
-getVars (OptionCon (ObjCon (TypeVarCon tvar (RowCon Less (PolyCon (NameCon n@(Name "Gtk" _)))))))
+getVars :: Text -> TypeRep -> [Text]
+getVars currNS (OptionCon (ObjCon (TypeVarCon _tvar (RowCon Less (PolyCon (NameCon (Name ns _)))))))
+  | ns == currNS
   = []
-getVars (ObjCon (TypeVarCon tvar (RowCon Less (PolyCon (NameCon n@(Name "Gtk" _))))))
+getVars currNS (ObjCon (TypeVarCon _tvar (RowCon Less (PolyCon (NameCon (Name ns _))))))
+  | ns == currNS
   = []
-getVars (TypeVarCon var t) = var : getVars t
-getVars (ListCon   t     ) = getVars t
-getVars (OptionCon t     ) = getVars t
-getVars (ObjCon    t     ) = getVars t
-getVars (RowCon Less t   ) = getVars t
-getVars (RowCon More t   ) = getVars t
-getVars (PolyCon  t      ) = getVars t
-getVars (NameCon  n      ) = []
-getVars (TextCon  text   ) = []
-getVars (TupleCon treps  ) = concatMap getVars treps
+getVars currNS  (TypeVarCon var t) = var : getVars currNS t
+getVars currNS  (ListCon   t     ) = getVars currNS t
+getVars currNS  (OptionCon t     ) = getVars currNS t
+getVars currNS  (ObjCon    t     ) = getVars currNS t
+getVars currNS  (RowCon Less t   ) = getVars currNS t
+getVars currNS  (RowCon More t   ) = getVars currNS t
+getVars currNS  (PolyCon  t      ) = getVars currNS t
+getVars _currNS (NameCon  _      ) = []
+getVars _currNS (TextCon  _      ) = []
+getVars currNS  (TupleCon treps  ) = concatMap (getVars currNS) treps
 
 isOptional :: TypeRep -> Bool
 isOptional (OptionCon _) = True

@@ -69,10 +69,6 @@ genSignalClass n o = do
 
   gline $ "class " <> ocamlName <> "_signals obj = object (self)"
 
-  -- TODO: The default case should be the commented one but it makes sense 
-  --       only when every lib can be generated, otherwise the parent class
-  --       is not available.
-  --       Then the (Name "Gtk" _) case can be removed 
   case parents of
     []           -> return ()
     (parent : _) -> do
@@ -80,10 +76,7 @@ genSignalClass n o = do
       let parentSignal = case head parents of
             Name "Gtk"       "Widget" -> "GObj.widget_signals_impl"
             Name "GObject"   "Object" -> "[_] GObj.gobject_signals"
-            Name "Gtk"       _        -> parentClass <> "_signals"
-            Name "GtkSource" _        -> parentClass <> "_signals"
-            _                         -> "[_] GObj.gobject_signals"
-            -- _                       -> parentClass <> "_signals" 
+            _                       -> parentClass <> "_signals" 
 
       gline $ "  inherit " <> parentSignal <> " obj"
       forM_ (objInterfaces o) $ \iface ->
@@ -190,10 +183,6 @@ genObject' n o ocamlName = do
 
   gline $ "class " <> ocamlName <> "_skel obj = object (self)"
 
-  -- TODO: The default case should be the commented one but it makes sense 
-  --       only when every lib can be generated, otherwise the parent class
-  --       is not available.
-  --       Then the (Name "Gtk" _) case can be removed 
   case parents of
     []           -> return ()
     (parent : _) -> do
@@ -201,10 +190,8 @@ genObject' n o ocamlName = do
       let parentSkelClass = case parent of
             Name "Gtk"       "Widget" -> "['a] GObj.widget_impl"
             Name "GObject"   "Object" -> "GObj.gtkobj"
-            Name "Gtk"       _        -> parentClass <> "_skel"
-            Name "GtkSource" _        -> parentClass <> "_skel"
-            _                         -> "GObj.gtkobj"
-            -- _                       -> parentClass <> "_skel"
+            _                       -> parentClass <> "_skel"
+
       gline $ "  inherit " <> parentSkelClass <> " obj"
       forM_ (objInterfaces o) $ \iface ->
         unless (elem iface (Set.union buggedIfaces excludeFiles)) $ do
