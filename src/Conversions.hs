@@ -25,7 +25,8 @@ import           Data.Maybe                     ( isJust
                                                 , fromMaybe
                                                 )
 import           Data.Monoid                    ( (<>) )
-import           Data.Text                      ( Text )
+import           Data.Text                      ( Text
+                                                , pack )
 import qualified Data.Text                     as T
 import           GHC.Exts                       ( IsString(..) )
 
@@ -508,7 +509,9 @@ cToOCamlValue False (Just (TInterface n)) = do
     APIObject _o -> do
       addCDep (namespace n <> name n)
       return $ valObject n
-    APIStruct _s -> cToOCamlValueErr "APIStruct"
+    APIStruct _s -> do
+      addCDep (namespace n <> name n)
+      return $ valStruct n
     APIUnion  _u -> cToOCamlValueErr "APIUnion"
 cToOCamlValue True (Just (TInterface n)) = do
   api <- findAPIByName n
@@ -521,10 +524,12 @@ cToOCamlValue True (Just (TInterface n)) = do
     APIInterface _i    -> do
       addCDep (namespace n <> name n)
       return $ valOptInterface n
-    APIObject o -> do
+    APIObject _o -> do
       addCDep (namespace n <> name n)
       return $ valOptObject n
-    APIStruct _s -> cToOCamlValueErr "APIStruct"
+    APIStruct _s -> do
+      addCDep (namespace n <> name n)
+      return $ valOptStruct n
     APIUnion  _u -> cToOCamlValueErr "APIUnion"
 
 cToOCamlValueErr :: Text -> ExcCodeGen Text

@@ -27,6 +27,7 @@ module Naming
   , valOptInterface
   , valOptObject
   , valStruct
+  , valOptStruct
   , structVal
   )
 where
@@ -206,3 +207,6 @@ structVal = interfaceVal
 
 valStruct :: Name -> Text
 valStruct = valInterface
+
+valOptStruct :: Name -> Text
+valOptStruct = valOptInterface

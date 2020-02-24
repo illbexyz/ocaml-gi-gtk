@@ -77,7 +77,7 @@ genFunction n (Function symbol fnMovedTo callable) =
 
 -- TODO: A struct ovverride type
 genStructCasts :: Name -> Struct -> CodeGen ()
-genStructCasts n s = do
+genStructCasts n@(Name ns nm) s = do
   let mbCType = structCType s
   forM_ mbCType $ \cType -> case cType of
     "GdkAtom" ->
@@ -85,6 +85,8 @@ genStructCasts n s = do
         $  "#define "
         <> structVal n
         <> "(val) ((GdkAtom) MLPointer_val(val))"
+        -- <> "\n#define " <> valStruct n <> " Val_pointer"
+        <> "\n#define " <> valStruct n <> "(it) (copy_memblock_indirected(&it,sizeof(" <> cType <> ")))"
     _ ->
       hline
         $  "#define "
@@ -92,7 +94,8 @@ genStructCasts n s = do
         <> "(val) (("
         <> cType
         <> "*) MLPointer_val(val))"
-      -- TODO: Val_
+        -- <> "\n#define " <> valStruct n <> " Val_pointer"
+        <> "\n#define " <> valStruct n <> "(it) (copy_memblock_indirected(&it,sizeof(" <> cType <> ")))"
 
 -- | Generate wrapper for structures.
 genStruct :: Name -> Struct -> CodeGen ()

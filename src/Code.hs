@@ -697,21 +697,21 @@ addTypeFile n = do
           tline $ textToOCamlType n (Just parent) (objInterfaces o)
       tline ""
       tline $ nameToClassType n
-    APIStruct _s -> tline "type t"
-    APIUnion  _u -> tline "type t"
+    APIStruct _s -> tline typeDeclText
+    APIUnion  _u -> tline typeDeclText
 
 -- typeLines :: [(Name, Maybe Name)] -> Text
 -- typeLines s = T.unlines $ uncurry textToOCamlType <$> s
 
 textToOCamlType :: Name -> Maybe Name -> [Name] -> Text
-textToOCamlType (Name "GObject" "Object") _ _ = typeDeclText "[`giu]"
-textToOCamlType (Name "Gtk"     "Widget") _ _ = typeDeclText "[`giu | `widget]"
+textToOCamlType (Name "GObject" "Object") _ _ = typeDefText "[`giu]"
+textToOCamlType (Name "Gtk"     "Widget") _ _ = typeDefText "[`giu | `widget]"
 textToOCamlType n Nothing ifaces =
-  typeDeclText $ "[`" <> ocamlIdentifierNs n <> ifacesTypes ifaces <> "]"
+  typeDefText $ "[`" <> ocamlIdentifierNs n <> ifacesTypes ifaces <> "]"
 textToOCamlType n (Just (Name "GObject" "Object")) ifaces =
-  typeDeclText $ "[`giu | `" <> ocamlIdentifierNs n <> ifacesTypes ifaces <> "]"
+  typeDefText $ "[`giu | `" <> ocamlIdentifierNs n <> ifacesTypes ifaces <> "]"
 textToOCamlType n@(Name ns _) (Just pn@(Name pNs _)) ifaces | ns == pNs =
-  typeDeclText
+  typeDefText
     $  "["
     <> nsOCamlType ns pn
     <> " | `"
@@ -719,7 +719,7 @@ textToOCamlType n@(Name ns _) (Just pn@(Name pNs _)) ifaces | ns == pNs =
     <> ifacesTypes ifaces
     <> "]"
 textToOCamlType n@(Name ns _) (Just pn) ifaces =
-  typeDeclText
+  typeDefText
     $  "["
     <> nsOCamlType ns pn
     <> " | `"
@@ -731,8 +731,11 @@ ifacesTypes :: [Name] -> Text
 ifacesTypes [] = ""
 ifacesTypes xs = " | `" <> T.intercalate " | `" (map ocamlIdentifierNs xs)
 
-typeDeclText :: Text -> Text
-typeDeclText t = "type t = " <> t
+typeDefText :: Text -> Text
+typeDefText t = "type t = " <> t
+
+typeDeclText :: Text
+typeDeclText = "type t"
 
 nameToClassType :: Name -> Text
 nameToClassType n = T.unlines
@@ -891,7 +894,7 @@ writeModuleInfo isVerbose dirPrefix _dependencies minfo = do
 
   unless (isCodeEmpty $ cCode minfo) $ do
     let cStubsFile = modulePathToFilePath dirPrefix (modulePath minfo) ".c"
-        deps' = filter (/= "Widget") (Set.toList $ cDeps minfo)
+        deps' = filter (/= "GObjectValue") (Set.toList $ cDeps minfo)
         deps = T.unlines $ fmap (\d -> "#include \"GI" <> d <> ".h\"") deps'
     addCFile cStubsFile
     liftIO $ utf8WriteFile cStubsFile (T.unlines [deps, genCStubs minfo])
