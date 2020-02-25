@@ -148,6 +148,9 @@ socket.ml: what the hell is this example trying to do?
 and the same used by C because "MessageDialogG.message_dialog ~buttons" expects
 this behaviour. Moreover one cannot add the buttons later to MessageDialogs*)
    visible in dialog_thread.ml
+9. Avoid generating code for GValue, aka GObjectVale, e.g.:
+   ML_3in_1out_discard_ret (gtk, gtk_style_context_get_property, GtkStyleContext_val, String_val, Flags_GI_GtkStateFlags_val, GValue, Val_GObjectValue, Unit)
+
 
 ============== APIStruct implementation =========
 simple example CellArea::get_cell_allocation, APIStruct GdkRectangle
