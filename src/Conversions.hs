@@ -1,6 +1,6 @@
 module Conversions
   ( callableHasClosures
-  , haskellType
+  , ocamlType
   , ExposeClosures(..)
   , typeIsCallback
   , typeAllocInfo
@@ -101,30 +101,30 @@ ocamlBasicType TUIntPtr  = TextCon "error"
 -- ocamlBasicType TUIntPtr  = error "(ocamlBasicType) can't handle TUIntPtr"
 
 -- | This translates GI types to the types used for generated OCaml code.
-haskellType :: Type -> CodeGen TypeRep
-haskellType (TBasicType bt                    ) = return $ ocamlBasicType bt
-haskellType (TCArray _ _ _ (TBasicType TUInt8)) = return $ TextCon "ByteString"
-haskellType (TCArray _ _ _ a                  ) = ListCon <$> haskellType a
-haskellType (TGArray   a                      ) = ListCon <$> haskellType a
-haskellType (TPtrArray a                      ) = ListCon <$> haskellType a
-haskellType TByteArray                          = return $ TextCon "ByteString"
-haskellType (TGList  a )                        = ListCon <$> haskellType a
-haskellType (TGSList a )                        = ListCon <$> haskellType a
-haskellType (TGHash a b)                        = do
+ocamlType :: Type -> CodeGen TypeRep
+ocamlType (TBasicType bt                    ) = return $ ocamlBasicType bt
+ocamlType (TCArray _ _ _ (TBasicType TUInt8)) = return $ TextCon "ByteString"
+ocamlType (TCArray _ _ _ a                  ) = ListCon <$> ocamlType a
+ocamlType (TGArray   a                      ) = ListCon <$> ocamlType a
+ocamlType (TPtrArray a                      ) = ListCon <$> ocamlType a
+ocamlType TByteArray                          = return $ TextCon "ByteString"
+ocamlType (TGList  a )                        = ListCon <$> ocamlType a
+ocamlType (TGSList a )                        = ListCon <$> ocamlType a
+ocamlType (TGHash a b)                        = do
   currNS <- currentNS
-  innerA <- typeShow currNS <$> haskellType a
-  innerB <- typeShow currNS <$> haskellType b
+  innerA <- typeShow currNS <$> ocamlType a
+  innerB <- typeShow currNS <$> ocamlType b
   return $ TextCon $ "(" <> innerA <> ", " <> innerB <> ") Hashtbl.t"
-haskellType TError        = return $ TextCon "GError"
-haskellType TVariant      = return $ TextCon "GVariant"
-haskellType TParamSpec    = return $ TextCon "GParamSpec"
-haskellType (TGClosure _) = do
+ocamlType TError        = return $ TextCon "GError"
+ocamlType TVariant      = return $ TextCon "GVariant"
+ocamlType TParamSpec    = return $ TextCon "GParamSpec"
+ocamlType (TGClosure _) = do
   tyvar <- getFreshTypeVariable
-  -- error "(haskellType) can't handle TGClosure"
+  -- error "(ocamlType) can't handle TGClosure"
   return $ TextCon "error"
-haskellType (TInterface (Name "GObject" "Value")) =
+ocamlType (TInterface (Name "GObject" "Value")) =
   return $ TextCon "Gobject.g_value"
-haskellType t@(TInterface n) = do
+ocamlType t@(TInterface n) = do
   let ocamlName = ocamlIdentifier n
       tname     = lowerName n
   api <- getAPI t
@@ -194,19 +194,19 @@ typeAllocInfo t = do
 -- | This translates GI types to the types used for generated OCaml code.
 outParamOcamlType :: Type -> ExcCodeGen TypeRep
 outParamOcamlType (TBasicType bt) = return $ ocamlBasicType bt
-outParamOcamlType t@(TCArray _ _ _ (TBasicType TUInt8))   = haskellType t
-outParamOcamlType t@(TCArray _ _ _ a                  )   = haskellType t
-outParamOcamlType t@(TGArray   a                      )   = haskellType t
-outParamOcamlType t@(TPtrArray a                      )   = haskellType t
-outParamOcamlType t@TByteArray                            = haskellType t
-outParamOcamlType t@(TGList  a )                          = haskellType t
-outParamOcamlType t@(TGSList a )                          = haskellType t
-outParamOcamlType t@(TGHash a b)                          = haskellType t
-outParamOcamlType t@TError                                = haskellType t
-outParamOcamlType t@TVariant                              = haskellType t
-outParamOcamlType t@TParamSpec                            = haskellType t
-outParamOcamlType t@(TGClosure  _                       ) = haskellType t
-outParamOcamlType t@(TInterface (Name "GObject" "Value")) = haskellType t
+outParamOcamlType t@(TCArray _ _ _ (TBasicType TUInt8))   = ocamlType t
+outParamOcamlType t@(TCArray _ _ _ a                  )   = ocamlType t
+outParamOcamlType t@(TGArray   a                      )   = ocamlType t
+outParamOcamlType t@(TPtrArray a                      )   = ocamlType t
+outParamOcamlType t@TByteArray                            = ocamlType t
+outParamOcamlType t@(TGList  a )                          = ocamlType t
+outParamOcamlType t@(TGSList a )                          = ocamlType t
+outParamOcamlType t@(TGHash a b)                          = ocamlType t
+outParamOcamlType t@TError                                = ocamlType t
+outParamOcamlType t@TVariant                              = ocamlType t
+outParamOcamlType t@TParamSpec                            = ocamlType t
+outParamOcamlType t@(TGClosure  _                       ) = ocamlType t
+outParamOcamlType t@(TInterface (Name "GObject" "Value")) = ocamlType t
 outParamOcamlType t@(TInterface n                       ) = do
   let ocamlName = ocamlIdentifier n
       tname     = lowerName n

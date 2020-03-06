@@ -75,16 +75,16 @@ genConstant (Name _ name) c = group $ do
 assignValue :: Text -> Type -> Text -> ExcCodeGen ()
 assignValue name t@(TBasicType TPtr) value = do
   currNS <- currentNS
-  ht     <- typeShow currNS <$> haskellType t
+  ht     <- typeShow currNS <$> ocamlType t
   writePattern name (ExplicitSynonym "ptrToIntPtr" "intPtrToPtr" value ht)
 assignValue name t@(TBasicType b) value = do
   currNS <- currentNS
-  ht     <- typeShow currNS <$> haskellType t
+  ht     <- typeShow currNS <$> ocamlType t
   hv     <- showBasicType b value
   writePattern name (SimpleSynonym hv ht)
 assignValue name t@(TInterface _) value = do
   currNS <- currentNS
-  ht     <- typeShow currNS <$> haskellType t
+  ht     <- typeShow currNS <$> ocamlType t
   api    <- findAPI t
   case api of
     Just (APIEnum _) ->

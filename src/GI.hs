@@ -68,13 +68,13 @@ genCode :: Config -> M.Map Name API -> ModulePath -> CodeGen () -> ModuleInfo
 genCode cfg apis mPath cg = snd $ evalCodeGen cfg apis mPath cg
 
 -- | Generate the code for the given module.
-genModuleCode
+genLibraryCode
   :: Text -- ^ name
   -> Text -- ^ version
   -> Bool -- ^ verbose
   -> [TaggedOverride] -- ^ Explicit overrides
   -> IO (ModuleInfo, [Text])
-genModuleCode name version verbosity overrides = do
+genLibraryCode name version verbosity overrides = do
   setupTypelibSearchPath []
 
   parsed <- forM overrides $ \(TaggedOverride tag ovText) ->
@@ -130,7 +130,7 @@ genBindings verbosity Library { GI.name = libName, version, overridesFile } =
 
     let ovs = maybe inheritedOverrides (: inheritedOverrides) givenOvs
 
-    (m, deps') <- genModuleCode libName version verbosity ovs
+    (m, deps') <- genLibraryCode libName version verbosity ovs
 
     let deps = filter (`notElem` ["xlib", "GModule"]) deps'
 

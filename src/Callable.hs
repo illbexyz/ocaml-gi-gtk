@@ -323,7 +323,7 @@ callableHOutArgs callable =
 
 callableOCamlTypes :: Callable -> ExcCodeGen [TypeRep]
 callableOCamlTypes c = do
-  inArgs' <- mapM (argToTyperep haskellType) $ callableHInArgs' c
+  inArgs' <- mapM (argToTyperep ocamlType) $ callableHInArgs' c
   outArgs <- mapM (argToTyperep outParamOcamlType) $ callableHOutArgs c
   let inArgs = case inArgs' ++ outArgs of
         [] -> [TextCon "unit"]
