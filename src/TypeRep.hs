@@ -18,16 +18,15 @@ import           Naming                         ( nsOCamlType )
 data RowDirection = Less | More
   deriving (Show, Eq)
 
-data TypeRep = ListCon TypeRep
-             | OptionCon TypeRep
-             | ObjCon TypeRep
-             | RowCon RowDirection TypeRep
-             | TypeVarCon Text TypeRep
-             | TupleCon [TypeRep]
-             | PolyCon TypeRep
-             | TextCon Text
-             | NameCon Name
-  deriving (Show, Eq)
+data TypeRep = ListCon TypeRep              -- list type constructor
+             | OptionCon TypeRep            -- option type constructor
+             | ObjCon TypeRep               -- Gobject.obj type constructor
+             | RowCon RowDirection TypeRep  -- [> ] and [< ] type constructor
+             | TypeVarCon Text TypeRep      -- adds a type variable ('a, 'b, ...)
+             | TupleCon [TypeRep]           -- tuple type constructor ( * * )
+             | PolyCon TypeRep              -- To represent a polymorphic variant constructor
+             | TextCon Text                 -- For atomic types
+             | NameCon Name                 -- For object/interfaces
 
 typeShow :: Text -> TypeRep -> Text
 typeShow currNS (ListCon   t          ) = typeShow currNS t <> " list"
