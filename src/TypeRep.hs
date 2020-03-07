@@ -1,6 +1,6 @@
 module TypeRep
   ( TypeRep(..)
-  , PolyDirection(..)
+  , RowDirection(..)
   , typeShow
   , methodTypeShow
   , getVars
@@ -15,13 +15,13 @@ import qualified Data.Text                     as T
 import           API                            ( Name(..) )
 import           Naming                         ( nsOCamlType )
 
-data PolyDirection = Less | More
+data RowDirection = Less | More
   deriving (Show, Eq)
 
 data TypeRep = ListCon TypeRep
              | OptionCon TypeRep
              | ObjCon TypeRep
-             | RowCon PolyDirection TypeRep
+             | RowCon RowDirection TypeRep
              | TypeVarCon Text TypeRep
              | TupleCon [TypeRep]
              | PolyCon TypeRep
